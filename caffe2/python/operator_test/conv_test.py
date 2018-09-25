@@ -226,9 +226,9 @@ class TestConvolution(serial.SerializedTestCase):
                                    nhwc=(order == 'NHWC'),
                                    backward=True))
         if engine == 'MIOPEN':
-            assume(_cudnn_supports(dilation=(dilation > 1),
-                                   nhwc=(order == 'NHWC'),
-                                   backward=True))
+            assume(_miopen_supports(dilation=(dilation > 1),
+                                    nhwc=(order == 'NHWC'),
+                                    backward=True))
 
         assume(engine != "MKLDNN" or use_bias is True)
 
