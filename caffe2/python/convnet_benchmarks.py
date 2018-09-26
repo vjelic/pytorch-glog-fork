@@ -570,19 +570,11 @@ def Resnet50(args):
     gpus = [0]
     device_opt = core.DeviceOption(caffe2_pb2.HIP)
     device_opt.hip_gpu_id = gpus[0]
-
-    # Batch size of 32 sums up to roughly 5GB of memory per device
-    batch_per_device = args.batch_size
-    total_batch_size = batch_per_device * len(gpus)
-
     num_labels = 1000
-
-    base_learning_rate = 0.0004 * total_batch_size
+    base_learning_rate = 0.0004 * args.batch_size
 
     # Weight decay (L2 regularization)
     weight_decay = 1e-4
-
-    num_epochs = 10
 
     ##################
     # Define the Model
