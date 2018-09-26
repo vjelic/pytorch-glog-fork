@@ -45,10 +45,9 @@ def _miopen_supports(
         dilation=False,
         nhwc=False,
         backward=False,
-        group=False,
 ):
     """Return True if MIOPEN supports this configuration."""
-    if nhwc or dilation or group:
+    if nhwc or dilation:
         return False
     return True
 
@@ -228,9 +227,8 @@ class TestConvolution(serial.SerializedTestCase):
                                    backward=True))
         if engine == 'MIOPEN':
             assume(_miopen_supports(dilation=(dilation > 1),
-                                   nhwc=(order == 'NHWC'),
-                                   backward=True,
-                                   group=(group > 1)))
+                                    nhwc=(order == 'NHWC'),
+                                    backward=True))
 
         assume(engine != "MKLDNN" or use_bias is True)
 
