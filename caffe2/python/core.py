@@ -2118,7 +2118,7 @@ class Net(object):
         self._net.device_option.CopyFrom(device_option)
         if use_cudnn:
             for op in self._net.op:
-                op.engine = 'CUDNN'
+                op.engine = "CUDNN"
 
     def RunAllOnMKL(self):
         """A convenient function to run everything using MKLDNN."""

@@ -218,6 +218,7 @@ class Optimizer(object):
             value=lr_max)
         return wd, trust, lr_max
 
+
 class SgdOptimizer(Optimizer):
     def __init__(self, base_learning_rate=0.01, policy='fixed',
                  momentum=0.0, nesterov=1, sparse_dedup_aggregator=None,
@@ -543,6 +544,7 @@ class AdagradOptimizer(Optimizer):
                 self.make_unique_blob_name(str(param) + "_lars"),
                 offset=self.lars,
                 lr_min=0.0)
+
             current_scope = scope.CurrentDeviceScope()
             self._add_local_lr_multiplier(
                 lr_lars_multiplier,
@@ -1453,7 +1455,8 @@ def build_ftrl(model, engine="SIMD", **kwargs):
 
 
 def build_gftrl(model, engine="", **kwargs):
-    # SIMD version of GFTRL is not supported
+    if engine == "SIMD":
+        assert core.IsOperator('GFtrl_ENGINE_SIMD')    
     gftrl_optimizer = GFtrlOptimizer(engine=engine, **kwargs)
     return _build(model, gftrl_optimizer)
 

@@ -1020,6 +1020,7 @@ def _Broadcast(devices, model, net, param, use_nccl=False):
                     root=0,
                 )
                 return
+
     for dev_idx in devices[1:]:
         if _IsGPUBlob(model, param):
             if workspace.has_hip_support:
@@ -1181,6 +1182,7 @@ def _SyncAllParamsDistributed(
     max_concurrent_distributed_ops
 ):
     assert rendezvous['num_shards'] > 1
+
     if workspace.has_hip_support:
         gpu_device_opt = core.DeviceOption(model._device_type, hip_gpu_id=devices[0])
     else:
@@ -1359,6 +1361,7 @@ def _AllReduceBlobsDistributed(
     num_workers = model.net.Proto().num_workers
     assert num_workers > 1, "Please specify more than 1 worker"
     all_reduce_engine = rendezvous['engine']
+    
     if workspace.has_hip_support:
         master_device_opt = core.DeviceOption(model._device_type, hip_gpu_id=devices[0])
     else:
