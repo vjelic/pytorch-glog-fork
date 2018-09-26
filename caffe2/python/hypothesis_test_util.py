@@ -256,7 +256,7 @@ hip_do = caffe2_pb2.DeviceOption(device_type=caffe2_pb2.HIP)
 # temporarily skip some flaky tests on ROCM before it's getting more mature.
 _device_options_no_hip = [cpu_do] + ([gpu_do] if workspace.has_gpu_support else [])
 device_options = _device_options_no_hip + ([hip_do] if workspace.has_hip_support else [])
- _device_options_hip_or_gpu = [hip_do] if workspace.has_hip_support else [gpu_do] 
+_device_options_hip_or_gpu = [hip_do] if workspace.has_hip_support else [gpu_do] 
 
 # Include device option for each GPU
 expanded_device_options = [cpu_do] + (
