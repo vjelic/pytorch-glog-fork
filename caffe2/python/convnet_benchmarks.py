@@ -61,8 +61,10 @@ pass.
 import argparse
 import os
 
-from caffe2.python import workspace, brew, model_helper, core
+from caffe2.python import workspace, brew, model_helper, core, net_drawer, memonger
 from caffe2.proto import caffe2_pb2
+from caffe2.python import data_parallel_model as dpm
+from caffe2.python.models import resnet
 
 def MLP(order, cudnn_ws, model_path=""):
     model = model_helper.ModelHelper(name="MLP")
@@ -563,45 +565,81 @@ def Inception(order, cudnn_ws, model_path=""):
     model.net.AveragedLoss(xent, "loss")
     return model, 224
 
-def Resnet50(order, cudnn_ws, model_path=""):
-    if model_path == "":
-        print("ERROR: please specify paths to init_net and predict_net protobufs for Resnet50")
-        exit(1)
-    device_opts = caffe2_pb2.DeviceOption()
-    device_opts.device_type = caffe2_pb2.HIP
-    device_opts.hip_gpu_id = 0
 
-    INIT_NET_PB = os.path.join(model_path, "init_net.pb")
-    PREDICT_NET_PB = os.path.join(model_path, "predict_net.pb")
-    init_def = caffe2_pb2.NetDef()
-    with open(INIT_NET_PB, 'rb') as f:
-        init_def.ParseFromString(f.read())
-        init_def.device_option.CopyFrom(device_opts)
+def Resnet50(args):
+    gpus = [0]
+    device_opt = core.DeviceOption(caffe2_pb2.HIP)
+    device_opt.hip_gpu_id = gpus[0]
 
-    net_def = caffe2_pb2.NetDef()
-    with open(PREDICT_NET_PB, 'rb') as f:
-        net_def.ParseFromString(f.read())
-        net_def.device_option.CopyFrom(device_opts)
+    # Batch size of 32 sums up to roughly 5GB of memory per device
+    batch_per_device = args.batch_size
+    total_batch_size = batch_per_device * len(gpus)
 
-    init_net = core.Net(init_def)
-    predict_net = core.Net(net_def)
-    for op in init_net.Proto().op:
-        op.device_option.CopyFrom(device_opts)
-    for op in predict_net.Proto().op:
-        op.device_option.CopyFrom(device_opts)
-    my_arg_scope = {
-        'order': order,
-    }
-    model = model_helper.ModelHelper(
-        name="resnet50",
-        arg_scope=my_arg_scope,
-    )
+    num_labels = 1000
 
-    model.param_init_net = init_net
-    model.net = predict_net
-    xent = model.net.LabelCrossEntropy(["gpu_0/softmax", "label"], "xent")
-    model.net.AveragedLoss(xent, "loss")
-    return model, 224
+    base_learning_rate = 0.0004 * total_batch_size
+
+    # Weight decay (L2 regularization)
+    weight_decay = 1e-4
+
+    num_epochs = 10
+
+    ##################
+    # Define the Model
+    ##################
+    train_model = model_helper.ModelHelper(name="resnet50_train")
+
+    def create_resnet50_model_ops(model, loss_scale=1.0):
+        # residual network
+        [softmax, loss] = resnet.create_resnet50(model,
+                                                 "data",
+                                                 num_input_channels=3,
+                                                 num_labels=num_labels,
+                                                 label="label", )
+        prefix = model.net.Proto().name
+        loss = model.net.Scale(loss, prefix + "_loss", scale=loss_scale)
+        brew.accuracy(model, [softmax, "label"], prefix + "_accuracy")
+        return [loss]
+
+    def add_parameter_update_ops(model):
+        brew.add_weight_decay(model, weight_decay)
+        iter = brew.iter(model, "iter")
+        lr = model.net.LearningRate([iter],
+                                    "lr",
+                                    base_lr=base_learning_rate,
+                                    policy="fixed",
+                                    gamma=0.1)
+        for param in model.GetParams():
+            param_grad = model.param_to_grad[param]
+            param_momentum = model.param_init_net.ConstantFill(
+                [param], param + '_momentum', value=0.0 )
+
+            model.net.MomentumSGDUpdate(
+                [param_grad, param_momentum, lr, param],
+                [param_grad, param_momentum, param],
+                momentum=0.9,
+                nesterov=1)
+
+    def optimize_gradient_memory(model, loss):
+        model.net._net = memonger.share_grad_blobs(
+            model.net,
+            loss,
+            set(model.param_to_grad.values()),
+            namescope="",
+            share_activations=False)
+
+
+    with core.NameScope(""):
+        with core.DeviceScope(device_opt):
+            losses = create_resnet50_model_ops(train_model)
+            if not args.forward_only:
+                blobs_to_gradients = train_model.AddGradientOperators(losses)
+                add_parameter_update_ops(train_model)
+        if not args.forward_only:
+            optimize_gradient_memory(train_model, [blobs_to_gradients[losses[0]]])
+
+    return train_model, 224
+
 
 def Inception_v2(order, cudnn_ws, model_path=""):
     if model_path == "":
@@ -654,7 +692,10 @@ def AddParameterUpdate(model):
 
 
 def Benchmark(model_gen, arg):
-    model, input_size = model_gen(arg.order, arg.cudnn_ws, arg.model_path)
+    if arg.model == 'Resnet50':
+        model, input_size = model_gen(arg)
+    else:
+        model, input_size = model_gen(arg.order, arg.cudnn_ws, arg.model_path)
     model.Proto().type = arg.net_type
     model.Proto().num_workers = arg.num_workers
 
@@ -669,7 +710,7 @@ def Benchmark(model_gen, arg):
 
     model.param_init_net.GaussianFill(
         [],
-        "gpu_0/data" if arg.model == "Resnet50" else "data",
+        "data",
         shape=input_shape,
         mean=0.0,
         std=1.0
@@ -686,8 +727,9 @@ def Benchmark(model_gen, arg):
         print('{}: running forward only.'.format(arg.model))
     else:
         print('{}: running forward-backward.'.format(arg.model))
-        model.AddGradientOperators(["loss"])
-        AddParameterUpdate(model)
+        if not arg.model == "Resnet50":
+            model.AddGradientOperators(["loss"])
+            AddParameterUpdate(model)
         if arg.order == 'NHWC':
             print(
                 '==WARNING==\n'
@@ -805,6 +847,6 @@ if __name__ == '__main__':
             'MLP': MLP,
             'Resnet50': Resnet50,
             'Inception_v2':Inception_v2
-
         }
         Benchmark(model_map[args.model], args)
+
