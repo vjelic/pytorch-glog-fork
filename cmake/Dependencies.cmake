@@ -548,7 +548,6 @@ if(NOT BUILD_ATEN_MOBILE)
     list(APPEND HIP_HIPCC_FLAGS -Wno-shift-count-negative)
     list(APPEND HIP_HIPCC_FLAGS -Wno-shift-count-overflow)
     list(APPEND HIP_HIPCC_FLAGS -Wno-unused-command-line-argument)
-
     list(APPEND HIP_HIPCC_FLAGS -Wno-duplicate-decl-specifier)
     
     if(CMAKE_BUILD_TYPE MATCHES Debug)
