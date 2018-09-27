@@ -27,20 +27,19 @@ To run benchmarks, skip directly to benchmarks section of the document.
 ## Build Caffe2 from source
 ### Pull the docker image
 ```
-docker pull rocm/caffe2:unbuilt-rocm1.9-v1
+docker pull rocm/caffe2:unbuilt-rocm1.9-v2
 ```
 This docker image has all the dependencies for caffe2 pre-installed.
 
 ### Pull the latest caffe2 source:
 
-Checkout the `caffe2_specific` branch of this repository.
 * Using https 
 ```
-git clone --recurse-submodules -b caffe2_specific https://github.com/ROCmSoftwarePlatform/pytorch.git
+git clone --recurse-submodules https://github.com/ROCmSoftwarePlatform/pytorch.git
 ```
 * Using ssh
 ```
-git clone --recurse-submodules -b caffe2_specific git@github.com:ROCmSoftwarePlatform/pytorch.git
+git clone --recurse-submodules git@github.com:ROCmSoftwarePlatform/pytorch.git
 ```
 Navigate to repo directory
 ```
@@ -49,7 +48,7 @@ cd pytorch
 
 ### Launch the docker container
 ```	
-docker run -it --network=host --device=/dev/kfd --device=/dev/dri --group-add video -v $PWD:/pytorch rocm/caffe2:unbuilt-rocm1.8.2-v3
+docker run -it --network=host --device=/dev/kfd --device=/dev/dri --group-add video -v $PWD:/pytorch rocm/caffe2:unbuilt-rocm1.9-v2
 ``` 
 Navigate to pytorch directory `cd /pytorch` inside the container.
 
@@ -62,11 +61,10 @@ Navigate to pytorch directory `cd /pytorch` inside the container.
 	
 * Test the rocm-caffe2 Installation 
 
-	Before running the tests, make sure that the required environment variables are set:
 	```
 	cd build_caffe2 && python -c 'from caffe2.python import core' 2>/dev/null && echo "Success" || echo "Failure"
 	```
-Make sure the the following environment variables are set.
+If the test fails, make sure the following environment variables are set.
 
 ```
 LD_lIBRARY_PATH=/usr/local/caffe2/lib
@@ -86,23 +84,21 @@ Caffe2 benchmarking script supports the following networks.
 6. Inception_v2
 7. Resnet50 
 
-*Special case:* Inception_v2 and Resnet50 will need their corresponding protobuf files to run the benchmarks. Protobufs can be downloaded from caffe2 model zoo using the below command. Substitute model_name with `inception_v2` or `resnet50`
-
+*Special case:* Inception_v2 will need model protobuf files to run the benchmarks. Protobufs can be downloaded from caffe2 model zoo using the below command.
 ```
-python caffe2/python/models/download.py <model_name>
+python caffe2/python/models/download.py inception_v2
 ```
 This will download the protobufs to current working directory.
 
-To run benchmarks for networks MLP, AlexNet, OverFeat, VGGA, Inception, run the command replacing `<name_of_the_netwrok>` with one of the networks. 
+To run benchmarks for networks MLP, AlexNet, OverFeat, VGGA, Inception, Resnet50 run the command replacing `<name_of_the_netwrok>` with one of the networks. 
 
 ```
 python caffe2/python/convnet_benchmarks.py --batch_size 64 --model <name_of_the_network> --engine MIOPEN --layer_wise_benchmark True --net_type simple
 
 ```
-To run Inception_v2 or Resnet50, please add additional argument `--model_path` to the above command which should point to the model directories downloaded above.
+To run Inception_v2, please add additional argument `--model_path` to the above command which should point to the model directories downloaded above.
 
 ```
 python caffe2/python/convnet_benchmarks.py --batch_size 64 --model <name_of_the_network> --engine MIOPEN --layer_wise_benchmark True --net_type simple --model_path <path_to_model_protobufs>
 
 ```
-
