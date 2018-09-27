@@ -841,4 +841,3 @@ if __name__ == '__main__':
             'Inception_v2':Inception_v2
         }
         Benchmark(model_map[args.model], args)
-

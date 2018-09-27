@@ -48,6 +48,7 @@ if has_gpu_support:
     GetCUDAVersion = C.get_cuda_version
     GetCuDNNVersion = C.get_cudnn_version
     NumGpuDevices = NumCudaDevices
+    
     def GetCudaPeerAccessPattern():
         return np.asarray(C.get_cuda_peer_access_pattern())
 
@@ -61,6 +62,7 @@ else:
 if has_hip_support:
     NumHipDevices = C.num_hip_devices
     NumGpuDevices = NumHipDevices
+    
     def GetHipPeerAccessPattern():
         return np.asarray(C.get_hip_peer_access_pattern())
 
