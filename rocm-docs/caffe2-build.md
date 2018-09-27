@@ -93,12 +93,12 @@ This will download the protobufs to current working directory.
 To run benchmarks for networks MLP, AlexNet, OverFeat, VGGA, Inception, Resnet50 run the command replacing `<name_of_the_netwrok>` with one of the networks. 
 
 ```
-python caffe2/python/convnet_benchmarks.py --batch_size 64 --model <name_of_the_network> --engine MIOPEN --layer_wise_benchmark True --net_type simple
+python caffe2/python/convnet_benchmarks.py --batch_size 32 --model <name_of_the_network> --engine MIOPEN
 
 ```
 To run Inception_v2, please add additional argument `--model_path` to the above command which should point to the model directories downloaded above.
 
 ```
-python caffe2/python/convnet_benchmarks.py --batch_size 64 --model <name_of_the_network> --engine MIOPEN --layer_wise_benchmark True --net_type simple --model_path <path_to_model_protobufs>
+python caffe2/python/convnet_benchmarks.py --batch_size 32 --model <name_of_the_network> --engine MIOPEN  --model_path <path_to_model_protobufs>
 
 ```
