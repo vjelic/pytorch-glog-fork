@@ -159,7 +159,7 @@ if [[ $BUILD_ENVIRONMENT == *rocm* ]]; then
 
   export LANG=C.UTF-8
   export LC_ALL=C.UTF-8
-  export HCC_AMDGPU_TARGET=gfx900
+  echo -e 'gfx803\ngfx900\ngfx906' > /opt/rocm/bin/target.lst
 
   # The link time of libcaffe2_hip.so takes 40 minutes, according to
   # https://github.com/RadeonOpenCompute/hcc#thinlto-phase-1---implemented
