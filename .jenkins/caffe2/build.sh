@@ -152,7 +152,8 @@ if [[ $BUILD_ENVIRONMENT == *rocm* ]]; then
   CMAKE_ARGS+=("-USE_OPENCV=ON")
   # This is needed to read datasets from https://download.caffe2.ai/databases/resnet_trainer.zip
   CMAKE_ARGS+=("-USE_LMDB=ON")
-
+  
+  echo -e 'gfx803\ngfx900\ngfx906' > /opt/rocm/bin/target.lst
   ########## HIPIFY Caffe2 operators
   ${PYTHON} "${ROOT_DIR}/tools/amd_build/build_pytorch_amd.py"
   ${PYTHON} "${ROOT_DIR}/tools/amd_build/build_caffe2_amd.py"
