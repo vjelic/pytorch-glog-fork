@@ -1031,7 +1031,7 @@ class TestCustomPinFn(TestCase):
     def test_custom_batch_pin(self):
         loader = DataLoader(self.dataset, batch_size=2, collate_fn=collate_wrapper,
                             pin_memory=True)
-        for _sample in loader:
+        for sample in loader:
             self.assertTrue(sample.inp.is_pinned())
             self.assertTrue(sample.tgt.is_pinned())
 
