@@ -213,6 +213,18 @@ RegisterOperators reg(
            return 0;
          }),
      Operator(
+         "prim::Float(Scalar a) -> float",
+         [](Stack& stack) {
+           IValue scalar;
+           pop(stack, scalar);
+           if (scalar.isDouble()) {
+             push(stack, scalar);
+           } else {
+             push(stack, static_cast<double>(scalar.toInt()));
+           }
+           return 0;
+         }),
+     Operator(
          "prim::Float(int a) -> float",
          [](Stack& stack) {
            int64_t i;
@@ -242,6 +254,18 @@ RegisterOperators reg(
            bool b;
            pop(stack, b);
            push(stack, (int)b);
+           return 0;
+         }),
+     Operator(
+         "prim::Int(Scalar a) -> float",
+         [](Stack& stack) {
+           IValue scalar;
+           pop(stack, scalar);
+           if (scalar.isInt()) {
+             push(stack, scalar);
+           } else {
+             push(stack, static_cast<int64_t>(scalar.toDouble()));
+           }
            return 0;
          }),
      Operator(
@@ -525,23 +549,23 @@ RegisterOperators reg(
              return 0;
            };
          }),
-    Operator(
-        prim::AutogradAnyNonZero,
-        [](const Node* node) {
-          size_t num_inputs = node->inputs().size();
-          return [=](Stack& stack) {
-            bool result = false;
-            for (const IValue& t : last(stack, num_inputs)) {
-              if (t.toTensor().defined()) {
-                result = true;
-                break;
-              }
-            }
-            drop(stack, num_inputs);
-            stack.emplace_back(result);
-            return 0;
-          };
-        }),
+     Operator(
+         prim::AutogradAnyNonZero,
+         [](const Node* node) {
+           size_t num_inputs = node->inputs().size();
+           return [=](Stack& stack) {
+             bool result = false;
+             for (const IValue& t : last(stack, num_inputs)) {
+               if (t.toTensor().defined()) {
+                 result = true;
+                 break;
+               }
+             }
+             drop(stack, num_inputs);
+             stack.emplace_back(result);
+             return 0;
+           };
+         }),
      Operator(
          prim::AutogradAdd,
          [](const Node* node) {
@@ -962,6 +986,17 @@ int listAppend(Stack& stack) {
 
   a->elements().push_back(el);
   push(stack, a);
+
+  return 0;
+}
+
+template <typename TList>
+int listReverse(Stack& stack) {
+  TList a;
+  pop(stack, a);
+
+  auto& elements = a->elements();
+  std::reverse(elements.begin(), elements.end());
 
   return 0;
 }
@@ -1416,6 +1451,9 @@ RegisterOperators reg2({
           "(c) el) -> " decl_type "[](a!)",                                 \
           listAppend<Shared<c_type>, c_type::ElemType>),                    \
       Operator(                                                             \
+          "aten::reverse( " decl_type "[](a!) self) -> ()",                 \
+          listReverse<Shared<c_type>>),                                     \
+      Operator(                                                             \
           "aten::extend(" decl_type "[](a!) self, " decl_type               \
           " [] other) -> ()",                                               \
           listExtend<Shared<c_type>>),                                      \
@@ -1457,6 +1495,9 @@ RegisterOperators reg2({
           "aten::append(" decl_type "[](a!) self, " decl_type          \
           " el) -> " decl_type "[](a!)",                               \
           listAppend<Shared<c_type>, c_type::ElemType>),               \
+      Operator(                                                        \
+          "aten::reverse(" decl_type "[](a!) self) -> ()",             \
+          listReverse<Shared<c_type>>),                                \
       Operator(                                                        \
           "aten::extend(" decl_type "[](a!) self, " decl_type          \
           " [] other) -> ()",                                          \
@@ -1500,7 +1541,7 @@ RegisterOperators reg2({
 #undef CREATE_MUTABLE_LIST_OPS
 
 #define CREATE_LIST_OPS(decl_type, c_type)                                          \
-  Operator("aten::len(" decl_type "[] a) -> int", listLen<Shared<c_type>>),         \
+      Operator("aten::len(" decl_type "[] a) -> int", listLen<Shared<c_type>>),     \
       Operator(                                                                     \
           "aten::add(" decl_type "[] a, " decl_type "[] b) -> " decl_type           \
           "[]",                                                                     \
@@ -1976,7 +2017,6 @@ static auto reg4 =
             &leaky_relu)
         .op("_test::cat(Tensor[] inputs) -> Tensor", &cat)
         .op("_test::get_first", &get_first);
-
 } // namespace
 } // namespace jit
 } // namespace torch
