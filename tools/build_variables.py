@@ -95,6 +95,7 @@ libtorch_sources = [
     "torch/csrc/jit/scope.cpp",
     "torch/csrc/jit/script/compiler.cpp",
     "torch/csrc/jit/script/edit_distance.cpp",
+    "torch/csrc/jit/script/logging.cpp",
     "torch/csrc/jit/script/final_returns.cpp",
     "torch/csrc/jit/script/schema_type_parser.cpp",
     "torch/csrc/jit/script/script_type_parser.cpp",
@@ -151,6 +152,7 @@ def add_torch_libs():
         "torch/csrc/distributed/Module.cpp",
         "torch/csrc/distributed/c10d/init.cpp",
         "torch/csrc/distributed/c10d/ddp.cpp",
+        "torch/csrc/distributed/c10d/reducer.cpp",
     ] + [":generate-code=" + x for x in GENERATED_CPP])
     libtorch_python_sources = sets.to_list(sets.difference(
         sets.make(globbed_sources),
