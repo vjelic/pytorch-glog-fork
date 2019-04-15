@@ -2111,7 +2111,6 @@ class TestCuda(TestCase):
     def _select_broadcastable_dims(dims_full=None):
         return _TestTorchMixin._select_broadcastable_dims(dims_full)
 
-    @skipIfRocm
     @unittest.skipIf(not TEST_MAGMA, "no MAGMA library detected")
     def test_inverse(self):
         _TestTorchMixin._test_inverse(self, lambda t: t.cuda())
@@ -2358,17 +2357,14 @@ class TestCuda(TestCase):
     def test_kthvalue(self):
         _TestTorchMixin._test_kthvalue(self, device='cuda')
 
-    @skipIfRocm
     @unittest.skipIf(not TEST_MAGMA, "no MAGMA library detected")
     def test_lu(self):
         _TestTorchMixin._test_lu(self, lambda t: t.cuda())
 
-    @skipIfRocm
     @unittest.skipIf(not TEST_MAGMA, "no MAGMA library detected")
     def test_lu_solve(self):
         _TestTorchMixin._test_lu_solve(self, lambda t: t.cuda())
 
-    @skipIfRocm
     @unittest.skipIf(not TEST_MAGMA, "no MAGMA library detected")
     def test_lu_unpack(self):
         _TestTorchMixin._test_lu_unpack(self, lambda t: t.cuda())
@@ -2550,7 +2546,6 @@ class TestCuda(TestCase):
 
     @unittest.skipIf(not TEST_NUMPY, "NumPy not found")
     @unittest.skipIf(not TEST_MAGMA, "no MAGMA library detected")
-    @skipIfRocm
     def test_norm(self):
         _TestTorchMixin._test_norm(self, device='cuda')
 
