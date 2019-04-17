@@ -962,7 +962,6 @@ class TestCuda(TestCase):
         self.assertEqual(y, x)
 
     @unittest.skipIf(not TEST_MULTIGPU, "only one GPU detected")
-    @skipIfRocm
     def test_copy_streams(self):
         d0 = torch.device('cuda:0')
         x0 = torch.zeros(5, 5, device=d0)
@@ -1500,7 +1499,6 @@ class TestCuda(TestCase):
         torch.cuda.synchronize()
 
     @unittest.skipIf(not TEST_MULTIGPU, "detected only one GPU")
-    @skipIfRocm
     def test_current_stream(self):
         d0 = torch.device('cuda:0')
         d1 = torch.device('cuda:1')
@@ -1529,7 +1527,6 @@ class TestCuda(TestCase):
             torch.cuda.current_stream(torch.device('cpu'))
 
     @unittest.skipIf(not TEST_MULTIGPU, "detected only one GPU")
-    @skipIfRocm
     def test_default_stream(self):
         d0 = torch.device('cuda:0')
         d1 = torch.device('cuda:1')
@@ -1578,7 +1575,6 @@ class TestCuda(TestCase):
         self.assertTrue(default_stream.query())
 
     @unittest.skipIf(not TEST_MULTIGPU, "detected only one GPU")
-    @skipIfRocm
     def test_stream_event_device(self):
         d0 = torch.device('cuda:0')
         d1 = torch.device('cuda:1')
@@ -1641,7 +1637,6 @@ class TestCuda(TestCase):
         self.assertEqual(0, torch.cuda.current_device())
 
     @unittest.skipIf(not TEST_MULTIGPU, "detected only one GPU")
-    @skipIfRocm
     def test_streams_multi_gpu(self):
         default_stream = torch.cuda.current_stream()
         self.assertEqual(default_stream.device, torch.device('cuda:0'))
@@ -1653,7 +1648,6 @@ class TestCuda(TestCase):
             self.assertNotEqual(torch.cuda.current_stream(), default_stream)
 
     @unittest.skipIf(not TEST_MULTIGPU, "detected only one GPU")
-    @skipIfRocm
     def test_streams_multi_gpu_query(self):
         d0 = torch.device('cuda:0')
         d1 = torch.device('cuda:1')
@@ -1744,7 +1738,6 @@ class TestCuda(TestCase):
             self.assertEqual(torch.cuda.FloatTensor(1, device=0).get_device(), 0)
             self.assertEqual(torch.cuda.FloatTensor(1, device=None).get_device(), 1)
 
-    @skipIfRocm
     def test_events(self):
         stream = torch.cuda.current_stream()
         event = torch.cuda.Event(enable_timing=True)
@@ -1862,7 +1855,6 @@ class TestCuda(TestCase):
             self.assertGreater(parent_time + child_time, total_time * 1.4)
 
     @unittest.skipIf(not TEST_MULTIGPU, "detected only one GPU")
-    @skipIfRocm
     def test_events_wait(self):
         d0 = torch.device('cuda:0')
         d1 = torch.device('cuda:1')
@@ -1968,7 +1960,6 @@ class TestCuda(TestCase):
         with torch.cuda.device(d1):
             self.assertGreater(e0.elapsed_time(e2), 0)
 
-    @skipIfRocm
     def test_record_stream(self):
         cycles_per_ms = get_cycles_per_ms()
 
@@ -2006,7 +1997,6 @@ class TestCuda(TestCase):
         x = torch.arange(0, 10).view((2, 5))
         self.assertEqual(x.t(), x.t().pin_memory())
 
-    @skipIfRocm
     def test_caching_pinned_memory(self):
         cycles_per_ms = get_cycles_per_ms()
 
@@ -2027,7 +2017,6 @@ class TestCuda(TestCase):
         self.assertEqual(list(gpu_tensor), [1])
 
     @unittest.skipIf(not TEST_MULTIGPU, "only one GPU detected")
-    @skipIfRocm
     def test_caching_pinned_memory_multi_gpu(self):
         # checks that the events preventing pinned memory from being re-used
         # too early are recorded on the correct GPU
@@ -2051,6 +2040,26 @@ class TestCuda(TestCase):
 
         self.assertEqual(gpu_tensor1[0], 1)
         self.assertEqual(gpu_tensor0[0], 2)
+
+    def test_caching_allocator_record_stream_oom(self):
+        """allocations delayed by a record_stream call should still be freed on
+        an out-of-memory in cuda_malloc_retry. see issue #19219"""
+        stream = torch.cuda.Stream()
+
+        with torch.cuda.stream(stream):
+            y = torch.zeros(40 * 1024 * 1024, device='cuda')
+
+        for _ in range(100):
+            x = torch.empty(40 * 1024 * 1024, device='cuda')
+            with torch.cuda.stream(stream):
+                y += x
+            # delays re-use of `x` until after all operations in `stream`
+            x.record_stream(stream)
+            del x
+
+        # we've made a mess by allocating up to the device capacity. free any
+        # cached blocks in case it affects future tests.
+        torch.cuda.empty_cache()
 
     def test_reduction_gpu_memory_accessing(self):
         x = torch.ones(512, 8, dtype=torch.float32, device='cuda')
