@@ -2017,6 +2017,7 @@ graph(%a, %b, %c, %d):
         self.assertTrue(tuple_inputs[0] == tuple_inputs[1])
 
     @skipIfNoTorchVision
+    @skipIfRocm
     def test_alexnet(self):
         x = torch.ones(1, 3, 224, 224)
         model = torchvision.models.AlexNet()
