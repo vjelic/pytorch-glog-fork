@@ -132,7 +132,7 @@ cmake_dependent_option(
     USE_MPI "Use MPI for Caffe2. Only available if USE_DISTRIBUTED is on." ON
     "USE_DISTRIBUTED" OFF)
 cmake_dependent_option(
-    USE_GLOO "Use Gloo. Only available if USE_DISTRIBUTED is on." ON
+    USE_GLOO "Use Gloo. Only available if USE_DISTRIBUTED is on." OFF
     "USE_DISTRIBUTED" OFF)
 cmake_dependent_option(
     USE_GLOO_IBVERBS "Use Gloo IB verbs for distributed. Only available if USE_GLOO is on." OFF
