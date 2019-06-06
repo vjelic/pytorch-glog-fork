@@ -915,12 +915,7 @@ endif()
 
 # ---[ NCCL
 if(USE_NCCL)
-  if(NOT USE_CUDA)
-    message(WARNING
-        "Not using CUDA, so disabling NCCL. Suppress this warning with "
-        "-DUSE_NCCL=OFF.")
-    caffe2_update_option(USE_NCCL OFF)
-  elseif(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+  if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     message(WARNING "NCCL is currently only supported under Linux.")
     caffe2_update_option(USE_NCCL OFF)
   else()

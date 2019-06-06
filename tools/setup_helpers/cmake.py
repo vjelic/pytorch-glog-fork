@@ -271,7 +271,7 @@ class CMake:
                       USE_SYSTEM_EIGEN_INSTALL="OFF",
                       USE_MKLDNN=USE_MKLDNN,
                       USE_NCCL=USE_NCCL,
-                      NCCL_EXTERNAL=USE_NCCL,
+                      NCCL_EXTERNAL=not USE_SYSTEM_NCCL,
                       CMAKE_INSTALL_PREFIX=install_dir,
                       CMAKE_C_FLAGS=cflags,
                       CMAKE_CXX_FLAGS=cflags,
