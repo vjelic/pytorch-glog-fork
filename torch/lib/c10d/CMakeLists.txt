@@ -41,6 +41,10 @@ function(copy_header file)
   configure_file(${file} ${CMAKE_BINARY_DIR}/include/c10d/${file} COPYONLY)
 endfunction()
 
+if(USE_GLOO)
+  option(USE_C10D_GLOO "USE C10D GLOO" ON)
+endif()
+
 if(USE_NCCL)
   option(USE_C10D_NCCL "USE C10D NCCL" ON)
 endif()
@@ -106,6 +110,10 @@ target_include_directories(c10d PUBLIC
 target_include_directories(c10d PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 # For torch/csrc/utils/hash.h
 target_include_directories(c10d PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
+
+if(USE_C10D_GLOO)
+  target_compile_definitions(c10d INTERFACE USE_C10D_GLOO)
+endif()
 
 if(USE_C10D_NCCL)
   target_compile_definitions(c10d INTERFACE USE_C10D_NCCL)

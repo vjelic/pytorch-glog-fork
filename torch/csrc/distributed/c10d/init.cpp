@@ -2,7 +2,9 @@
 
 #include <c10d/FileStore.hpp>
 #include <c10d/ProcessGroup.hpp>
+#ifdef USE_C10D_GLOO
 #include <c10d/ProcessGroupGloo.hpp>
+#endif
 
 #ifdef USE_C10D_NCCL
 #include <c10d/ProcessGroupNCCL.hpp>
@@ -372,6 +374,7 @@ They are used in specifying strategies for reduction collectives, e.g.,
               py::arg("opts") = ::c10d::BarrierOptions(),
               py::call_guard<py::gil_scoped_release>());
 
+#ifdef USE_C10D_GLOO
   auto processGroupGloo = shared_ptr_class_<::c10d::ProcessGroupGloo>(
       module, "ProcessGroupGloo", processGroup);
 
@@ -442,6 +445,7 @@ They are used in specifying strategies for reduction collectives, e.g.,
           py::arg("rank"),
           py::arg("size"),
           py::arg("timeout") = std::chrono::milliseconds(10 * 1000));
+#endif
 
 #ifdef USE_C10D_NCCL
   shared_ptr_class_<::c10d::ProcessGroupNCCL>(
