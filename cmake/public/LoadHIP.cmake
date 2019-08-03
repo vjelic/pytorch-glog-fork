@@ -66,6 +66,13 @@ ELSE()
   SET(HIPRAND_PATH $ENV{HIPRAND_PATH})
 ENDIF()
 
+# ROCRAND_PATH
+IF(NOT DEFINED ENV{ROCRAND_PATH})
+  SET(ROCRAND_PATH ${ROCM_PATH}/rocrand)
+ELSE()
+  SET(ROCRAND_PATH $ENV{ROCRAND_PATH})
+ENDIF()
+
 # MIOPEN_PATH
 IF(NOT DEFINED ENV{MIOPEN_PATH})
   SET(MIOPEN_PATH ${ROCM_PATH}/miopen)
@@ -92,6 +99,13 @@ IF(NOT DEFINED ENV{ROCTHRUST_PATH})
   SET(ROCTHRUST_PATH ${ROCM_PATH}/rocthrust)
 ELSE()
   SET(ROCTHRUST_PATH $ENV{ROCTHRUST_PATH})
+ENDIF()
+
+# RCCL_PATH
+IF(NOT DEFINED ENV{RCCL_PATH})
+  SET(RCCL_PATH ${ROCM_PATH}/rccl)
+ELSE()
+  SET(RCCL_PATH $ENV{RCCL_PATH})
 ENDIF()
 
 IF(NOT DEFINED ENV{PYTORCH_ROCM_ARCH})
@@ -140,6 +154,8 @@ IF(HIP_FOUND)
   set(rocprim_DIR ${ROCPRIM_PATH}/lib/cmake/rocprim)
   set(hipcub_DIR ${HIPCUB_PATH}/lib/cmake/hipcub)
   set(rocthrust_DIR ${ROCTHRUST_PATH}/lib/cmake/rocthrust)
+  set(rccl_DIR ${RCCL_PATH}/lib/cmake/rccl)
+
 
   find_package_and_print_version(hiprand REQUIRED)
   find_package_and_print_version(rocblas REQUIRED)
@@ -149,6 +165,8 @@ IF(HIP_FOUND)
   find_package_and_print_version(rocprim REQUIRED)
   find_package_and_print_version(hipcub REQUIRED)
   find_package_and_print_version(rocthrust REQUIRED)
+  find_package_and_print_version(rccl)
+
   
   # TODO: hip_hcc has an interface include flag "-hc" which is only
   # recognizable by hcc, but not gcc and clang. Right now in our
@@ -160,6 +178,9 @@ IF(HIP_FOUND)
   FIND_LIBRARY(PYTORCH_MIOPEN_LIBRARIES ${miopen_LIBRARIES} HINTS ${MIOPEN_PATH}/lib)
   # hiprtc is part of HIP
   FIND_LIBRARY(ROCM_HIPRTC_LIB hiprtc HINTS ${HIP_PATH}/lib)
+  # TODO: rccl_LIBRARIES should return fullpath to the library file,
+  # however currently it's just the lib name
+  FIND_LIBRARY(PYTORCH_RCCL_LIBRARIES ${rccl_LIBRARIES} HINTS ${RCCL_PATH}/lib)
 
 
   # Necessary includes for building PyTorch since we include HIP headers that depend on hcc/hsa headers.
