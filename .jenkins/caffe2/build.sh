@@ -172,6 +172,10 @@ if [[ $BUILD_ENVIRONMENT == *rocm* ]]; then
   build_args+=("USE_OPENCV=ON")
   # This is needed to read datasets from https://download.caffe2.ai/databases/resnet_trainer.zip
   build_args+=("USE_LMDB=ON")
+  # Enable NCCL and disable GLOO build
+  build_args+=("USE_NCCL=1")
+  build_args+=("USE_SYSTEM_NCCL=1")
+  build_args+=("USE_GLOO=0")
   # When hcc runs out of memory, it silently exits without stopping
   # the build process, leaving undefined symbols in the shared lib
   # which will cause undefined symbol errors when later running
