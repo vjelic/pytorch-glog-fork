@@ -38,6 +38,13 @@ ELSE()
   SET(ROCBLAS_PATH $ENV{ROCBLAS_PATH})
 ENDIF()
 
+# RCCL_PATH
+IF(NOT DEFINED ENV{RCCL_PATH})
+  SET(RCCL_PATH ${ROCM_PATH}/rccl)
+ELSE()
+  SET(RCCL+PATH $ENV{RCCL_PATH})
+ENDIF()
+
 # ROCFFT_PATH
 IF(NOT DEFINED ENV{ROCFFT_PATH})
   SET(ROCFFT_PATH ${ROCM_PATH}/rocfft)
@@ -140,6 +147,7 @@ IF(HIP_FOUND)
   set(rocprim_DIR ${ROCPRIM_PATH}/lib/cmake/rocprim)
   set(hipcub_DIR ${HIPCUB_PATH}/lib/cmake/hipcub)
   set(rocthrust_DIR ${ROCTHRUST_PATH}/lib/cmake/rocthrust)
+  set(rccl_DIR ${RCCL_PATH}/lib/cmake/rccl)
 
   find_package_and_print_version(hiprand REQUIRED)
   find_package_and_print_version(rocblas REQUIRED)
@@ -149,6 +157,7 @@ IF(HIP_FOUND)
   find_package_and_print_version(rocprim REQUIRED)
   find_package_and_print_version(hipcub REQUIRED)
   find_package_and_print_version(rocthrust REQUIRED)
+  find_package_and_print_version(rccl REQUIRED)
   
   # TODO: hip_hcc has an interface include flag "-hc" which is only
   # recognizable by hcc, but not gcc and clang. Right now in our
@@ -160,7 +169,7 @@ IF(HIP_FOUND)
   FIND_LIBRARY(PYTORCH_MIOPEN_LIBRARIES ${miopen_LIBRARIES} HINTS ${MIOPEN_PATH}/lib)
   # hiprtc is part of HIP
   FIND_LIBRARY(ROCM_HIPRTC_LIB hiprtc HINTS ${HIP_PATH}/lib)
-
+  FIND_LIBRARY(PYTORCH_RCCL_LIBRARIES ${rccl_LIBRARIES} HINTS ${RCCL_PATH}/lib)
 
   # Necessary includes for building PyTorch since we include HIP headers that depend on hcc/hsa headers.
   set(hcc_INCLUDE_DIRS ${HCC_PATH}/include)
