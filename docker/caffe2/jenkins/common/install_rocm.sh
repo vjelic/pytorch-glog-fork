@@ -33,7 +33,6 @@ install_ubuntu() {
 
 install_centos() {
 
-  yum update -y
   yum install -y wget
   yum install -y openblas-devel
 

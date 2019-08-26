@@ -11,7 +11,7 @@ if [ -z "${image}" ]; then
 fi
 
 UBUNTU_VERSION="$(echo "${image}" | perl -n -e'/ubuntu(\d+\.\d+)/ && print $1')"
-CENTOS_VERSION="$(echo "${image}" | perl -n -e'/centos(\d+)/ && print $1')"
+CENTOS_VERSION="$(echo "${image}" | perl -n -e'/centos(\d+\.?\d*\.?\d*)/ && print $1')"
 
 if [ -n "${UBUNTU_VERSION}" ]; then
   OS="ubuntu"
