@@ -110,7 +110,7 @@ cmake_dependent_option(
 option(COLORIZE_OUTPUT "Colorize output during compilation" ON)
 option(USE_ASAN "Use Address Sanitizer" OFF)
 option(USE_CUDA "Use CUDA" ON)
-option(USE_ROCM "Use ROCm" ON)
+option(USE_ROCM "Use ROCm" OFF)
 option(CAFFE2_STATIC_LINK_CUDA "Statically link CUDA libraries" OFF)
 cmake_dependent_option(
     USE_CUDNN "Use cuDNN" ON
@@ -127,9 +127,17 @@ option(USE_LITE_PROTO "Use lite protobuf instead of full." OFF)
 option(USE_LMDB "Use LMDB" OFF)
 option(USE_METAL "Use Metal for iOS build" ON)
 option(USE_NATIVE_ARCH "Use -march=native" OFF)
+function(set_use_gpu)
+  if (USE_CUDA OR USE_ROCM)
+    set(USE_GPU ON PARENT_SCOPE)
+  else()
+    set(USE_GPU OFF PARENT_SCOPE)
+  endif()
+endfunction(set_use_gpu)
+set_use_gpu()
 cmake_dependent_option(
     USE_NCCL "Use NCCL" ON
-    "USE_CUDA;UNIX;NOT APPLE" OFF)
+    "USE_GPU;UNIX;NOT APPLE" OFF)
 cmake_dependent_option(
     USE_STATIC_NCCL "Use static NCCL" OFF
     "USE_NCCL" OFF)
