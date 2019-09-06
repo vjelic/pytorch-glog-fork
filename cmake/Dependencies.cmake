@@ -893,7 +893,7 @@ if(USE_ROCM)
     hip_include_directories(${Caffe2_HIP_INCLUDE})
 
     set(Caffe2_HIP_DEPENDENCY_LIBS
-      ${PYTORCH_HIP_HCC_LIBRARIES} ${PYTORCH_MIOPEN_LIBRARIES} ${hipcub_LIBRARIES} ${ROCM_HIPRTC_LIB})
+      ${PYTORCH_HIP_HCC_LIBRARIES} ${PYTORCH_MIOPEN_LIBRARIES} ${PYTORCH_RCCL_LIBRARIES} ${hipcub_LIBRARIES} ${ROCM_HIPRTC_LIB})
 
     # Note [rocblas & rocfft cmake bug]
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -916,16 +916,21 @@ endif()
 
 # ---[ NCCL
 if(USE_NCCL)
-  if(NOT USE_CUDA)
+  # Call set_use_gpu() to set USE_GPU based on updated value of USE_CUDA/USE_ROCM
+  set_use_gpu()
+  if(NOT USE_GPU)
     message(WARNING
-        "Not using CUDA, so disabling NCCL. Suppress this warning with "
+        "Not using CUDA/ROCM, so disabling USE_NCCL. Suppress this warning with "
         "-DUSE_NCCL=OFF.")
     caffe2_update_option(USE_NCCL OFF)
   elseif(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     message(WARNING "NCCL is currently only supported under Linux.")
     caffe2_update_option(USE_NCCL OFF)
-  else()
+  elseif(USE_CUDA)
     include(${CMAKE_CURRENT_LIST_DIR}/External/nccl.cmake)
+    list(APPEND Caffe2_CUDA_DEPENDENCY_LIBS __caffe2_nccl)
+  elseif(USE_ROCM)
+    include(${CMAKE_CURRENT_LIST_DIR}/External/rccl.cmake)
     list(APPEND Caffe2_CUDA_DEPENDENCY_LIBS __caffe2_nccl)
   endif()
 endif()
@@ -968,7 +973,7 @@ if(USE_GLOO)
     # Add explicit dependency since NCCL is built from third_party.
     # Without dependency, make -jN with N>1 can fail if the NCCL build
     # hasn't finished when CUDA targets are linked.
-    if(USE_NCCL)
+    if(USE_NCCL AND NOT USE_ROCM)
       add_dependencies(gloo_cuda nccl_external)
     endif()
     # Pick the right dependency depending on USE_CUDA
