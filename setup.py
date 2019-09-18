@@ -261,20 +261,20 @@ package_name = os.getenv('TORCH_PACKAGE_NAME', 'torch-rocm')
 version = '1.3.0a0'
 sha = 'Unknown'
 
-try:
-    sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=cwd).decode('ascii').strip()
-except Exception:
-    pass
-
-if os.getenv('PYTORCH_BUILD_VERSION'):
-    assert os.getenv('PYTORCH_BUILD_NUMBER') is not None
-    build_number = int(os.getenv('PYTORCH_BUILD_NUMBER'))
-    version = os.getenv('PYTORCH_BUILD_VERSION')
-    if build_number > 1:
-        version += '.post' + str(build_number)
-elif sha != 'Unknown':
-    version += '+' + sha[:7]
-report("Building wheel {}-{}".format(package_name, version))
+#try:
+#    sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=cwd).decode('ascii').strip()
+#except Exception:
+#    pass
+#
+#if os.getenv('PYTORCH_BUILD_VERSION'):
+#    assert os.getenv('PYTORCH_BUILD_NUMBER') is not None
+#    build_number = int(os.getenv('PYTORCH_BUILD_NUMBER'))
+#    version = os.getenv('PYTORCH_BUILD_VERSION')
+#    if build_number > 1:
+#        version += '.post' + str(build_number)
+#elif sha != 'Unknown':
+#    version += '+' + sha[:7]
+#report("Building wheel {}-{}".format(package_name, version))
 
 cmake = CMake()
 
