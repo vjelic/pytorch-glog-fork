@@ -257,7 +257,7 @@ cmake_python_include_dir = distutils.sysconfig.get_python_inc()
 ################################################################################
 # Version, create_version_file, and package_name
 ################################################################################
-package_name = os.getenv('TORCH_PACKAGE_NAME', 'torch')
+package_name = os.getenv('TORCH_PACKAGE_NAME', 'torch-rocm')
 version = '1.3.0a0'
 sha = 'Unknown'
 
@@ -867,9 +867,9 @@ if __name__ == '__main__':
             ]
         },
         url='https://pytorch.org/',
-        download_url='https://github.com/pytorch/pytorch/tags',
-        author='PyTorch Team',
-        author_email='packages@pytorch.org',
+        download_url='https://github.com/ROCmSoftwarePlatform/pytorch',
+        author='Radeon Open Compute (ROCm) PyTorch team at AMD',
+        author_email='johannes.dieterich@amd.com',
         python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*',
         # PyPI package information.
         classifiers=[
