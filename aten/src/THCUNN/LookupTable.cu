@@ -6,7 +6,12 @@
 #include <THC/THCNumerics.cuh>
 #include <THC/THCTensorSort.cuh>
 #include <THC/THCTensorMathReduce.cuh>
-#include <c10/macros/Macros.h>
+
+#ifdef __HIP_PLATFORM_HCC__
+const int WARP_SIZE = 64;
+#else
+const int WARP_SIZE = 32;
+#endif
 
 template
   <typename Dtype,
@@ -22,8 +27,8 @@ __global__ void cunn_LookupTable_accGradParametersKernelByFeature
 {
   extern __shared__ char buf[];
   Acctype* smem = (Acctype*)buf;
-  Acctype* my_s = smem + C10_WARP_SIZE*threadIdx.y;
-  int* indices_batch = (int*)(buf + sizeof(Acctype)*C10_WARP_SIZE*blockDim.y);
+  Acctype* my_s = smem + WARP_SIZE*threadIdx.y;
+  int* indices_batch = (int*)(buf + sizeof(Acctype)*WARP_SIZE*blockDim.y);
 
   const int s = (int)stride; // OK to make int, we don't expect 2 billion+ embedding row size
 
@@ -83,7 +88,7 @@ __global__ void cunn_LookupTable_accGradParametersKernelByFeature
 #else
             first_remaining_peer = __ffs(matchmask) - 1;
 #endif
-            my_s[threadIdx.x] += smem[threadIdx.x + C10_WARP_SIZE*first_remaining_peer];
+            my_s[threadIdx.x] += smem[threadIdx.x + WARP_SIZE*first_remaining_peer];
             matchmask ^= (1 << first_remaining_peer);
           }
           if(f < s)
@@ -130,7 +135,7 @@ __global__ void cunn_LookupTable_accGradParametersKernel(
       #pragma unroll
       for (int ii = 0; ii < SZ; ii++)
       {
-        int featureDim = startFeature + ii * C10_WARP_SIZE;
+        int featureDim = startFeature + ii * WARP_SIZE;
         if (featureDim < stride)
         {
           gradient[ii] = ScalarConvert<Dtype, Acctype>::to(gradOutput[gradOutputRow + featureDim]);
@@ -147,7 +152,7 @@ __global__ void cunn_LookupTable_accGradParametersKernel(
       #pragma unroll
       for (int ii = 0; ii < SZ; ii++)
       {
-        int featureDim = startFeature + ii * C10_WARP_SIZE;
+        int featureDim = startFeature + ii * WARP_SIZE;
         if (featureDim < stride)
         {
           gradWeight[weightRow + featureDim] = ScalarConvert<Acctype, Dtype>::to(weight[ii]);

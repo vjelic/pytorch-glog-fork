@@ -217,7 +217,9 @@ void gemm<at::Half>(CUDABLAS_GEMM_ARGTYPES(at::Half)) {
       rocblas_datatype_f32_r,
       rocblas_gemm_algo_standard,
       0,
-      0));
+      0,
+      NULL,
+      NULL));
 #else
 
 # if CUDA_VERSION >= 9000

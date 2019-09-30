@@ -30,9 +30,9 @@ class TORCH_API Adagrad : public Optimizer {
   template <typename ParameterContainer>
   explicit Adagrad(
       ParameterContainer&& parameters,
-      const AdagradOptions& options_)
+      const AdagradOptions& options)
       : Optimizer(std::forward<ParameterContainer>(parameters)),
-        options(options_) {}
+        options(options) {}
 
   void step() override;
 

@@ -35,10 +35,6 @@ android {
         }
     }
 
-    packagingOptions {
-        exclude '**/libfbjni.so'
-    }
-
     useLibrary 'android.test.runner'
     useLibrary 'android.test.base'
     useLibrary 'android.test.mock'
@@ -63,7 +59,7 @@ apply from: rootProject.file('gradle/release.gradle')
 
 task sourcesJar(type: Jar) {
     from android.sourceSets.main.java.srcDirs
-    classifier = 'sources'
+    archiveClassifier.set('sources')
 }
 
 artifacts.add('archives', sourcesJar)

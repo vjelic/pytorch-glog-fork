@@ -64,11 +64,6 @@
 #define C10_IMPORT C10_EXPORT
 #endif // _WIN32
 
-#ifdef NO_EXPORT
-#undef C10_EXPORT
-#define C10_EXPORT
-#endif
-
 // Definition of an adaptive XX_API macro, that depends on whether you are
 // building the library itself or not, routes to XX_EXPORT and XX_IMPORT.
 // Basically, you will need to do this for each shared library that you are

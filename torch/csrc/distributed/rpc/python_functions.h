@@ -4,10 +4,7 @@
 #include <torch/csrc/distributed/rpc/message.h>
 #include <torch/csrc/distributed/rpc/python_rpc_handler.h>
 #include <torch/csrc/distributed/rpc/rpc_agent.h>
-#include <torch/csrc/distributed/rpc/rref.h>
-#include <torch/csrc/distributed/rpc/rref_context.h>
 #include <torch/csrc/distributed/rpc/script_call.h>
-#include <torch/csrc/distributed/rpc/script_remote_call.h>
 #include <torch/csrc/distributed/rpc/script_ret.h>
 #include <torch/csrc/jit/pybind_utils.h>
 #include <torch/csrc/utils/pybind.h>
@@ -16,26 +13,19 @@ namespace torch {
 namespace distributed {
 namespace rpc {
 
-py::object toPyObj(const Message& message);
+py::object to_py_obj(const Message& message);
 
-std::shared_ptr<FutureMessage> pyRpcBuiltin(
+std::shared_ptr<FutureMessage> py_rpc_builtin(
     RpcAgent& agent,
     const WorkerId& dst,
     const std::string& opName,
     const py::args& args,
     const py::kwargs& kwargs);
 
-std::shared_ptr<FutureMessage> pyRpcPythonUdf(
+std::shared_ptr<FutureMessage> py_rpc_python_udf(
     RpcAgent& agent,
     const WorkerId& dst,
     const std::string& pickledPythonUDF);
-
-std::shared_ptr<RRef> pyRemoteBuiltin(
-    RpcAgent& agent,
-    const WorkerId& dst,
-    const std::string& opName,
-    const py::args& args,
-    const py::kwargs& kwargs);
 
 } // namespace rpc
 } // namespace distributed

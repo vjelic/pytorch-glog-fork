@@ -1,6 +1,14 @@
 #include <gtest/gtest.h>
 
-#include <torch/torch.h>
+#include <torch/nn/modules.h>
+#include <torch/nn/modules/batchnorm.h>
+#include <torch/nn/modules/conv.h>
+#include <torch/nn/modules/dropout.h>
+#include <torch/nn/modules/linear.h>
+#include <torch/nn/modules/rnn.h>
+#include <torch/nn/modules/sequential.h>
+#include <torch/types.h>
+#include <torch/utils.h>
 
 #include <algorithm>
 #include <memory>

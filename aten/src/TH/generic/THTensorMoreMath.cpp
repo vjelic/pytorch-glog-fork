@@ -5,7 +5,6 @@
 #include <TH/generic/THTensorApply.hpp>
 #include <ATen/CPUGenerator.h>
 #include <ATen/Utils.h>
-#include <ATen/core/EnableNamedTensor.h>
 #ifdef BUILD_NAMEDTENSOR
 #include <ATen/NamedTensorUtils.h>
 #endif
@@ -367,7 +366,7 @@ void THTensor_(baddbmm)(THTensor *result, scalar_t beta, THTensor *t, scalar_t a
     THTensor_(select)(matrix2, batch2, 0, batch);
     THTensor_(select)(result_matrix, result, 0, batch);
 
-    THTensor_(addmm)(result_matrix, result_matrix, matrix1, matrix2, beta, alpha);
+    THTensor_(addmm)(result_matrix, beta, result_matrix, alpha, matrix1, matrix2);
   }
 
   c10::raw::intrusive_ptr::decref(matrix1);
@@ -1054,7 +1053,7 @@ LAB_IMPLEMENT_BASIC_FUNCTION(rsqrt,TH_MATH_NAME(TH_rsqrt),HYPER_TH_OMP_OVERHEAD_
 
 LAB_IMPLEMENT_VECTORIZED_FUNCTION(sigmoid,TH_MATH_NAME(TH_sigmoid),HYPER_TH_OMP_OVERHEAD_THRESHOLD)
 
-void THTensor_(std_single)(THTensor *r_, THTensor *t, int dimension, bool unbiased, int keepdim)
+void THTensor_(std)(THTensor *r_, THTensor *t, int dimension, int biased, int keepdim)
 {
   THArgCheck(dimension >= 0 && dimension < THTensor_(nDimensionLegacyAll)(t), 3, "invalid dimension %d",
       dimension);
@@ -1079,12 +1078,12 @@ void THTensor_(std_single)(THTensor *r_, THTensor *t, int dimension, bool unbias
                          M2 += delta * delta2;
                        }
 
-                       if (!unbiased && t_size >= 2)
+                       if (biased && t_size >= 2)
                        {
                          *r__data = TH_MATH_NAME(sqrt)(M2 / t_size);
-                       } else if (unbiased && t_size >= 2) {
+                       } else if (!biased && t_size >= 2) {
                          *r__data = TH_MATH_NAME(sqrt)(M2 / (t_size - 1));
-                       } else if (!unbiased && t_size == 1) {
+                       } else if (biased && t_size == 1) {
                          *r__data = 0;
                        } else {
                          *r__data = NAN;
@@ -1095,7 +1094,7 @@ void THTensor_(std_single)(THTensor *r_, THTensor *t, int dimension, bool unbias
   }
 }
 
-void THTensor_(var_single)(THTensor *r_, THTensor *t, int dimension, bool unbiased, int keepdim)
+void THTensor_(var)(THTensor *r_, THTensor *t, int dimension, int biased, int keepdim)
 {
   THArgCheck(dimension >= 0 && dimension < THTensor_(nDimensionLegacyAll)(t), 3, "invalid dimension %d",
       dimension);
@@ -1120,12 +1119,12 @@ void THTensor_(var_single)(THTensor *r_, THTensor *t, int dimension, bool unbias
                          M2 += delta * delta2;
                        }
 
-                       if (!unbiased && t_size >= 2)
+                       if (biased && t_size >= 2)
                        {
                          *r__data = M2 / t_size;
-                       } else if (unbiased && t_size >= 2) {
+                       } else if (!biased && t_size >= 2) {
                          *r__data = M2 / (t_size - 1);
-                       } else if (!unbiased && t_size == 1) {
+                       } else if (biased && t_size == 1) {
                          *r__data = 0;
                        } else {
                          *r__data = NAN;
@@ -1301,18 +1300,18 @@ accreal THTensor_(meanall)(THTensor *tensor)
   return THTensor_(sumall)(tensor)/THTensor_(nElement)(tensor);
 }
 
-accreal THTensor_(var_all)(THTensor *tensor, bool unbiased)
+accreal THTensor_(varall)(THTensor *tensor, int biased)
 {
   accreal mean = THTensor_(meanall)(tensor);
   accreal sum = 0;
   TH_TENSOR_APPLY(scalar_t, tensor, sum += (*tensor_data - mean)*(*tensor_data - mean););
-  sum /= std::max<int64_t>(0, THTensor_(nElement)(tensor) - (unbiased ? 1 : 0));
+  sum /= std::max<int64_t>(0, THTensor_(nElement)(tensor) - (biased ? 0 : 1));
   return sum;
 }
 
-accreal THTensor_(std_all)(THTensor *tensor, bool unbiased)
+accreal THTensor_(stdall)(THTensor *tensor, int biased)
 {
-  return sqrt(THTensor_(var_all)(tensor, unbiased));
+  return sqrt(THTensor_(varall)(tensor, biased));
 }
 
 void THTensor_(histc)(THTensor *hist, THTensor *tensor, int64_t nbins, scalar_t minvalue, scalar_t maxvalue)

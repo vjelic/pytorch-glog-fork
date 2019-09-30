@@ -24,7 +24,6 @@
 #include <torch/csrc/utils/python_arg_parser.h>
 #include <torch/csrc/utils/tensor_new.h>
 #include <torch/csrc/jit/tracer.h>
-#include <ATen/core/EnableNamedTensor.h>
 #ifdef BUILD_NAMEDTENSOR
 #include <ATen/NamedTensorUtils.h>
 #endif
@@ -177,7 +176,7 @@ static PyObject* THPVariable_make_subclass(PyObject* _ignored, PyObject* args, P
 typedef PyObject *(*getter)(PyObject *, void *);
 typedef int (*setter)(PyObject *, PyObject *, void *);
 
-PyObject *THPVariable_get_T(THPVariable *self, void *unused)
+PyObject *THPVariable_get_T(THPVariable *self)
 {
   HANDLE_TH_ERRORS
   auto& var = self->cdata;
@@ -185,7 +184,7 @@ PyObject *THPVariable_get_T(THPVariable *self, void *unused)
   END_HANDLE_TH_ERRORS
 }
 
-PyObject *THPVariable_get_cdata(THPVariable *self, void *unused)
+PyObject *THPVariable_get_cdata(THPVariable *self)
 {
   HANDLE_TH_ERRORS
   auto& var = self->cdata;
@@ -193,7 +192,7 @@ PyObject *THPVariable_get_cdata(THPVariable *self, void *unused)
   END_HANDLE_TH_ERRORS
 }
 
-PyObject *THPVariable_get_version(THPVariable *self, void *unused)
+PyObject *THPVariable_get_version(THPVariable *self)
 {
   HANDLE_TH_ERRORS
   auto& var = self->cdata;
@@ -201,7 +200,7 @@ PyObject *THPVariable_get_version(THPVariable *self, void *unused)
   END_HANDLE_TH_ERRORS
 }
 
-PyObject *THPVariable_get_grad_fn(THPVariable *self, void *unused)
+PyObject *THPVariable_get_grad_fn(THPVariable *self)
 {
   HANDLE_TH_ERRORS
   auto& var = self->cdata;
@@ -212,7 +211,7 @@ PyObject *THPVariable_get_grad_fn(THPVariable *self, void *unused)
   END_HANDLE_TH_ERRORS
 }
 
-static int THPVariable_set_grad_fn(THPVariable *self, PyObject *obj, void *unused)
+static int THPVariable_set_grad_fn(THPVariable *self, PyObject *obj)
 {
   HANDLE_TH_ERRORS
   THPUtils_assertRet(-1, obj, "Deletion of _grad_fn not allowed. Detach tensor instead!");
@@ -222,14 +221,14 @@ static int THPVariable_set_grad_fn(THPVariable *self, PyObject *obj, void *unuse
   END_HANDLE_TH_ERRORS_RET(-1)
 }
 
-static PyObject *THPVariable_is_leaf(THPVariable *self, void *unused)
+static PyObject *THPVariable_is_leaf(THPVariable *self)
 {
   HANDLE_TH_ERRORS
   return PyBool_FromLong(!self->cdata.grad_fn());
   END_HANDLE_TH_ERRORS
 }
 
-static PyObject * THPVariable_get_data(THPVariable *self, void *unused)
+static PyObject * THPVariable_get_data(THPVariable *self)
 {
   HANDLE_TH_ERRORS
   auto var = self->cdata.variable_data();
@@ -237,7 +236,7 @@ static PyObject * THPVariable_get_data(THPVariable *self, void *unused)
   END_HANDLE_TH_ERRORS
 }
 
-int THPVariable_set_data(THPVariable *self, PyObject *data, void *unused)
+int THPVariable_set_data(THPVariable *self, PyObject *data)
 {
   HANDLE_TH_ERRORS
   THPUtils_assertRet(-1, data, "Deleting tensor data is not allowed. Delete tensor instead!");
@@ -250,14 +249,14 @@ int THPVariable_set_data(THPVariable *self, PyObject *data, void *unused)
   END_HANDLE_TH_ERRORS_RET(-1)
 }
 
-PyObject *THPVariable_get_grad(THPVariable *self, void *unused)
+PyObject *THPVariable_get_grad(THPVariable *self)
 {
   HANDLE_TH_ERRORS
   return THPVariable_Wrap(self->cdata.grad());
   END_HANDLE_TH_ERRORS
 }
 
-int THPVariable_set_grad(THPVariable *self, PyObject *py_grad, void *unused)
+int THPVariable_set_grad(THPVariable *self, PyObject *py_grad)
 {
   HANDLE_TH_ERRORS
   auto& var = self->cdata;
@@ -274,7 +273,7 @@ int THPVariable_set_grad(THPVariable *self, PyObject *py_grad, void *unused)
   auto& grad = ((THPVariable*)py_grad)->cdata;
   bool gradIsSparse = (var.dtype() == grad.dtype() &&
                        var.device().type() == grad.device().type() &&
-                       grad.layout() == kSparse);
+                       layout_from_backend(tensorTypeIdToBackend(grad.type_id())) == kSparse);
   THPUtils_assertRet(-1, grad.type() == var.type() || gradIsSparse,
       "assigned grad has data of a different type");
   if (var.is_cuda()) {
@@ -289,19 +288,19 @@ int THPVariable_set_grad(THPVariable *self, PyObject *py_grad, void *unused)
   END_HANDLE_TH_ERRORS_RET(-1)
 }
 
-PyObject *THPVariable_get_volatile(THPVariable *self, void *unused)
+PyObject *THPVariable_get_volatile(THPVariable *self)
 {
   const char* msg = "volatile was removed (Variable.volatile is always False)";
   PyErr_WarnEx(PyExc_UserWarning, msg, 1);
   Py_RETURN_FALSE;
 }
 
-int THPVariable_set_volatile(THPVariable *self, PyObject *obj, void *unused)
+int THPVariable_set_volatile(THPVariable *self, PyObject *obj)
 {
   return PyErr_WarnEx(PyExc_UserWarning, VOLATILE_WARNING, 1);
 }
 
-PyObject *THPVariable_get_output_nr(THPVariable *self, void *unused)
+PyObject *THPVariable_get_output_nr(THPVariable *self)
 {
   HANDLE_TH_ERRORS
   const auto output_nr = static_cast<long>(self->cdata.output_nr());
@@ -309,14 +308,14 @@ PyObject *THPVariable_get_output_nr(THPVariable *self, void *unused)
   END_HANDLE_TH_ERRORS
 }
 
-PyObject *THPVariable_get_requires_grad(THPVariable *self, void *unused)
+PyObject *THPVariable_get_requires_grad(THPVariable *self)
 {
   HANDLE_TH_ERRORS
   return PyBool_FromLong(self->cdata.requires_grad());
   END_HANDLE_TH_ERRORS
 }
 
-PyObject *THPVariable_get_ndim(THPVariable *self, void *unused)
+PyObject *THPVariable_get_ndim(THPVariable *self)
 {
   HANDLE_TH_ERRORS
   return PyInt_FromLong(self->cdata.dim());
@@ -324,7 +323,7 @@ PyObject *THPVariable_get_ndim(THPVariable *self, void *unused)
 }
 
 #ifdef BUILD_NAMEDTENSOR
-PyObject *THPVariable_get_names(THPVariable *self, void *unused)
+PyObject *THPVariable_get_names(THPVariable *self)
 {
   HANDLE_TH_ERRORS
   // The long-term plan is to return a list of (python) torch.Dimname.
@@ -337,7 +336,7 @@ PyObject *THPVariable_get_names(THPVariable *self, void *unused)
   for (size_t i = 0; i < size; ++i) {
     PyObject* str = Py_None;
     if (dimnames[i].type() != at::NameType::WILDCARD) {
-      str = THPUtils_packString(dimnames[i].symbol().toUnqualString());
+      str = THPUtils_packString(dimnames[i].full_name().toUnqualString());
       if (!str) throw python_error();
     }
     PyTuple_SET_ITEM(tuple.get(), i, str);
@@ -362,7 +361,7 @@ int THPVariable_set_names(THPVariable *self, PyObject *names) {
 }
 #endif
 
-int THPVariable_set_requires_grad(THPVariable *self, PyObject *obj, void *unused)
+int THPVariable_set_requires_grad(THPVariable *self, PyObject *obj)
 {
   HANDLE_TH_ERRORS
   THPUtils_assertRet(-1, obj && PyBool_Check(obj), "requires_grad must be a bool");
@@ -381,14 +380,14 @@ int THPVariable_set_requires_grad(THPVariable *self, PyObject *obj, void *unused
   END_HANDLE_TH_ERRORS_RET(-1)
 }
 
-PyObject *THPVariable_get_name(THPVariable* self, void *unused)
+PyObject *THPVariable_get_name(THPVariable* self)
 {
   if (self->cdata.name() == "")
     Py_RETURN_NONE;
   return THPUtils_packString(self->cdata.name().c_str());
 }
 
-PyObject *THPVariable_get_backwards_hooks(THPVariable *self, void *unused)
+PyObject *THPVariable_get_backwards_hooks(THPVariable *self)
 {
   HANDLE_TH_ERRORS
   if (self->backward_hooks) {
@@ -399,7 +398,7 @@ PyObject *THPVariable_get_backwards_hooks(THPVariable *self, void *unused)
   END_HANDLE_TH_ERRORS
 }
 
-int THPVariable_set_backwards_hooks(THPVariable *self, PyObject *obj, void *unused)
+int THPVariable_set_backwards_hooks(THPVariable *self, PyObject *obj)
 {
   HANDLE_TH_ERRORS
   THPUtils_assertRet(-1, obj, "Deletion of _backwards_hooks not allowed!");
@@ -417,7 +416,7 @@ int THPVariable_set_backwards_hooks(THPVariable *self, PyObject *obj, void *unus
   END_HANDLE_TH_ERRORS_RET(-1)
 }
 
-PyObject *THPVariable_get_base(THPVariable *self, void *unused)
+PyObject *THPVariable_get_base(THPVariable *self)
 {
   HANDLE_TH_ERRORS
   if (self->cdata.is_view()) {
@@ -427,14 +426,14 @@ PyObject *THPVariable_get_base(THPVariable *self, void *unused)
   END_HANDLE_TH_ERRORS
 }
 
-PyObject *THPVariable_get_shape(THPVariable *self, void *unused)
+PyObject *THPVariable_get_shape(THPVariable *self)
 {
   HANDLE_TH_ERRORS
   return THPSize_New(self->cdata);
   END_HANDLE_TH_ERRORS
 }
 
-PyObject *THPVariable_is_cuda(THPVariable *self, void *unused)
+PyObject *THPVariable_is_cuda(THPVariable *self)
 {
   HANDLE_TH_ERRORS
   auto& self_ = self->cdata;
@@ -442,7 +441,7 @@ PyObject *THPVariable_is_cuda(THPVariable *self, void *unused)
   END_HANDLE_TH_ERRORS
 }
 
-PyObject *THPVariable_is_sparse(THPVariable *self, void *unused)
+PyObject *THPVariable_is_sparse(THPVariable *self)
 {
   HANDLE_TH_ERRORS
   auto& self_ = self->cdata;
@@ -450,7 +449,7 @@ PyObject *THPVariable_is_sparse(THPVariable *self, void *unused)
   END_HANDLE_TH_ERRORS
 }
 
-PyObject *THPVariable_is_mkldnn(THPVariable *self, void *unused)
+PyObject *THPVariable_is_mkldnn(THPVariable *self)
 {
   HANDLE_TH_ERRORS
   auto& self_ = self->cdata;
@@ -458,7 +457,7 @@ PyObject *THPVariable_is_mkldnn(THPVariable *self, void *unused)
   END_HANDLE_TH_ERRORS
 }
 
-PyObject *THPVariable_is_quantized(THPVariable *self, void *unused)
+PyObject *THPVariable_is_quantized(THPVariable *self)
 {
   HANDLE_TH_ERRORS
   auto& self_ = self->cdata;
@@ -466,7 +465,7 @@ PyObject *THPVariable_is_quantized(THPVariable *self, void *unused)
   END_HANDLE_TH_ERRORS
 }
 
-static PyObject *THPVariable_dtype(THPVariable *self, void *unused)
+static PyObject *THPVariable_dtype(THPVariable *self)
 {
   HANDLE_TH_ERRORS
   auto& self_ = self->cdata;
@@ -474,14 +473,14 @@ static PyObject *THPVariable_dtype(THPVariable *self, void *unused)
   END_HANDLE_TH_ERRORS
 }
 
-static PyObject * THPVariable_layout(THPVariable* self, void *unused) {
+static PyObject * THPVariable_layout(THPVariable* self) {
   HANDLE_TH_ERRORS
   auto& self_ = self->cdata;
   return torch::autograd::utils::wrap(torch::getLayout(self_.type().backend()));
   END_HANDLE_TH_ERRORS
 }
 
-static PyObject * THPVariable_device(THPVariable* self, void *unused) {
+static PyObject * THPVariable_device(THPVariable* self) {
   HANDLE_TH_ERRORS
   return THPDevice_New(self->cdata.device());
   END_HANDLE_TH_ERRORS
@@ -525,7 +524,7 @@ static PyMappingMethods THPVariable_as_mapping = {
 };
 
 static PyMethodDef extra_methods[] = {
-  {"_make_subclass", (PyCFunction)(void(*)(void))THPVariable_make_subclass, METH_STATIC | METH_VARARGS | METH_KEYWORDS, nullptr},
+  {"_make_subclass", (PyCFunction)THPVariable_make_subclass, METH_STATIC | METH_VARARGS | METH_KEYWORDS, nullptr},
   {nullptr}
 };
 

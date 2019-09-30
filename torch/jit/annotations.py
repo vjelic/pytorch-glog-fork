@@ -9,7 +9,6 @@ from .._jit_internal import List, BroadcastingList1, BroadcastingList2, \
 from torch._C import TensorType, TupleType, FloatType, IntType, \
     ListType, StringType, DictType, BoolType, OptionalType, ClassType
 from textwrap import dedent
-from torch._utils_internal import get_source_lines_and_file
 
 
 PY35 = sys.version_info >= (3, 5)
@@ -36,27 +35,9 @@ _eval_env = {
     'Dict': Dict,
     'Optional': Optional,
 }
-class EvalEnv(object):
-    env = {
-        'torch': Module('torch', {'Tensor': torch.Tensor}),
-        'Tensor': torch.Tensor,
-        'typing': Module('typing', {'Tuple': Tuple}),
-        'Tuple': Tuple,
-        'List': List,
-        'Dict': Dict,
-        'Optional': Optional,
-    }
 
-    def __init__(self, rcb):
-        self.rcb = rcb
 
-    def __getitem__(self, name):
-        if name in self.env:
-            return self.env[name]
-        if self.rcb is not None:
-            return self.rcb(name)
-
-def get_signature(fn, rcb, loc):
+def get_signature(fn):
     # Python 3.5 adds support for the nice annotation syntax, so try that first.
     if PY35:
         sig = try_real_annotations(fn)
@@ -65,7 +46,7 @@ def get_signature(fn, rcb, loc):
 
     type_line, source = None, None
     try:
-        source = dedent(''.join(get_source_lines_and_file(fn)[0]))
+        source = dedent(inspect.getsource(fn))
         type_line = get_type_line(source)
     except TypeError:
         pass
@@ -74,7 +55,7 @@ def get_signature(fn, rcb, loc):
     if type_line is None:
         return None
 
-    return parse_type_line(type_line, rcb, loc)
+    return parse_type_line(type_line)
 
 
 # This is essentially a weaker form of get_signature(), where we don't care if
@@ -82,7 +63,7 @@ def get_signature(fn, rcb, loc):
 # a function takes.
 def get_num_params(fn, loc):
     try:
-        source = dedent(''.join(get_source_lines_and_file(fn)[0]))
+        source = dedent(inspect.getsource(fn))
     except (TypeError, IOError):
         return None
     if source is None:
@@ -105,7 +86,7 @@ def get_num_params(fn, loc):
         return num_params
 
 
-def parse_type_line(type_line, rcb, loc):
+def parse_type_line(type_line):
     """Parses a type annotation specified as a comment.
 
     Example inputs:
@@ -115,7 +96,7 @@ def parse_type_line(type_line, rcb, loc):
     arg_ann_str, ret_ann_str = split_type_line(type_line)
 
     try:
-        arg_ann = eval(arg_ann_str, {}, EvalEnv(rcb))  # noqa: P204
+        arg_ann = eval(arg_ann_str, _eval_env)  # noqa: P204
     except (NameError, SyntaxError) as e:
         raise RuntimeError("Failed to parse the argument list of a type annotation: {}".format(str(e)))
 
@@ -123,13 +104,12 @@ def parse_type_line(type_line, rcb, loc):
         arg_ann = (arg_ann,)
 
     try:
-        ret_ann = eval(ret_ann_str, {}, EvalEnv(rcb))  # noqa: P204
+        ret_ann = eval(ret_ann_str, _eval_env)  # noqa: P204
     except (NameError, SyntaxError) as e:
         raise RuntimeError("Failed to parse the return type of a type annotation: {}".format(str(e)))
 
-    resolver = (rcb, loc)
-    arg_types = [ann_to_type(ann, resolver) for ann in arg_ann]
-    return arg_types, ann_to_type(ret_ann, resolver)
+    arg_types = [ann_to_type(ann) for ann in arg_ann]
+    return arg_types, ann_to_type(ret_ann)
 
 
 def get_type_line(source):
@@ -217,9 +197,7 @@ def try_real_annotations(fn):
     return arg_types, return_type
 
 
-def ann_to_type(ann, resolver=None):
-    # resolver should be a Tuple[Callable, SourceRange] where the Callable
-    # is a resolutionCallback
+def ann_to_type(ann):
     if ann is None:
         return TensorType.get()
     elif ann is torch.Tensor:
@@ -247,12 +225,6 @@ def ann_to_type(ann, resolver=None):
         return BoolType.get()
     elif hasattr(ann, "__torch_script_class__"):
         return ClassType(_qualified_name(ann))
-    elif resolver is not None:
-        # Maybe resolve a NamedTuple to a Tuple Type
-        rcb, loc = resolver
-        the_type = torch._C._resolve_type(ann.__name__, loc, rcb)
-        if the_type is not None:
-            return the_type
     raise ValueError("Unknown type annotation: '{}'".format(ann))
 
 

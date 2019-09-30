@@ -21,8 +21,7 @@ namespace tcputil {
 
 namespace {
 
-constexpr int LISTEN_QUEUE_SIZE = 2048;
-const std::string kConnectTimeoutMsg = "connect() timed out.";
+constexpr int LISTEN_QUEUE_SIZE = 64;
 
 void setSocketNoDelay(int socket) {
   int flag = 1;
@@ -157,13 +156,9 @@ int connect(
 
   struct ::addrinfo* nextAddr = addresses.get();
   int socket;
-
-  // Loop over the addresses if at least one of them gave us ECONNREFUSED
-  // or ECONNRESET. This may happen if the server hasn't started listening
-  // yet, or is listening but has its listen backlog exhausted.
+  // we'll loop over the addresses only if at least of them gave us ECONNREFUSED
+  // Maybe the host was up, but the server wasn't running.
   bool anyRefused = false;
-  bool anyReset = false;
-  const auto start = std::chrono::high_resolution_clock::now();
   while (true) {
     try {
       SYSCHECK_ERR_RETURN_NEG1(
@@ -187,22 +182,12 @@ int connect(
       pfd.fd = socket;
       pfd.events = POLLOUT;
 
-      int64_t pollTimeout = -1;
-      if (timeout != kNoTimeout) {
-        // calculate remaining time and use that as timeout for poll()
-        const auto elapsed = std::chrono::high_resolution_clock::now() - start;
-        const auto remaining =
-            std::chrono::duration_cast<std::chrono::milliseconds>(timeout) -
-            std::chrono::duration_cast<std::chrono::milliseconds>(elapsed);
-        pollTimeout = std::max(
-            static_cast<int64_t>(0), static_cast<int64_t>(remaining.count()));
-      }
-      int numReady = ::poll(&pfd, 1, pollTimeout);
+      int numReady = ::poll(&pfd, 1, timeout.count());
       if (numReady < 0) {
         throw std::system_error(errno, std::system_category());
       } else if (numReady == 0) {
         errno = 0;
-        throw std::runtime_error(kConnectTimeoutMsg);
+        throw std::runtime_error("connect() timed out");
       }
 
       socklen_t errLen = sizeof(errno);
@@ -225,13 +210,8 @@ int connect(
       break;
 
     } catch (std::exception& e) {
-      // ECONNREFUSED happens if the server is not yet listening.
       if (errno == ECONNREFUSED) {
         anyRefused = true;
-      }
-      // ECONNRESET happens if the server's listen backlog is exhausted.
-      if (errno == ECONNRESET) {
-        anyReset = true;
       }
 
       // We need to move to the next address because this was not available
@@ -240,22 +220,11 @@ int connect(
 
       // We have tried all addresses but could not connect to any of them.
       if (!nextAddr) {
-        if (!wait || (!anyRefused && !anyReset)) {
+        if (!wait || !anyRefused) {
           throw;
-        }
-
-        // if a timeout is specified, check time elapsed to see if we need to
-        // timeout. A timeout is specified if timeout != kNoTimeout.
-        if (timeout != kNoTimeout) {
-          const auto elapsed =
-              std::chrono::high_resolution_clock::now() - start;
-          if (elapsed > timeout) {
-            throw std::runtime_error(kConnectTimeoutMsg);
-          }
         }
         std::this_thread::sleep_for(std::chrono::seconds(1));
         anyRefused = false;
-        anyReset = false;
         nextAddr = addresses.get();
       }
     }

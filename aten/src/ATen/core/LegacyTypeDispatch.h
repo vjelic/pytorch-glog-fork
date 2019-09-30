@@ -13,18 +13,12 @@
 #include <c10/util/Exception.h>
 #include <ATen/core/LegacyDeviceTypeInit.h>
 #include <c10/core/TensorImpl.h>
-#include <ATen/core/ATenDispatch.h>
 
 namespace at {
 
 class CAFFE2_API LegacyTypeDispatch {
  public:
-  void initForTensorTypeSet(TensorTypeSet ts) {
-    // TODO: Avoid use of legacyExtractTypeId here.  The key
-    // problem is that you may get a TensorTypeSet with
-    // VariableTensorId set; should you initialize the "underlying"
-    // type in that case?  Hard to say.
-    auto b = tensorTypeIdToBackend(legacyExtractTypeId(ts));
+  void initForBackend(Backend b) {
     auto p = backendToDeviceType(b);
     static std::once_flag cpu_once;
     static std::once_flag cuda_once;

@@ -2,11 +2,12 @@ import torch
 import torch.cuda
 import torch.jit
 import numpy as np
+import unittest
 from hypothesis import given
 from hypothesis import strategies as st
 import hypothesis_utils as hu
 from hypothesis_utils import no_deadline
-from common_utils import run_tests, TestCase
+from common_utils import run_tests
 from torch.quantization import FakeQuantize
 
 # Reference method for fake quantize
@@ -26,7 +27,7 @@ def _fake_quantize_per_tensor_affine_grad_reference(dY, X, scale, zero_point, qu
 NP_RANDOM_SEED = 19
 tolerance = 1e-6
 
-class TestFakeQuantizePerTensorAffine(TestCase):
+class TestFakeQuantizePerTensorAffine(unittest.TestCase):
     # NOTE: Tests in this class are decorated with no_deadline
     # to prevent spurious failures due to cuda runtime initialization.
 

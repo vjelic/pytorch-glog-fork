@@ -7,8 +7,9 @@
 #include <ATen/native/quantized/Copy.h>
 #include <ATen/quantized/Quantizer.h>
 #include <ATen/MemoryOverlap.h>
+#ifdef BUILD_NAMEDTENSOR
 #include <ATen/NamedTensorUtils.h>
-#include <ATen/core/EnableNamedTensor.h>
+#endif
 
 namespace {
 
@@ -122,7 +123,7 @@ Tensor & copy_(Tensor & self, const Tensor & src, bool non_blocking) {
     TORCH_CHECK(self.qscheme() == src.qscheme(),
                 "Quantized Copy only works with same qscheme");
     TORCH_CHECK(self.scalar_type() == src.scalar_type());
-    self.set_quantizer_(src.quantizer());
+    self.set_quantizer_(at::make_per_tensor_affine_quantizer(src.q_scale(), src.q_zero_point(), src.scalar_type()));
   }
 
   auto iter = TensorIterator();

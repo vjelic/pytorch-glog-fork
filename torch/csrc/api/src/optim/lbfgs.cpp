@@ -46,14 +46,14 @@ torch::Tensor LBFGS::step(LossClosure closure) {
   Tensor flat_grad = gather_flat_grad();
   Tensor abs_grad_sum = flat_grad.abs().sum();
 
-  if (abs_grad_sum.item<float>() <= options.tolerance_grad()) {
+  if (abs_grad_sum.item<float>() <= options.tolerance_grad_) {
     return loss;
   }
 
   Tensor ONE = torch::tensor(1, flat_grad.options());
 
   int64_t n_iter = 0;
-  while (n_iter < options.max_iter()) {
+  while (n_iter < options.max_iter_) {
     n_iter++;
     state_n_iter++;
 
@@ -69,7 +69,7 @@ torch::Tensor LBFGS::step(LossClosure closure) {
       if (ys.item<float>() > 1e-10) {
         // updating memory
 
-        if (old_dirs.size() == options.history_size()) {
+        if (old_dirs.size() == options.history_size_) {
           // shift history by one (limited memory)
           old_dirs.pop_front();
           old_stps.pop_front();
@@ -108,20 +108,20 @@ torch::Tensor LBFGS::step(LossClosure closure) {
     }
 
     /**
-     * compute step length
+     * comute step length
      */
 
     // reset initial guess for step size
     if (n_iter == 1) {
-      t = torch::min(ONE, ONE / abs_grad_sum) * options.learning_rate();
+      t = torch::min(ONE, ONE / abs_grad_sum) * options.learning_rate_;
     } else {
-      t = torch::tensor(options.learning_rate(), flat_grad.options());
+      t = torch::tensor(options.learning_rate_, torch::kFloat32);
     }
 
     Tensor gtd = flat_grad.dot(d);
     add_grad(t, d);
     int64_t ls_func_evals = 0;
-    if (n_iter != options.max_iter()) {
+    if (n_iter != options.max_iter_) {
       // re-evaluate function only if not in last iteration
       // the reason we do this: in a stochastic setting,
       // no use to re-evaluate that function here
@@ -137,20 +137,20 @@ torch::Tensor LBFGS::step(LossClosure closure) {
      * Check conditions
      */
 
-    if (n_iter == options.max_iter()) {
+    if (n_iter == options.max_iter_) {
       break;
-    } else if (current_evals >= options.max_eval()) {
+    } else if (current_evals >= options.max_eval_) {
       break;
-    } else if (abs_grad_sum.item<float>() <= options.tolerance_grad()) {
+    } else if (abs_grad_sum.item<float>() <= options.tolerance_grad_) {
       break;
-    } else if (gtd.item<float>() > -options.tolerance_grad()) {
+    } else if (gtd.item<float>() > -options.tolerance_grad_) {
       break;
     } else if (
-        d.mul(t).abs_().sum().item<float>() <= options.tolerance_change()) {
+        d.mul(t).abs_().sum().item<float>() <= options.tolerance_change_) {
       break;
     } else if (
         std::abs(loss.item<float>() - prev_loss.item<float>()) <
-        options.tolerance_change()) {
+        options.tolerance_change_) {
       break;
     }
   }

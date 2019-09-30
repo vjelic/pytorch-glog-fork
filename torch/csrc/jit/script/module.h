@@ -206,9 +206,9 @@ struct TORCH_API Module {
   slot_list get_module_slots() const;
 
   void dump(
-      bool print_method_bodies,
-      bool print_attr_values,
-      bool print_param_values) const;
+      bool omit_method_bodies,
+      bool omit_attr_values,
+      bool omit_param_values) const;
 
   const std::vector<Method> get_methods() const {
     return fmap(

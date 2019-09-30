@@ -473,13 +473,6 @@ RegisterOperators reg({
         },
         aliasAnalysisFromSchema()),
     Operator(
-        "aten::is_scripting() -> bool",
-        [](Stack& stack) {
-          push(stack, true);
-          return 0;
-        },
-        aliasAnalysisFromSchema()),
-    Operator(
         "aten::_no_grad_uniform_(Tensor(a!) tensor, float a, float b) -> Tensor(a!)",
         [](Stack& stack) {
           // TODO: remove when script supports setting grad mode

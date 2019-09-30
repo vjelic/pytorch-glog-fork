@@ -31,9 +31,9 @@ struct TORCH_API SGDOptions {
 class TORCH_API SGD : public Optimizer {
  public:
   template <typename ParameterContainer>
-  explicit SGD(ParameterContainer&& parameters, const SGDOptions& options_)
+  explicit SGD(ParameterContainer&& parameters, const SGDOptions& options)
       : Optimizer(std::forward<ParameterContainer>(parameters)),
-        options(options_) {}
+        options(options) {}
 
   void step() override;
 
