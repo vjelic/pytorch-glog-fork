@@ -78,20 +78,7 @@ bool patternGraphIsValid(const Graph& pattern) {
 bool SubgraphMatcher::matchValues(const Value* v1, Value* v2) {
   // Check if we've already visited these values.
   if (values_map_.count(v1)) {
-    if (values_map_.at(v1) != v2) {
-      GRAPH_DEBUG(
-          "Values %",
-          v1->debugName(),
-          " and %",
-          v2->debugName(),
-          " did not match because %",
-          v1->debugName(),
-          " has already been matched with %",
-          values_map_.at(v1)->debugName(),
-          ".\n");
-      return false;
-    }
-    return true;
+    return values_map_.at(v1) == v2;
   }
 
   // When V2 is ANCHOR, we're comparing exiting values, and when V1->node is

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <ATen/cuda/detail/TensorInfo.cuh>
-#include <c10/macros/Macros.h>
 
 namespace at { namespace native {
 
@@ -9,6 +8,8 @@ namespace apply {
 
 using at::cuda::detail::TensorInfo;
 using indexT = int64_t;
+
+const int WARP_SIZE = 32;
 
 template <typename IndexType, typename Real, typename Op>
 __device__ void applyOp2(
@@ -323,7 +324,7 @@ __global__ void coalesceValuesKernel(
       #pragma unroll
       for (int ii = 0; ii < SZ; ii++)
       {
-        int featureDim = startFeature + ii * C10_WARP_SIZE;
+        int featureDim = startFeature + ii * WARP_SIZE;
         if (featureDim < stride)
         {
           tmp[ii] += static_cast<Acctype>(values[valueRow + featureDim]);
@@ -333,7 +334,7 @@ __global__ void coalesceValuesKernel(
     #pragma unroll
     for (int ii = 0; ii < SZ; ii++)
     {
-      int featureDim = startFeature + ii * C10_WARP_SIZE;
+      int featureDim = startFeature + ii * WARP_SIZE;
       if (featureDim < stride)
       {
         newValues[newValueRow + featureDim] = static_cast<Dtype>(tmp[ii]);

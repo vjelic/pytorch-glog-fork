@@ -179,7 +179,6 @@ void gpu_kernel(TensorIterator& iter, const func_t& f) {
   }
 
   gpu_kernel_impl(iter, f);
-  iter.cast_outputs();
 }
 
 template <typename func_t>

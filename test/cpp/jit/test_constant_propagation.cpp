@@ -77,7 +77,10 @@ graph():
                 c10::List<double> list;
                 auto li = IValue(list);
                 std::vector<IValue> tup = {li};
-                push(stack, c10::ivalue::Tuple::create(tup));
+                push(
+                    stack,
+                    c10::ivalue::Tuple::create(
+                        tup, TupleType::create({ListType::ofFloats()})));
                 return 0;
               };
             },

@@ -22,7 +22,15 @@ bool is_floating_point(const Tensor& self) {
 }
 
 bool is_signed(const Tensor &self) {
-  return at::isSignedType(self.scalar_type());
+  if (self.scalar_type() == ScalarType::Half) {
+    return true;
+  }
+  if (self.scalar_type() == ScalarType::BFloat16) {
+    return true;
+  }
+  return AT_DISPATCH_ALL_TYPES(self.scalar_type(), "is_signed", [&]() -> bool {
+    return std::is_signed<scalar_t>();
+  });
 }
 
 bool is_sparse(const Tensor& self) {
@@ -37,7 +45,7 @@ bool is_quantized(const Tensor& self) {
 // TensorImpl can be copied to `self`.
 bool _has_compatible_shallow_copy_type(const Tensor& self, const Tensor& from) {
   return self.unsafeGetTensorImpl()->has_compatible_shallow_copy_type(
-      from.type_set());
+      from.type_id());
 }
 
 Tensor type_as(const Tensor& self, const Tensor& other) {

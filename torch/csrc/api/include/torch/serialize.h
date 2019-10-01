@@ -2,7 +2,6 @@
 
 #include <torch/serialize/archive.h>
 #include <torch/serialize/tensor.h>
-#include <torch/csrc/WindowsTorchApiMacro.h>
 
 #include <utility>
 
@@ -72,8 +71,6 @@ void save(const std::vector<torch::Tensor>& tensor_vec, SaveToArgs&&... args) {
   }
   archive.save_to(std::forward<SaveToArgs>(args)...);
 }
-
-TORCH_API std::vector<char> pickle_save(const torch::IValue& ivalue);
 
 /// Deserializes the given `value`.
 /// There must be an overload of `operator>>` between `serialize::InputArchive`

@@ -22,7 +22,4 @@ typedef void THNNState;
 #include <THNN/generic/THNN.h>
 #include <THGenerateLongType.h>
 
-#include <THNN/generic/THNN.h>
-#include <THGenerateBFloat16Type.h>
-
 #endif

@@ -2,11 +2,11 @@ import os
 import ctypes
 import sys
 import torch
+import types
 import warnings
 from torch.version import cuda
 from contextlib import contextmanager
 from subprocess import Popen, PIPE
-from torch.backends import ContextProp, PropModule, __allow_nonbracketed_mutation
 
 # Write:
 #
@@ -17,6 +17,14 @@ from torch.backends import ContextProp, PropModule, __allow_nonbracketed_mutatio
 lib = None
 __cudnn_version = None
 # TODO: dynamic version checks via cudnnGetVersion
+
+
+# The idea for this parameter is that we forbid bare assignment
+# to torch.backends.cudnn.enabled and friends when running our
+# test suite, where it's very easy to forget to undo the change
+# later.
+__allow_nonbracketed_mutation_flag = True
+
 
 def find_cudnn_windows_lib():
     # Override the default search process
@@ -155,6 +163,27 @@ def set_flags(_enabled, _benchmark, _deterministic, _verbose):
     torch._C._set_cudnn_benchmark(_benchmark)
     torch._C._set_cudnn_deterministic(_deterministic)
     return orig_flags
+
+
+def disable_global_flags():
+    global __allow_nonbracketed_mutation_flag
+    __allow_nonbracketed_mutation_flag = False
+
+
+def flags_frozen():
+    return not __allow_nonbracketed_mutation_flag
+
+
+@contextmanager
+def __allow_nonbracketed_mutation():
+    global __allow_nonbracketed_mutation_flag
+    old = __allow_nonbracketed_mutation_flag
+    __allow_nonbracketed_mutation_flag = True
+    try:
+        yield
+    finally:
+        __allow_nonbracketed_mutation_flag = old
+
 
 @contextmanager
 def flags(enabled=False, benchmark=False, deterministic=False, verbose=False):
@@ -422,11 +451,31 @@ def add_tensor(*args):
 
 # The magic here is to allow us to intercept code like this:
 #
-#   torch.backends.<cudnn|mkldnn>.enabled = True
+#   torch.backends.cudnn.enabled = True
 
-class CudnnModule(PropModule):
+class ContextProp(object):
+    def __init__(self, getter, setter):
+        self.getter = getter
+        self.setter = setter
+
+    def __get__(self, obj, objtype):
+        return self.getter()
+
+    def __set__(self, obj, val):
+        if not flags_frozen():
+            self.setter(val)
+        else:
+            raise RuntimeError("not allowed to set torch.backends.cudnn flags "
+                               "after disable_global_flags; please use flags() context manager instead")
+
+
+class CudnnModule(types.ModuleType):
     def __init__(self, m, name):
-        super(CudnnModule, self).__init__(m, name)
+        super(CudnnModule, self).__init__(name)
+        self.m = m
+
+    def __getattr__(self, attr):
+        return self.m.__getattribute__(attr)
 
     enabled = ContextProp(torch._C._get_cudnn_enabled, torch._C._set_cudnn_enabled)
     deterministic = ContextProp(torch._C._get_cudnn_deterministic, torch._C._set_cudnn_deterministic)

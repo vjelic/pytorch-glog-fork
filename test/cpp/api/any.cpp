@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
-#include <torch/torch.h>
+#include <torch/nn/modules/any.h>
+#include <torch/nn/modules/linear.h>
+#include <torch/utils.h>
 
 #include <test/cpp/api/support.h>
 

@@ -137,7 +137,7 @@ static PyMappingMethods THPSize_as_mapping = {
     nullptr
 };
 
-static PyObject *THPSize_numel(THPSize *self, PyObject *noargs)
+static PyObject *THPSize_numel(THPSize *self)
 {
   HANDLE_TH_ERRORS
   int64_t numel = 1;
@@ -148,7 +148,7 @@ static PyObject *THPSize_numel(THPSize *self, PyObject *noargs)
   END_HANDLE_TH_ERRORS
 }
 
-static PyObject *THPSize_reduce(THPSize *self, PyObject *noargs)
+static PyObject *THPSize_reduce(THPSize *self)
 {
   HANDLE_TH_ERRORS
   auto ret = THPObjectPtr{PyTuple_New(2)};

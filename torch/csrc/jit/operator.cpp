@@ -114,17 +114,6 @@ struct OperatorRegistry {
     }
     return ret;
   }
-
-  const std::vector<std::shared_ptr<Operator>> getAllOperators() {
-    std::lock_guard<std::mutex> guard(lock);
-    registerPendingOperators();
-    std::vector<std::shared_ptr<Operator>> values;
-    values.clear();
-    for (auto & kv : operators) {
-      values.insert(values.end(), kv.second.begin(), kv.second.end());
-    }
-    return values;
-  }
 };
 
 OperatorRegistry& getRegistry() {
@@ -160,10 +149,6 @@ void registerOperator(Operator&& op) {
     }
   }
   getRegistry().registerOperator(std::move(op));
-}
-
-const std::vector<std::shared_ptr<Operator>> getAllOperators() {
-  return getRegistry().getAllOperators();
 }
 
 const std::vector<std::shared_ptr<Operator>>& getAllOperatorsFor(Symbol name) {
@@ -226,8 +211,8 @@ bool Operator::matches(const Node* node) const {
   TypeEnv type_env;
   for (size_t i = 0; i < formals.size(); ++i) {
     auto formal = formals[i].type();
-    const MatchTypeReturn matched_type = matchTypeVariables(
-        formal, actuals[i]->type(), type_env);
+    const MatchTypeReturn matched_type =
+        matchTypeVariables(formal, actuals[i]->type(), type_env);
     if (!matched_type.success()) {
       return false;
     }

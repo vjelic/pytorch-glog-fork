@@ -331,9 +331,6 @@ class ModuleDict(Module):
                                      "; 2 is required")
                 self[m[0]] = m[1]
 
-    def forward(self):
-        raise NotImplementedError()
-
 
 class ParameterList(Module):
     r"""Holds parameters in a list.

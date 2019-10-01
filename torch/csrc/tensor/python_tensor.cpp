@@ -72,10 +72,6 @@ static PyObject* Tensor_new(PyTypeObject *type, PyObject *args, PyObject *kwargs
   END_HANDLE_TH_ERRORS
 }
 
-// TODO: Deprecate this instancecheck entirely.  It's here to make
-// instanceof(t, torch.FloatTensor) work, but we are not going to keep
-// adding torch.QuantizedIntTensor classes for every new tensor type
-// we add...
 static PyObject* Tensor_instancecheck(PyTensorType* self, PyObject* arg) {
   HANDLE_TH_ERRORS
   if (THPVariable_Check(arg)) {
@@ -86,10 +82,7 @@ static PyObject* Tensor_instancecheck(PyTensorType* self, PyObject* arg) {
     // be nullptr if you had a tensor of some type, in which case you can
     // skip initializign aten_type(), but TestAutograd.test_type_conversions
     // seems to violate this property (for whatever reason.)
-    //
-    // TODO: Stop using legacyExtractTypeId here (probably need to build
-    // in instanceof checking to Tensor class itself)
-    if (legacyExtractTypeId(var.type_set()) == self->get_type_id() &&
+    if (var.type_id() == self->get_type_id() &&
         var.scalar_type() == static_cast<ScalarType>(self->scalar_type)) {
       Py_RETURN_TRUE;
     }
@@ -98,15 +91,15 @@ static PyObject* Tensor_instancecheck(PyTensorType* self, PyObject* arg) {
   END_HANDLE_TH_ERRORS
 }
 
-PyObject *Tensor_dtype(PyTensorType* self, void *unused) {
+PyObject *Tensor_dtype(PyTensorType* self) {
   return torch::autograd::utils::wrap(self->dtype);
 }
 
-PyObject *Tensor_layout(PyTensorType* self, void *unused) {
+PyObject *Tensor_layout(PyTensorType* self) {
   return torch::autograd::utils::wrap(self->layout);
 }
 
-PyObject *Tensor_is_cuda(PyTensorType* self, void *unused) {
+PyObject *Tensor_is_cuda(PyTensorType* self) {
   if (self->is_cuda) {
     Py_RETURN_TRUE;
   } else {
@@ -114,7 +107,7 @@ PyObject *Tensor_is_cuda(PyTensorType* self, void *unused) {
   }
 }
 
-PyObject *Tensor_is_sparse(PyTensorType *self, void *unused) {
+PyObject *Tensor_is_sparse(PyTensorType *self) {
   if (self->layout->layout == at::Layout::Strided) {
     Py_RETURN_FALSE;
   } else {

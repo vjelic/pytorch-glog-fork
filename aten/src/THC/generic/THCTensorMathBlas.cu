@@ -3,8 +3,9 @@
 #else
 
 #include "ATen/cuda/CUDAContext.h"
+#ifdef BUILD_NAMEDTENSOR
 #include <ATen/NamedTensorUtils.h>
-#include <ATen/core/EnableNamedTensor.h>
+#endif
 
 #define ERROR_ONLY_FP_TYPES(func) \
   THError("%s for CUDA tensors only supports floating-point types. Try converting the tensors with .float()", func);
@@ -54,7 +55,7 @@ accreal THCTensor_(dot)(THCState *state, THCTensor *self, THCTensor *src)
 #endif
 }
 
-void THCTensor_(addmv)(THCState *state, THCTensor *r_, THCTensor *t, THCTensor *mat, THCTensor *vec, scalar_t beta, scalar_t alpha)
+void THCTensor_(addmv)(THCState *state, THCTensor *r_, scalar_t beta, THCTensor *t, scalar_t alpha, THCTensor *mat, THCTensor *vec)
 {
 #if defined(THC_REAL_IS_FLOAT) || defined(THC_REAL_IS_DOUBLE) || defined(THC_REAL_IS_HALF)
   THCAssertSameGPU(THCTensor_(checkGPU)(state, 4, r_, t, mat, vec));
@@ -152,7 +153,7 @@ void THCTensor_(addmv)(THCState *state, THCTensor *r_, THCTensor *t, THCTensor *
     THCTensor *tAsMatrix = THCTensor_(newWithTensor)(state, t);
     THCTensor_(resize2d)(state, tAsMatrix, THTensor_sizeLegacyNoScalars(tAsMatrix, 0), 1);
 
-    THCTensor_(addmm)(state, r_, tAsMatrix, mat, vecAsMatrix, beta, alpha);
+    THCTensor_(addmm)(state, r_, beta, tAsMatrix, alpha, mat, vecAsMatrix);
 
     // r_ will have answer as matrix, need to return a vector
     THCTensor_(resize1d)(state, r_, THTensor_sizeLegacyNoScalars(r_, 0));
@@ -167,7 +168,7 @@ void THCTensor_(addmv)(THCState *state, THCTensor *r_, THCTensor *t, THCTensor *
 #endif
 }
 
-void THCTensor_(addr)(THCState *state, THCTensor *r_, THCTensor *t, THCTensor *vec1, THCTensor *vec2, scalar_t beta, scalar_t alpha)
+void THCTensor_(addr)(THCState *state, THCTensor *r_, scalar_t beta, THCTensor *t, scalar_t alpha, THCTensor *vec1, THCTensor *vec2)
 {
 #if defined(THC_REAL_IS_FLOAT) || defined(THC_REAL_IS_DOUBLE) || defined(THC_REAL_IS_HALF)
   THCAssertSameGPU(THCTensor_(checkGPU)(state, 4, r_, t, vec1, vec2));
@@ -255,7 +256,7 @@ void THCTensor_(addr)(THCState *state, THCTensor *r_, THCTensor *t, THCTensor *v
   THCTensor *vec1M = THCTensor_(newWithTensor)(state, vec1);
   THCTensor_(resize2d)(state, vec1M, vec1_size, 1);
 
-  THCTensor_(addmm)(state, r_, t, vec1M, vec2T, beta, alpha);
+  THCTensor_(addmm)(state, r_, beta, t, alpha, vec1M, vec2T);
   THCTensor_(free)(state, vec2T);
   THCTensor_(free)(state, vec1M);
 #endif
@@ -264,7 +265,7 @@ void THCTensor_(addr)(THCState *state, THCTensor *r_, THCTensor *t, THCTensor *v
 #endif
 }
 
-void THCTensor_(addmm)(THCState *state, THCTensor *r_, THCTensor *t, THCTensor *m1, THCTensor *m2, scalar_t beta, scalar_t alpha)
+void THCTensor_(addmm)(THCState *state, THCTensor *r_, scalar_t beta, THCTensor *t, scalar_t alpha, THCTensor *m1, THCTensor *m2)
 {
 #ifdef BUILD_NAMEDTENSOR
   // The logic in this function changes around the pointers, so save a copy of the originals.
@@ -440,8 +441,8 @@ void THCTensor_(addmm)(THCState *state, THCTensor *r_, THCTensor *t, THCTensor *
 #endif
 }
 
-void THCTensor_(addbmm)(THCState *state, THCTensor *result, THCTensor *t,
-                        THCTensor *batch1, THCTensor *batch2, scalar_t beta, scalar_t alpha) {
+void THCTensor_(addbmm)(THCState *state, THCTensor *result, scalar_t beta, THCTensor *t,
+                        scalar_t alpha, THCTensor *batch1, THCTensor *batch2) {
 #if defined(THC_REAL_IS_HALF) || defined(THC_REAL_IS_FLOAT) || defined(THC_REAL_IS_DOUBLE)
   THCAssertSameGPU(THCTensor_(checkGPU)(state, 4, result, t, batch1, batch2));
   THArgCheck(THCTensor_(nDimensionLegacyNoScalars)(state, t) == 2, 4, "expected 2D tensor");
@@ -476,7 +477,7 @@ void THCTensor_(addbmm)(THCState *state, THCTensor *result, THCTensor *t,
     THCTensor_(select)(state, slice1, batch1, 0, i);
     THCTensor_(select)(state, slice2, batch2, 0, i);
 
-    THCTensor_(addmm)(state, result, result, slice1, slice2, beta, alpha);
+    THCTensor_(addmm)(state, result, beta, result, alpha, slice1, slice2);
     beta = ScalarConvert<int, scalar_t>::to(1);
   }
   THCTensor_(free)(state, slice1);
@@ -504,9 +505,8 @@ __global__ void createBatchGemmBuffer3(const scalar_t** buffer1, const scalar_t 
   }
 }
 
-void THCTensor_(baddbmm)(THCState *state, THCTensor *result, THCTensor *t,
-                         THCTensor *batch1, THCTensor *batch2,
-                         scalar_t beta, scalar_t alpha) {
+void THCTensor_(baddbmm)(THCState *state, THCTensor *result, scalar_t beta, THCTensor *t,
+                         scalar_t alpha, THCTensor *batch1, THCTensor *batch2) {
 #if defined(THC_REAL_IS_HALF) || defined(THC_REAL_IS_FLOAT) || defined(THC_REAL_IS_DOUBLE)
   THCAssertSameGPU(THCTensor_(checkGPU)(state, 4, result, t, batch1, batch2));
   THArgCheck(THCTensor_(nDimensionLegacyNoScalars)(state, t) == 3, 4, "expected 3D tensor");

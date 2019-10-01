@@ -11,8 +11,7 @@ class Tensor;
 }
 namespace c10 {
 struct IValue;
-struct Type;
-} // namespace c10
+}
 namespace torch {
 namespace jit {
 

@@ -169,5 +169,3 @@ should write your code this way:
     :members:
 .. autoclass:: torch.optim.lr_scheduler.OneCycleLR
     :members:
-.. autoclass:: torch.optim.lr_scheduler.CosineAnnealingWarmRestarts
-    :members:

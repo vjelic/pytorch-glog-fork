@@ -12,37 +12,38 @@
 
 namespace torch {
 namespace nn {
+BatchNormOptions::BatchNormOptions(int64_t features) : features_(features) {}
 
-BatchNormImpl::BatchNormImpl(const BatchNormOptions& options_) : options(options_) {
+BatchNormImpl::BatchNormImpl(BatchNormOptions options) : options(options) {
   reset();
 }
 
 void BatchNormImpl::reset() {
-  if (options.affine()) {
+  if (options.affine_) {
     weight = register_parameter(
-        "weight", torch::empty({options.features()}).uniform_());
-    bias = register_parameter("bias", torch::zeros({options.features()}));
+        "weight", torch::empty({options.features_}).uniform_());
+    bias = register_parameter("bias", torch::zeros({options.features_}));
   }
 
-  if (options.stateful()) {
+  if (options.stateful_) {
     running_mean =
-        register_buffer("running_mean", torch::zeros({options.features()}));
+        register_buffer("running_mean", torch::zeros({options.features_}));
     running_var =
-        register_buffer("running_var", torch::ones({options.features()}));
+        register_buffer("running_var", torch::ones({options.features_}));
   }
 }
 
 void BatchNormImpl::pretty_print(std::ostream& stream) const {
   stream << std::boolalpha
-         << "torch::nn::BatchNorm(features=" << options.features()
-         << ", eps=" << options.eps() << ", momentum=" << options.momentum()
-         << ", affine=" << options.affine() << ", stateful=" << options.stateful()
+         << "torch::nn::BatchNorm(features=" << options.features_
+         << ", eps=" << options.eps_ << ", momentum=" << options.momentum_
+         << ", affine=" << options.affine_ << ", stateful=" << options.stateful_
          << ")";
 }
 
 Tensor BatchNormImpl::forward(const Tensor& input) {
   TORCH_CHECK(
-      options.stateful(),
+      options.stateful_,
       "Calling BatchNorm::forward is only permitted when "
       "the 'stateful' option is true (was false). "
       "Use BatchNorm::pure_forward instead.");
@@ -67,8 +68,8 @@ Tensor BatchNormImpl::pure_forward(
       mean,
       variance,
       is_training(),
-      options.momentum(),
-      options.eps(),
+      options.momentum_,
+      options.eps_,
       torch::cuda::cudnn_is_available());
 }
 

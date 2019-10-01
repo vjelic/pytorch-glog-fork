@@ -12,11 +12,6 @@ enum MessageType {
   SCRIPT_RET,
   PYTHON_CALL,
   PYTHON_RET,
-  REMOTE_CALL,
-  RREF_FETCH_CALL,
-  RREF_FETCH_RET,
-  RREF_USER_CREATE,
-  RREF_USER_DELETE,
   SHUTDOWN,
   EXCEPTION,
   UNKNOWN
@@ -67,7 +62,6 @@ class TORCH_API Message final {
   const MessageType& type() const;
 
   bool isRequest() const;
-  bool requiresResponse() const;
   bool isResponse() const;
   bool isShutdown() const;
 

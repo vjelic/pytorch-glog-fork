@@ -161,11 +161,6 @@ function pip_install() {
   pip install --progress-bar off "$@" || pip install --progress-bar off "$@" || pip install --progress-bar off "$@"
 }
 
-function pip_uninstall() {
-  # uninstall 2 times
-  pip uninstall -y "$@" || pip uninstall -y "$@"
-}
-
 function get_exit_code() {
   set +e
   "$@"

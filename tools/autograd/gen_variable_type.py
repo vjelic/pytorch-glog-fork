@@ -26,11 +26,11 @@ from __future__ import print_function
 from .utils import CodeTemplate, nested_dict, write, uninplace_api_name
 from .gen_autograd import VIEW_FUNCTIONS
 from .gen_autograd_functions import uses_single_grad
+from .env import BUILD_NAMEDTENSOR
 
 # These functions are written manually in templates/VariableType.cpp
 MANUAL_IMPLEMENTATIONS = {
-    'resize_', 'resize_as_', 'detach', 'detach_', 'copy_', 'backward',
-    'set_data', 'data', 'is_leaf', 'output_nr'
+    'resize_', 'resize_as_', 'detach', 'detach_', 'copy_', 'backward', 'set_data'
 }
 
 # These functions we don't want to record for tracing, because we always want
@@ -154,10 +154,7 @@ ${return_type} VariableType::${api_name}(${type_method_formals}) {
 """)
 
 WRAPPER_REGISTRATION = CodeTemplate("""\
-.op(torch::RegisterOperators::options()
-  .schema("${schema_string}")
-  .impl_unboxedOnlyKernel<${return_type} (${formal_types}), &VariableType::${api_name}>(TensorTypeId::VariableTensorId)
-  .aliasAnalysis(c10::AliasAnalysisKind::FROM_SCHEMA))
+.registerVariableOp<${return_type} (${formal_types})>("${schema_string}", &VariableType::${api_name})
 """)
 
 UNPACK_TENSOR = CodeTemplate("""\
@@ -285,6 +282,11 @@ def find_factory_functions(declarations):
 
 
 def should_trace(declaration):
+    if BUILD_NAMEDTENSOR:
+        # Short-term plan: Don't support tracing Dimname.
+        # Long-term plan: Add Dimname as a first-class type to the JIT.
+        if any('Dimname' in arg['simple_type'] for arg in declaration['arguments']):
+            return False
     # Operations involving Storage or Type are not traceable at the moment
     if any(arg['simple_type'] in {'Storage', 'Type', 'ConstQuantizerPtr'} for arg in declaration['arguments']):
         return False

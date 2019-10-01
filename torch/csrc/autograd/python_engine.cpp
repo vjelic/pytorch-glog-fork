@@ -9,7 +9,6 @@
 #include <torch/csrc/autograd/python_anomaly_mode.h>
 #include <torch/csrc/autograd/python_function.h>
 #include <torch/csrc/utils/auto_gil.h>
-#include <ATen/core/EnableNamedTensor.h>
 
 #ifndef _WIN32
 #include <pthread.h>
@@ -213,7 +212,7 @@ PyObject* THPEngine_queue_callback(PyObject *self, PyObject *_callback) {
   END_HANDLE_TH_ERRORS
 }
 
-PyObject* THPEngine_is_checkpoint_valid(PyObject *self, PyObject *noargs) {
+PyObject* THPEngine_is_checkpoint_valid(PyObject *self) {
   HANDLE_TH_ERRORS
   if(engine.is_checkpoint_valid()) {
     Py_RETURN_TRUE;
@@ -229,7 +228,7 @@ PyObject *THPEngine_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 }
 
 static struct PyMethodDef THPEngine_methods[] = {
-  {(char*)"run_backward", (PyCFunction)(void(*)(void))THPEngine_run_backward, METH_VARARGS | METH_KEYWORDS, nullptr},
+  {(char*)"run_backward", (PyCFunction)THPEngine_run_backward, METH_VARARGS | METH_KEYWORDS, nullptr},
   {(char*)"queue_callback", (PyCFunction)THPEngine_queue_callback, METH_O, nullptr},
   {(char*)"is_checkpoint_valid", (PyCFunction)THPEngine_is_checkpoint_valid, METH_NOARGS, nullptr},
   {nullptr}

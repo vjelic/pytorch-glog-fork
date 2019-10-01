@@ -18,14 +18,7 @@ android {
             }
         }
     }
-    buildTypes {
-        debug {
-            minifyEnabled false
-        }
-        release {
-            minifyEnabled false
-        }
-    }
+
     externalNativeBuild {
         cmake {
             path "../fbjni/CMakeLists.txt"
@@ -38,10 +31,3 @@ dependencies {
 }
 
 apply from: rootProject.file('gradle/release.gradle')
-
-task sourcesJar(type: Jar) {
-    from android.sourceSets.main.java.srcDirs
-    classifier = 'sources'
-}
-
-artifacts.add('archives', sourcesJar)

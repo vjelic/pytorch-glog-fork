@@ -12,7 +12,6 @@
 #include <torch/csrc/jit/ir.h>
 #include <torch/csrc/jit/script/module.h>
 
-#include <functional>
 #include <unordered_set>
 #include <vector>
 
@@ -48,19 +47,7 @@ class TORCH_API SubgraphRewriter {
   script::Module runOnModule(const script::Module& module);
 
   // Run pattern-based subgraph rewrite pass on the graph (used in testing).
-  // filter is a function that does extra filtering on the match, if it returns
-  // false for a given Match, we'll skip the match
-  // filter function takes a `Match` and a value map from parsing the pattern graph
-  // since we need to do extra filtering on the matched result but we need to refer
-  // to the values in the matched result through the values in pattern graph.
-  void runOnGraph(
-      std::shared_ptr<Graph>& graph,
-      const std::function<
-          bool(const Match&, const std::unordered_map<std::string, Value*>&)>&
-          filter =
-              [](const Match&, const std::unordered_map<std::string, Value*>&) {
-                return true;
-              });
+  void runOnGraph(std::shared_ptr<Graph>& graph);
 
   // Register standard rewrite patterns.
   void RegisterDefaultPatterns();
@@ -83,13 +70,7 @@ class TORCH_API SubgraphRewriter {
 
   void rewriteSinglePatternOnGraph(
       std::shared_ptr<Graph>& graph,
-      const RewritePatternDescr& pattern,
-      const std::function<
-          bool(const Match&, const std::unordered_map<std::string, Value*>&)>&
-          filter =
-              [](const Match&, const std::unordered_map<std::string, Value*>&) {
-                return true;
-              });
+      RewritePatternDescr pattern);
   bool overlapsWithPreviousMatches(const Match* match);
 };
 

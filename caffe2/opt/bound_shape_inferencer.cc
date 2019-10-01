@@ -53,7 +53,7 @@ void BoundShapeInferencer::InferOps(
     InferSparseLengthsSum(op);
   } else if (
       op.type() == "FC" || op.type() == "FCTransposed" ||
-      op.type() == "FbFCPacked" || op.type() == "Int8FC") {
+      op.type() == "FbFCPacked") {
     InferFC(op);
   } else if (op.type() == "Concat") {
     InferConcat(op);
@@ -424,13 +424,12 @@ void BoundShapeInferencer::InferFC(const OperatorDef& op) {
   const ShapeInfo& w_shape_info = w_it->second;
   const auto b_it = shape_info_.find(op.input(2));
   CAFFE_ENFORCE(
-      b_it != shape_info_.end(),
+      w_it != shape_info_.end(),
       "Shape of BIAS input of FC ",
       op.input(2),
       " needs to be presented");
   const ShapeInfo& b_shape_info = b_it->second;
   bool fp16 = (op.type() == "FbFCPacked");
-  bool int8_fc = (op.type() == "Int8FC" || op.engine() == "DNNLOWP");
   auto x_it = shape_info_.find(op.input(0));
   if (x_it == shape_info_.end()) {
     // We don't have a hint at the x input we try to deduce it from weight
@@ -452,21 +451,13 @@ void BoundShapeInferencer::InferFC(const OperatorDef& op) {
     dims.push_back(K);
     current_dim_type_ = ShapeInfo::DimType::BATCH;
     current_max_batch_size_ = spec_.max_batch_size;
-    TensorProto::DataType w_data_type;
-    if (fp16) {
-      w_data_type = TensorProto_DataType_FLOAT;
-    } else if (int8_fc) {
-      w_data_type = TensorProto_DataType_UINT8;
-    } else {
-      w_data_type = w_shape.data_type();
-    }
     // Note: for FbFCPacked, weight is fp16 but actications are in fp32
     CheckAndSetTensorShapeAndType(
         op.input(0),
         ShapeInfo::DimType::BATCH,
         dims,
-        w_data_type,
-        int8_fc ? true : false);
+        fp16 ? TensorProto_DataType_FLOAT : w_shape.data_type(),
+        false);
   } else {
     ShapeInfo& x_shape_info = x_it->second;
     if (x_shape_info.dim_type != ShapeInfo::DimType::BATCH) {
@@ -481,20 +472,12 @@ void BoundShapeInferencer::InferFC(const OperatorDef& op) {
       shape_info_[op.input(0)].shape, w_shape_info.shape, b_shape_info.shape};
   std::vector<TensorShape> output_shapes = InferOutput(op, input_shapes);
   CAFFE_ENFORCE_EQ(output_shapes.size(), 1);
-  TensorProto::DataType output_data_type;
-  if (fp16) {
-    output_data_type = TensorProto_DataType_FLOAT;
-  } else if (int8_fc) {
-    output_data_type = TensorProto_DataType_UINT8;
-  } else {
-    output_data_type = output_shapes[0].data_type();
-  }
   CheckAndSetTensorShapeAndType(
       op.output(0),
       ShapeInfo::DimType::BATCH,
       ConvertToVec(output_shapes[0].dims()),
-      output_data_type,
-      int8_fc ? true : false);
+      fp16 ? TensorProto_DataType_FLOAT : output_shapes[0].data_type(),
+      false);
 }
 
 void BoundShapeInferencer::InferCommonOp(const OperatorDef& op) {
@@ -528,8 +511,7 @@ void BoundShapeInferencer::InferCommonOp(const OperatorDef& op) {
           {"Int8AveragePool", 0},
           {"Int8FC", 1},
           {"Int8Conv", 1},
-          {"Int8SumRelu", 0},
-          {"Int8Relu", 0}};
+          {"Int8SumRelu", 0}};
       CAFFE_ENFORCE(
           type_info_from_input.find(op.type()) != type_info_from_input.end(),
           "Undefined quantized output data type, add it into type_info_from_input");
