@@ -3,41 +3,39 @@
 namespace torch {
 namespace distributed {
 namespace rpc {
-namespace {
-py::object module_;
-py::object runUDFFunction_;
-py::object loadResultFunction_;
-} // anonymous namespace
 
-namespace PythonRpcHandler {
-void init() {
+PythonRpcHandler::PythonRpcHandler() {
   AutoGIL ag;
-  if (module_ == nullptr) {
-    module_ = py::module::import("torch.distributed.internal_rpc_utils");
-  }
-  if (runUDFFunction_ == nullptr) {
-    runUDFFunction_ = module_.attr("run_python_udf_internal");
-  }
-  if (loadResultFunction_ == nullptr) {
-    loadResultFunction_ = module_.attr("load_python_udf_result_internal");
-  }
+  py::object module =
+      py::module::import("torch.distributed.internal_rpc_utils");
+  runUDFFunction_ = module.attr("run_python_udf_internal");
+  loadResultFunction_ = module.attr("load_python_udf_result_internal");
 }
 
-std::vector<char> generatePythonUDFResult(const Message& request) {
+PythonRpcHandler& PythonRpcHandler::getInstance() {
+  static PythonRpcHandler handler;
+  return handler;
+}
+
+std::vector<char> PythonRpcHandler::generatePythonUDFResult(
+    const Message& request,
+    std::vector<torch::Tensor>& tensorTable) {
   AutoGIL ag;
   auto pargs = py::bytes(request.payload().data(), request.payload().size());
-  py::bytes pres = runUDFFunction_(pargs);
-  const auto& presStr = static_cast<std::string>(pres);
+  TORCH_CHECK(runUDFFunction_ != nullptr, "runUDFFunction_ is nullptr");
+  py::tuple pres = runUDFFunction_(pargs, request.tensors());
+  const auto& presStr = pres[0].cast<std::string>();
+  tensorTable = pres[1].cast<std::vector<torch::Tensor>>();
   std::vector<char> payload(presStr.begin(), presStr.end());
   return payload;
 }
 
-py::object loadPythonUDFResult(const Message& message) {
+py::object PythonRpcHandler::loadPythonUDFResult(const Message& message) {
   AutoGIL ag;
   auto pargs = py::bytes(message.payload().data(), message.payload().size());
-  return loadResultFunction_(pargs);
+  TORCH_CHECK(loadResultFunction_ != nullptr, "loadResultFunction_ is nullptr");
+  return loadResultFunction_(pargs, message.tensors());
 }
-} // namespace PythonRpcHandler
 
 } // namespace rpc
 } // namespace distributed
