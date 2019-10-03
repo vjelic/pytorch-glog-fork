@@ -79,6 +79,7 @@ std::shared_ptr<SugaredValue> SimpleValue::attr(
         "is_mkldnn",
         "is_quantized",
         "requires_grad",
+        "layout",
     };
     if (fields.count(field)) {
       auto r =
@@ -272,6 +273,12 @@ std::shared_ptr<SugaredValue> SimpleValue::call(
     ctx_inputs.insert(ctx_inputs.end(), inputs.begin(), inputs.end());
     return FunctionValue(ret).call(loc, m, ctx_inputs, attributes, n_binders);
   }
+
+  if (auto class_type = getValue()->type()->cast<ClassType>()) {
+    return attr(loc, m, "__call__")
+        ->call(loc, m, inputs, attributes, n_binders);
+  }
+
   return SugaredValue::call(loc, m, inputs, attributes, n_binders);
 }
 
@@ -293,11 +300,10 @@ Value* SimpleValue::getitem(const SourceRange& loc, Function& m, Value* idx) {
   Value* val = getValue();
   TypePtr val_type = val->type();
   Graph& g = *m.graph();
-  Value* cur_elem = nullptr;
 
   // if it's a List/String/Dict, emit a regular __getitem__ op
   if (val_type->cast<ListType>() || val_type->cast<StringType>()) {
-    cur_elem = g.insert(aten::__getitem__, {val, idx}, {}, loc);
+    return g.insert(aten::__getitem__, {val, idx}, {}, loc);
   } else if (auto dict_type = val_type->cast<DictType>()) {
     if (!idx->type()->isSubtypeOf(dict_type->getKeyType())) {
       throw ErrorReport(loc)
@@ -306,20 +312,32 @@ Value* SimpleValue::getitem(const SourceRange& loc, Function& m, Value* idx) {
           << dict_type->getKeyType()->python_str() << "' of the dict '"
           << dict_type->python_str() << "'";
     }
-    cur_elem = g.insert(aten::__getitem__, {val, idx}, {}, loc);
+    return g.insert(aten::__getitem__, {val, idx}, {}, loc);
   } else if (val_type->isSubtypeOf(TensorType::get())) {
-    cur_elem = g.insert(aten::select, {val, 0, idx}, {}, loc);
+    return g.insert(aten::select, {val, 0, idx}, {}, loc);
+  } else if (auto class_type = val_type->cast<ClassType>()) {
+    return attr(loc, m, "__getitem__")
+        ->call(loc, m, {idx}, {}, 1)
+        ->asValue(loc, m);
   } else {
     throw ErrorReport(loc) << "'" << val_type->python_str() << "'"
                            << " object is not subscriptable";
   }
-  return cur_elem;
 }
 
 RangeValue::RangeValue(
     const SourceRange& loc,
     Function& m,
     std::vector<Value*> inputs) {
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    auto typ = inputs[i]->type();
+    if (!typ->cast<IntType>()) {
+      throw ErrorReport(loc)
+          << "all inputs of range must be ints, found " << typ->python_str()
+          << " in argument " << c10::guts::to_string(i);
+    }
+  }
+
   Graph& g = *m.graph();
   if (inputs.size() == 0) {
     throw ErrorReport(loc) << "range expected at least 1 arguments, got 0";
@@ -407,6 +425,23 @@ Value* IterableTree::getitem(const SourceRange& loc, Function& m, Value* idx) {
   // from the children items, and make the Tuple value as the element
   Graph& g = *m.graph();
   return g.insertNode(g.createTuple(child_items))->output();
+}
+
+std::shared_ptr<SugaredValue> MagicMethod::call(
+    const SourceRange& loc,
+    Function& m,
+    at::ArrayRef<NamedValue> inputs,
+    at::ArrayRef<NamedValue> attributes,
+    size_t n_binders) {
+  if (inputs.size() > 0) {
+    Value* self = inputs[0].value(*m.graph());
+    if (auto class_ptr = self->type()->cast<ClassType>()) {
+      return SimpleValue(self)
+          .attr(loc, m, desugared_name_)
+          ->call(loc, m, inputs.slice(1), attributes, n_binders);
+    }
+  }
+  return base_value_->call(loc, m, inputs, attributes, n_binders);
 }
 
 std::shared_ptr<SugaredValue> ClassValue::call(
