@@ -530,7 +530,8 @@ def include_paths(cuda=False):
         # Some internal (old) Torch headers don't properly prefix their includes,
         # so we need to pass -Itorch/lib/include/TH as well.
         os.path.join(lib_include, 'TH'),
-        os.path.join(lib_include, 'THC')
+        os.path.join(lib_include, 'THC'),
+        os.path.join(lib_include, 'THH')
     ]
     if cuda:
         cuda_home_include = _join_cuda_home('include')
