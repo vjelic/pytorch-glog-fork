@@ -109,6 +109,10 @@ COMMON_HIPCC_FLAGS = [
     '-DCUDA_HAS_FP16=1',
     '-D__HIP_NO_HALF_OPERATORS__=1',
     '-D__HIP_NO_HALF_CONVERSIONS__=1',
+    '-fno-gpu-rdc',
+    '--amdgpu-target=gfx803',
+    '--amdgpu-target=gfx900',
+    '--amdgpu-target=gfx906'
 ]
 
 JIT_EXTENSION_VERSIONER = ExtensionVersioner()
@@ -283,7 +287,8 @@ class BuildExtension(build_ext, object):
                 # NVCC does not allow multiple -std to be passed, so we avoid
                 # overriding the option if the user explicitly passed it.
                 if not any(flag.startswith('-std=') for flag in cflags):
-                    cflags.append('-std=c++11')
+                    if not _is_cuda_file(src):
+                        cflags.append('-std=c++11')
 
                 original_compile(obj, src, ext, cc_args, cflags, pp_opts)
             finally:
