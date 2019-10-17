@@ -334,9 +334,13 @@ Module Module::clone_impl(
       const Module& orig = s.to_module();
       Module cloned = orig.clone_impl(type_remap);
       type_remap[orig.type()] = cloned.type();
-      r.register_module(s.name(), cloned);
+      r.set_or_add_slot(
+          s.name(),
+          type_remap.at(s.type()),
+          cloned.module_object(),
+          s.entity_type());
     } else {
-      r.register_attribute(s.name(), s.type(), s.value(), s.is_parameter());
+      r.set_or_add_slot(s.name(), s.type(), s.value(), s.entity_type());
     }
   }
 
@@ -354,7 +358,7 @@ void Module::train(bool on) {
   if (auto slot = find_attribute("training")) {
     slot->setValue(on);
   } else {
-    TORCH_INTERNAL_ASSERT("'training' attribute not found");
+    register_attribute("training", BoolType::get(), on);
   }
 }
 

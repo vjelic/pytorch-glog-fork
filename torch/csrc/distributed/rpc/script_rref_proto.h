@@ -1,7 +1,6 @@
 #pragma once
 
 #include <torch/csrc/distributed/rpc/message.h>
-#include <torch/csrc/distributed/rpc/rpc_command_base.h>
 #include <torch/csrc/jit/operator.h>
 #include <torch/csrc/jit/pickler.h>
 #include <vector>
@@ -12,7 +11,7 @@ namespace rpc {
 
 // Temporary solution of RRef operations.
 // TODO: Remove all these messages and use rpc + registered functions instead.
-class TORCH_API RRefMessageBase : public RpcCommandBase {
+class TORCH_API RRefMessageBase {
  public:
   RRefMessageBase(at::IValue value, MessageType type)
       : value_(std::move(value)), type_(type) {}
@@ -20,7 +19,7 @@ class TORCH_API RRefMessageBase : public RpcCommandBase {
   const at::IValue& value();
   at::IValue& valueRef();
 
-  Message toMessage() && override;
+  Message toMessage() const;
   static at::IValue fromMessage(const Message& message);
 
  private:
@@ -35,8 +34,7 @@ class TORCH_API ScriptRRefFetchCall final : public RRefMessageBase {
       : RRefMessageBase(std::move(rrefForkData), MessageType::RREF_FETCH_CALL) {
   }
 
-  static std::unique_ptr<ScriptRRefFetchCall> fromMessage(
-      const Message& message);
+  static ScriptRRefFetchCall fromMessage(const Message& message);
 };
 
 // OwnerRRef uses this message to send the RRef value to a remote UserRRef
@@ -54,7 +52,7 @@ class TORCH_API ScriptRRefCreate final : public RRefMessageBase {
   ScriptRRefCreate(at::IValue value)
       : RRefMessageBase(std::move(value), MessageType::RREF_USER_CREATE) {}
 
-  static std::unique_ptr<ScriptRRefCreate> fromMessage(const Message& message);
+  static ScriptRRefCreate fromMessage(const Message& message);
 };
 
 // UserRRef (regardless of it's the creator or not) uses this message to notify
@@ -64,7 +62,7 @@ class TORCH_API ScriptRRefDelete final : public RRefMessageBase {
   ScriptRRefDelete(at::IValue value)
       : RRefMessageBase(std::move(value), MessageType::RREF_USER_DELETE) {}
 
-  static std::unique_ptr<ScriptRRefDelete> fromMessage(const Message& message);
+  static ScriptRRefDelete fromMessage(const Message& message);
 };
 
 } // namespace rpc

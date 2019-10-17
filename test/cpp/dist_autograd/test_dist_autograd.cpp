@@ -1,26 +1,10 @@
 #include <gtest/gtest.h>
 
 #include <ATen/ATen.h>
-#include <torch/csrc/distributed/autograd/context/dist_autograd_container.h>
-#include <torch/csrc/distributed/autograd/context/dist_autograd_context.h>
 #include <torch/csrc/distributed/autograd/utils.h>
-#include <torch/csrc/distributed/rpc/rpc_with_autograd.h>
 #include <torch/torch.h>
 
-using namespace torch::distributed::autograd;
-using namespace torch::distributed::rpc;
-
-class DistAutogradTest : public ::testing::Test {
- protected:
-  static void SetUpTestCase() {
-    autogradContainer_ = &DistAutogradContainer::init(0);
-  }
-  static DistAutogradContainer* autogradContainer_;
-};
-
-DistAutogradContainer* DistAutogradTest::autogradContainer_ = nullptr;
-
-TEST_F(DistAutogradTest, TestSendFunction) {
+TEST(DistAutogradTest, TestSendFunction) {
   // Initialize input tensors requiring grad.
   auto options = at::TensorOptions().requires_grad(true);
   auto in1 = torch::ones({3, 3}, options);
@@ -28,12 +12,9 @@ TEST_F(DistAutogradTest, TestSendFunction) {
   ASSERT_FALSE(in1.grad().defined());
   ASSERT_FALSE(in2.grad().defined());
 
-  autogradContainer_->newContext();
-  DistAutogradContext& autogradContext = autogradContainer_->currentContext();
   // Attach the send autograd function to tensors.
-  std::vector<torch::Tensor> tensors = {in1, in2};
-  addSendRpcBackward(autogradContext, AutogradMetadata(1, 1), tensors);
-  auto send_function = autogradContext.sendFunctions()[1];
+  auto send_function =
+      torch::distributed::autograd::addSendRpcBackward({in1, in2});
   ASSERT_NE(send_function, nullptr);
 
   // Build loss and attach it as input to send autograd function.
@@ -52,17 +33,14 @@ TEST_F(DistAutogradTest, TestSendFunction) {
   ASSERT_TRUE(in2.grad().defined());
 }
 
-TEST_F(DistAutogradTest, TestSendFunctionInvalidInputs) {
+TEST(DistAutogradTest, TestSendFunctionInvalidInputs) {
   auto options = at::TensorOptions().requires_grad(true);
   auto in1 = torch::ones({3, 3}, options);
   auto in2 = torch::ones({3, 3}, options);
 
-  autogradContainer_->newContext();
-  DistAutogradContext& autogradContext = autogradContainer_->currentContext();
   // Attach the send autograd function to tensors.
-  std::vector<torch::Tensor> tensors = {in1, in2};
-  addSendRpcBackward(autogradContext, AutogradMetadata(1, 1), tensors);
-  auto send_function = autogradContext.sendFunctions()[1];
+  auto send_function =
+      torch::distributed::autograd::addSendRpcBackward({in1, in2});
 
   // Build loss and attach it as input to send autograd function.
   auto loss = torch::autograd::Variable(torch::ones({3, 3}));
