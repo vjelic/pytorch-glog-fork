@@ -144,27 +144,28 @@ struct TORCH_API Module {
   // register_buffer method. With this simplification, we only need to track
   // whether a slot is a parameter to be able to classify it.
   void register_buffer(const std::string& name, autograd::Variable v) {
-    type()->addOrCheckAttribute(name, TensorType::get());
-    module_object()->setAttr(name, v);
+    set_or_add_slot(name, TensorType::get(), v, EntityType::ATTRIBUTE);
   }
+
   void register_parameter(
       const std::string& name,
       autograd::Variable v,
       bool is_buffer) {
-    type()->addOrCheckAttribute(name, TensorType::get(), !is_buffer);
-    module_object()->setAttr(name, v);
+    set_or_add_slot(
+        name,
+        TensorType::get(),
+        v,
+        is_buffer ? EntityType::ATTRIBUTE : EntityType::PARAMETER);
   }
   void register_attribute(
       const std::string& name,
-      const TypePtr t,
-      IValue v,
-      bool is_param = false) {
-    type()->addOrCheckAttribute(name, t, is_param);
-    module_object()->setAttr(name, v);
+      const TypePtr type,
+      IValue ivalue) {
+    set_or_add_slot(name, type, ivalue, EntityType::ATTRIBUTE);
   }
   void register_module(const std::string& name, const Module& module) {
-    type()->addOrCheckAttribute(name, module.type());
-    module_object()->setAttr(name, module.module_object());
+    set_or_add_slot(
+        name, module.type(), module.module_object(), EntityType::MODULE);
   }
 
   void set_parameter(const std::string& name, at::Tensor v) {
@@ -259,7 +260,6 @@ struct TORCH_API Module {
     if (auto p = find_attribute("training")) {
       return p->value().toBool();
     }
-
     // We are in training mode by default
     return true;
   }
@@ -396,20 +396,40 @@ struct TORCH_API Module {
     }
     return nullptr;
   }
-
-  Slot get_slot(const std::string& name, EntityType etype) const {
-    size_t slot_idx = type()->getAttributeSlot(name);
-    Slot slot = get_slot(slot_idx);
+  void check_entity(EntityType expected, size_t slot) const {
+    EntityType actual = get_slot(slot).entity_type();
     TORCH_CHECK(
-        etype == slot.entity_type(),
+        expected == actual,
         "The field '",
-        type()->getAttributeName(slot_idx),
+        type()->getAttributeName(slot),
         "' is a ",
-        toString(slot.entity_type()),
+        toString(actual),
         " but this call is"
         " trying to use it as a ",
-        toString(etype));
-    return slot;
+        toString(expected));
+  }
+
+  void set_or_add_slot(
+      const std::string& name,
+      const TypePtr& slot_type,
+      IValue v,
+      EntityType etype) {
+    auto slot = type()->findAttributeSlot(name);
+    if (!slot) {
+      slot =
+          type()->addAttribute(name, slot_type, etype == EntityType::PARAMETER);
+    } else {
+      check_entity(etype, *slot);
+    }
+    TypePtr atype = type()->getAttribute(*slot);
+    TORCH_CHECK(slot_type->isSubtypeOf(atype));
+    module_object()->setSlot(*slot, std::move(v));
+  }
+
+  Slot get_slot(const std::string& name, EntityType etype) const {
+    size_t slot = type()->getAttributeSlot(name);
+    check_entity(etype, slot);
+    return get_slot(slot);
   }
   c10::optional<Slot> find_slot(const std::string& name, EntityType etype)
       const {

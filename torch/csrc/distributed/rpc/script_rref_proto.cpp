@@ -1,5 +1,4 @@
 #include <torch/csrc/distributed/rpc/script_rref_proto.h>
-#include <c10/util/C++17.h>
 #include <torch/csrc/jit/pickle.h>
 
 namespace torch {
@@ -14,7 +13,7 @@ at::IValue& RRefMessageBase::valueRef() {
   return value_;
 }
 
-Message RRefMessageBase::toMessage() && {
+Message RRefMessageBase::toMessage() const {
   std::vector<at::IValue> ivalues;
   ivalues.push_back(value_);
   std::vector<torch::Tensor> tensor_table;
@@ -36,26 +35,20 @@ at::IValue RRefMessageBase::fromMessage(const Message& message) {
   return std::move(values.front());
 }
 
-std::unique_ptr<ScriptRRefFetchCall> ScriptRRefFetchCall::fromMessage(
-    const Message& message) {
-  return c10::guts::make_unique<ScriptRRefFetchCall>(
-      RRefMessageBase::fromMessage(message));
+ScriptRRefFetchCall ScriptRRefFetchCall::fromMessage(const Message& message) {
+  return ScriptRRefFetchCall(RRefMessageBase::fromMessage(message));
 }
 
 ScriptRRefFetchRet ScriptRRefFetchRet::fromMessage(const Message& message) {
   return ScriptRRefFetchRet(RRefMessageBase::fromMessage(message));
 }
 
-std::unique_ptr<ScriptRRefCreate> ScriptRRefCreate::fromMessage(
-    const Message& message) {
-  return c10::guts::make_unique<ScriptRRefCreate>(
-      RRefMessageBase::fromMessage(message));
+ScriptRRefCreate ScriptRRefCreate::fromMessage(const Message& message) {
+  return ScriptRRefCreate(RRefMessageBase::fromMessage(message));
 }
 
-std::unique_ptr<ScriptRRefDelete> ScriptRRefDelete::fromMessage(
-    const Message& message) {
-  return c10::guts::make_unique<ScriptRRefDelete>(
-      RRefMessageBase::fromMessage(message));
+ScriptRRefDelete ScriptRRefDelete::fromMessage(const Message& message) {
+  return ScriptRRefDelete(RRefMessageBase::fromMessage(message));
 }
 
 } // namespace rpc
