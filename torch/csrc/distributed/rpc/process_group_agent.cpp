@@ -1,5 +1,7 @@
 #include <torch/csrc/distributed/rpc/process_group_agent.h>
+#include <c10/util/C++17.h>
 #include <c10d/ProcessGroup.hpp>
+#include <torch/csrc/distributed/rpc/request_callback_impl.h>
 
 #include <Python.h>
 
@@ -10,7 +12,7 @@ namespace rpc {
 namespace {
 
 // Write the message into the given ostream
-void serialize(const Message& message, std::ostream& os) {
+std::string serialize(const Message& message) {
   // We cast const void* to void* here because we need to create a tensor using
   // that memory space. If is fine as that tensor stays function-local, and will
   // not be modified during its lifetime.
@@ -22,16 +24,30 @@ void serialize(const Message& message, std::ostream& os) {
   std::vector<torch::Tensor> tensors = message.tensors();
   // append payload as a tensor
   tensors.push_back(torch::from_blob(payload, payload_size, {torch::kChar}));
-  // append id as a tensor
+  // append id and autograd metadata as a tensor
   tensors.push_back(torch::tensor({message.id()}, {torch::kInt64}));
 
-  torch::save(tensors, os);
+  // optional: estimate output size, to avoid some unnecessary resizing.
+  static constexpr size_t kBaseOverhead = 2048;
+  static constexpr size_t kPerTensor = 128;
+  size_t estimate = kBaseOverhead;
+  for (const auto& t : tensors) {
+    estimate += t.nbytes() + kPerTensor;
+  }
+
+  std::string out;
+  out.reserve(estimate);
+  torch::save(tensors, [&](const void* buf, size_t n) -> size_t {
+    out.append(static_cast<const char*>(buf), n);
+    return n;
+  });
+  return out;
 }
 
-Message deserialize(MessageType type, std::istream& is) {
+Message deserialize(MessageType type, const void* buf, size_t size) {
   std::vector<torch::Tensor> tensors;
 
-  torch::load(tensors, is);
+  torch::load(tensors, static_cast<const char*>(buf), size);
 
   TORCH_CHECK(tensors.size() >= 2, "Failed to deserialize a message.");
   auto idTensor = std::move(tensors.back());
@@ -39,14 +55,11 @@ Message deserialize(MessageType type, std::istream& is) {
   auto payloadTensor = std::move(tensors.back());
   tensors.pop_back();
 
+  TORCH_INTERNAL_ASSERT(1, idTensor.numel());
   int64_t id = idTensor.storage().data<int64_t>()[0];
 
-  std::vector<char> payload(payloadTensor.numel());
-
-  if (payloadTensor.numel() > 0) {
-    std::memcpy(
-        payload.data(), payloadTensor.storage().data(), payloadTensor.numel());
-  }
+  const char* data = static_cast<const char*>(payloadTensor.storage().data());
+  std::vector<char> payload(data, data + payloadTensor.numel());
 
   return Message(std::move(payload), std::move(tensors), type, id);
 }
@@ -71,18 +84,18 @@ std::vector<int64_t> ProcessGroupAgent::MessageCounter::snapshot() {
 ////////////////////////  ProcessGroupAgent  /////////////////////////////////
 
 void ProcessGroupAgent::collectNames() {
-  const std::string& workerName = workerId_.name_;
+  const std::string& workerName = workerInfo_.name_;
   const auto worldSize = pg_->getSize();
 
   // use c10d allgather to collect names
   torch::Tensor nameTensor =
-      torch::zeros({WorkerId::MAX_NAME_LEN}, torch::kChar);
+      torch::zeros({WorkerInfo::MAX_NAME_LEN}, torch::kChar);
   memcpy(nameTensor.storage().data(), workerName.c_str(), workerName.length());
   std::vector<torch::Tensor> inputName = {nameTensor};
   std::vector<std::vector<torch::Tensor>> outputNames(1);
   for (int i = 0; i < worldSize; ++i) {
     outputNames[0].emplace_back(
-        torch::empty({WorkerId::MAX_NAME_LEN}, {torch::kChar}));
+        torch::empty({WorkerInfo::MAX_NAME_LEN}, {torch::kChar}));
   }
   pg_->allgather(outputNames, inputName)->wait();
 
@@ -106,8 +119,8 @@ ProcessGroupAgent::ProcessGroupAgent(
     std::shared_ptr<c10d::ProcessGroup> pg,
     int numSendRecvThreads)
     : RpcAgent(
-          WorkerId(std::move(workerName), pg->getRank()),
-          processRequestBlocking),
+          WorkerInfo(std::move(workerName), pg->getRank()),
+          c10::guts::make_unique<RequestCallbackImpl>()),
       pg_(std::move(pg)),
       sendCounts_(pg_->getSize()),
       recvCounts_(pg_->getSize()),
@@ -120,12 +133,12 @@ ProcessGroupAgent::ProcessGroupAgent(
       "ProcessGroupAgent requires world_size to "
       "be at least 2, but got ",
       nameMap_.size());
-  auto workerRankIter = nameMap_.find(workerId_.name_);
+  auto workerRankIter = nameMap_.find(workerInfo_.name_);
   TORCH_CHECK(
       workerRankIter != nameMap_.end(),
       "Failed to resolve worker "
       "name ",
-      workerId_.name_,
+      workerInfo_.name_,
       " to a ProcessGroup rank.");
   TORCH_CHECK(
       pg_->getRank() == workerRankIter->second,
@@ -140,27 +153,23 @@ ProcessGroupAgent::ProcessGroupAgent(
     tmpWorkerIds[entry.second] = entry.first;
   }
 
-  workerIds_.reserve(pg_->getSize());
+  allWorkerInfo_.reserve(pg_->getSize());
   for (int rank = 0; rank < (int)tmpWorkerIds.size(); ++rank) {
-    workerIds_.emplace_back(std::move(tmpWorkerIds[rank]), rank);
+    allWorkerInfo_.emplace_back(std::move(tmpWorkerIds[rank]), rank);
   }
-
-  // construct PythonRpcHandler singleton here
-  PythonRpcHandler::getInstance();
-  listenerThread_ = std::thread(&ProcessGroupAgent::listenLoop, this);
 }
 
-const WorkerId& ProcessGroupAgent::getWorkerId(
+const WorkerInfo& ProcessGroupAgent::getWorkerInfo(
     const std::string& workerName) const {
   const auto idIter = nameMap_.find(workerName);
   TORCH_CHECK(
       idIter != nameMap_.end(), "Unknown destination worker ", workerName);
 
-  return workerIds_[idIter->second];
+  return allWorkerInfo_[idIter->second];
 }
 
-const WorkerId& ProcessGroupAgent::getWorkerId(worker_id_t id) const {
-  return workerIds_[id];
+const WorkerInfo& ProcessGroupAgent::getWorkerInfo(worker_id_t id) const {
+  return allWorkerInfo_[id];
 }
 
 void ProcessGroupAgent::join() {
@@ -171,9 +180,13 @@ void ProcessGroupAgent::join() {
   // 2. A GLOO process cannot send message to itself. (there is an ongoing
   //    effort to fix this problem).
   sync();
+  std::unique_lock<std::mutex> lock(futureMutex_);
+  futureCV_.wait(lock, [this] { return futures_.empty(); });
+  lock.unlock();
+  pg_->barrier()->wait();
   int dst = (pg_->getRank() + 1) % pg_->getSize();
   enqueueSend(
-      SendWork(workerIds_[dst], Message({}, {}, MessageType::SHUTDOWN)));
+      SendWork(allWorkerInfo_[dst], Message({}, {}, MessageType::SHUTDOWN)));
   threadPool_.waitWorkComplete();
   listenerThread_.join();
 }
@@ -195,7 +208,6 @@ bool ProcessGroupAgent::hasPendingMessage() {
 
   std::vector<torch::Tensor> inputSnapshot = {
       torch::from_blob(snapshot.data(), {2, worldSize}, {torch::kInt64})};
-
   // allgather both send and recv messages in one shot
   std::vector<std::vector<torch::Tensor>> outputSnapshots(1);
 
@@ -241,8 +253,12 @@ void ProcessGroupAgent::sync() {
   } while (hasPendingMessage());
 }
 
-std::shared_ptr<FutureMessage> ProcessGroupAgent::sendImpl(
-    const WorkerId& to,
+void ProcessGroupAgent::start() {
+  listenerThread_ = std::thread(&ProcessGroupAgent::listenLoop, this);
+}
+
+std::shared_ptr<FutureMessage> ProcessGroupAgent::send(
+    const WorkerInfo& to,
     Message&& message) {
   TORCH_CHECK(
       to.id_ != (worker_id_t)pg_->getRank(),
@@ -256,7 +272,7 @@ std::shared_ptr<FutureMessage> ProcessGroupAgent::sendImpl(
 
   auto requestId = nextId();
   auto future = std::make_shared<FutureMessage>();
-  if (message.requiresResponse()) {
+  if (message.isRequest()) {
     {
       std::lock_guard<std::mutex> lock{futureMutex_};
       futures_[requestId] = future;
@@ -268,14 +284,14 @@ std::shared_ptr<FutureMessage> ProcessGroupAgent::sendImpl(
 
   // NB: cannot directly pass ``to`` to the ``SendWork``, because it might no
   // longer be alive when the ``SendWork`` is executed. For example, the
-  // application could query the ``WorkerId`` using name through the
-  // ``RpcAgent::getWorkerId`` API, and pass the ``WorkerId`` back here, so we
-  // have C++ -> Python -> C++. For an asynchronous RPC, the ``WorkerId``
+  // application could query the ``WorkerInfo`` using name through the
+  // ``RpcAgent::getWorkerInfo`` API, and pass the ``WorkerInfo`` back here, so
+  // we have C++ -> Python -> C++. For an asynchronous RPC, the ``WorkerInfo``
   // reference on Python side could die before ``SendWork`` uses it, and Pybind
   // will not keep the Python reference alive even if it originally comes from
-  // the C++ land. Hence, we have to explicitly use the ``workerId`` in the C++
-  // land.
-  enqueueSend(SendWork(workerIds_[to.id_], std::move(message)));
+  // the C++ land. Hence, we have to explicitly use the ``WorkerInfo`` in the
+  // C++ land.
+  enqueueSend(SendWork(allWorkerInfo_[to.id_], std::move(message)));
   return future;
 }
 
@@ -283,9 +299,7 @@ void ProcessGroupAgent::enqueueSend(SendWork work) {
   // NB: this can be changed to use a native move capture when moved to C++14
   threadPool_.run(std::bind(
       [&](const SendWork& work) {
-        std::stringstream ss;
-        serialize(work.message_, ss);
-        std::string serializedPayload = ss.str();
+        std::string serializedPayload = serialize(work.message_);
 
         std::vector<torch::Tensor> preamble = {torch::tensor(
             {(int64_t)pg_->getRank(),
@@ -333,25 +347,29 @@ void ProcessGroupAgent::enqueueRecv(RecvWork work) {
   threadPool_.run(std::bind(
       [&](RecvWork& work) {
         torch::Tensor& payload = work.payload_;
-        std::stringstream ss(std::string(
-            (char*)payload.storage().data<signed char>(), payload.numel()));
-
-        Message message = deserialize(work.type_, ss);
-
-        if (message.requiresResponse()) {
-          send(work.from_, cb_(std::move(message)));
-        } else if (message.isRequest()) {
-          cb_(std::move(message));
+        Message message =
+            deserialize(work.type_, payload.storage().data(), payload.numel());
+        if (message.isRequest()) {
+          send(work.from_, cb_->operator()(message));
         } else if (message.isResponse()) {
           auto id = message.id();
+          std::shared_ptr<FutureMessage> fm = nullptr;
           {
             std::lock_guard<std::mutex> lock{futureMutex_};
-            futures_[id]->markCompleted(std::move(message));
+            fm = futures_[id];
+          }
+          // Not holding lock on markCompleted as this could run callbacks that
+          // call agent_->send
+          fm->markCompleted(std::move(message));
+          {
+            std::lock_guard<std::mutex> lock{futureMutex_};
             futures_.erase(id);
           }
+          futureCV_.notify_all();
         } else {
           // TODO: pass the error back to the caller instead of crashing here.
-          AT_ERROR("unrecognized message type ", message.type());
+          TORCH_INTERNAL_ASSERT(
+              false, "unrecognized message type ", message.type());
         }
 
         recvCounts_.increment(work.from_.id_);
@@ -374,7 +392,7 @@ void ProcessGroupAgent::listenLoop() {
       // FIXME: This LOG also prints warnings no InitGoogleLogging() was invoked
       // before logging, but it is not appropriate to call InitGoogleLogging()
       // here either.
-      LOG(INFO) << "Shutting down ProcessGroupAgent " << workerId_.name_
+      LOG(INFO) << "Shutting down ProcessGroupAgent " << workerInfo_.name_
                 << std::endl;
       return;
     }
@@ -382,7 +400,7 @@ void ProcessGroupAgent::listenLoop() {
     std::vector<torch::Tensor> tensors = {torch::empty({size}, {torch::kChar})};
     pg_->recv(tensors, srcRank, pg_->getRank())->wait();
 
-    enqueueRecv(RecvWork(workerIds_[srcRank], type, std::move(tensors[0])));
+    enqueueRecv(RecvWork(allWorkerInfo_[srcRank], type, std::move(tensors[0])));
   }
 }
 

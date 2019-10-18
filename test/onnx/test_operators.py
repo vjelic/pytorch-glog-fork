@@ -749,13 +749,13 @@ class TestOperators(TestCase):
         x = {"test_key_in": torch.randn(1, 2, 3)}
         self.assertONNX(MyModel(), (x,))
 
-    def test_dyn_arange(self):
+    def test_arange_dynamic(self):
         class TestModel(torch.nn.Module):
             def forward(self, input):
-                return torch.arange(input.shape[0])
+                return torch.arange(input.shape[0], input.shape[0] + 5, 0.5)
 
         input = torch.randn(5, 3, 2)
-        self.assertONNX(TestModel(), input)
+        self.assertONNX(TestModel(), input, opset_version=11)
 
     def test_layer_norm_aten(self):
         model = torch.nn.LayerNorm([10, 10])
@@ -770,6 +770,20 @@ class TestOperators(TestCase):
     def test_frobenius_norm(self):
         x = torch.randn(2, 3, 4).float()
         self.assertONNX(lambda x: torch.norm(x, p="fro", dim=(0, 1), keepdim=True), x)
+
+    def test_unfold(self):
+        x = torch.randn(2, 3, 4, requires_grad=True)
+        self.assertONNX(lambda x: x.unfold(dimension=2, size=2, step=2), x)
+
+    def test_remainder(self):
+        x = torch.randn(2, 3, 4)
+        y = torch.randn(2, 1, 4)
+        self.assertONNX(lambda x, y: torch.remainder(x, y), (x, y))
+
+    def test_fmod(self):
+        x = torch.randn(2, 3, 4)
+        y = torch.randn(2, 1, 4)
+        self.assertONNX(lambda x, y: torch.fmod(x, y), (x, y), opset_version=10)
 
     def test_gelu(self):
         x = torch.randn(2, 3, 4, 5, requires_grad=True)
