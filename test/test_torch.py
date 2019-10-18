@@ -4519,9 +4519,6 @@ class _TestTorchMixin(object):
                 continue
             if t.is_cuda and not torch.cuda.is_available():
                 continue
-            if t == torch.cuda.BFloat16Tensor:
-                self.assertRaises(RuntimeError, lambda: t(100, 100).fill_(1))
-                continue
             obj = t(100, 100).fill_(1)
             obj.__repr__()
             str(obj)
