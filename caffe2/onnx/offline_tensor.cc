@@ -2,6 +2,7 @@
 
 namespace caffe2 {
 
+#ifndef C10_MOBILE
 namespace {
 // These constants need to be aligned with onnxifi.h
 constexpr uint64_t kONNXIFI_DATATYPE_FLOAT16 = 10;
@@ -83,4 +84,5 @@ void OfflineTensorShapeFunctions::SetupExternalTensorDescriptor(
 REGISTER_EXTERNAL_TENSOR_FUNCTIONS(
     (TypeMeta::Id<OfflineTensor>()),
     OfflineTensorShapeFunctions);
+#endif
 } // namespace caffe2
