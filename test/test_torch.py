@@ -6267,7 +6267,7 @@ class TestTorchDeviceType(TestCase):
     def test_logical_not(self, device):
         for dtype in torch.testing.get_all_dtypes():
             a = torch.tensor([10, 1, 0], dtype=dtype, device=device)
-            if dtype == torch.bfloat16:
+            if dtype == torch.bfloat16 and torch.device(device).type != 'cuda':
                 self.assertRaises(RuntimeError, lambda: a.logical_not())
                 continue
             expected_res = torch.tensor([0, 0, 1], dtype=dtype, device=device)
@@ -6276,7 +6276,7 @@ class TestTorchDeviceType(TestCase):
             # out
             for out_dtype in torch.testing.get_all_dtypes():
                 b = torch.empty(0, dtype=out_dtype, device=device)
-                if out_dtype == torch.bfloat16:
+                if out_dtype == torch.bfloat16 and torch.device(device).type != 'cuda':
                     self.assertRaises(RuntimeError, lambda: torch.logical_not(a, out=b))
                     continue
                 torch.logical_not(a, out=b)
