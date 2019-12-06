@@ -320,20 +320,12 @@ bool THC_reduceAll(THCState* state,
   // the host (synchronous!)
   if (!outOnDevice) {
     cudaStream_t stream = THCState_getCurrentStream(state);
-#ifdef __HIP_PLATFORM_HCC__
-    THCudaCheck(hipMemcpyWithStream(out,
-                                       devOut,
-                                       sizeof(AccT),
-                                       cudaMemcpyDeviceToHost,
-                                       stream));
-#else
     THCudaCheck(cudaMemcpyAsync(out,
                                 devOut,
                                 sizeof(AccT),
                                 cudaMemcpyDeviceToHost,
                                 stream));
     THCudaCheck(cudaStreamSynchronize(stream));
-#endif
   }
 
   if (freeDevOut) {
