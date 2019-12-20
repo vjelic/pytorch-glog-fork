@@ -77,7 +77,7 @@ Tensor flip_cuda(const Tensor& self, IntArrayRef dims) {
   dim3 dim_block(block_size);
   dim3 dim_grid((N + block_size - 1) / block_size);
 
-  auto out_tensor = at::empty_like(in_tensor, at::MemoryFormat::Contiguous);
+  auto out_tensor = at::empty_like(in_tensor, LEGACY_CONTIGUOUS_MEMORY_FORMAT);
   if (out_tensor.numel() == 0) {
     return out_tensor;
   }
@@ -170,7 +170,7 @@ Tensor roll_cuda(const Tensor& self, IntArrayRef shifts, IntArrayRef dims) {
   if(!self.is_contiguous()) {
     in_tensor = self.contiguous();
   }
-  auto out_tensor = at::empty_like(in_tensor, at::MemoryFormat::Contiguous);
+  auto out_tensor = at::empty_like(in_tensor, LEGACY_CONTIGUOUS_MEMORY_FORMAT);
   if (out_tensor.numel() == 0) {
     return out_tensor;
   }
@@ -188,7 +188,7 @@ Tensor roll_cuda(const Tensor& self, IntArrayRef shifts, IntArrayRef dims) {
 
   auto total_dims = in_tensor.dim();
 
-  AT_DISPATCH_ALL_TYPES_AND(at::ScalarType::Half, in_tensor.scalar_type(), "roll_cuda", [&] {
+  AT_DISPATCH_ALL_TYPES_AND2(at::ScalarType::Half, at::ScalarType::Bool, in_tensor.scalar_type(), "roll_cuda", [&] {
     roll_cuda_kernel<<<dim_grid, dim_block, 0, at::cuda::getCurrentCUDAStream()>>>(
       in_tensor.data_ptr<scalar_t>(), out_tensor.data_ptr<scalar_t>(), N,
       dim, start,
