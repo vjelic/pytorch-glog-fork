@@ -6695,12 +6695,6 @@ class TestTorchDeviceType(TestCase):
             a = torch.tensor(a_, dtype=dtype, device=device)
             for other_dtype in torch.testing.get_all_dtypes():
                 b = torch.tensor(b_, dtype=other_dtype, device=device)
-
-                # Skip bfloat16 on CUDA. Remove this after bfloat16 is supported on CUDA.
-                if device.startswith('cuda') and torch.bfloat16 in (dtype, other_dtype):
-                    with self.assertRaises(RuntimeError):
-                        getattr(a, op)(b)
-                    continue
                 # TODO Remove this skipping after bfloat16 can be handled nicely with other dtypes.
                 # Skip only if either dtype or other_dtype is bfloat16.
                 if (dtype == torch.bfloat16) != (other_dtype == torch.bfloat16):
@@ -6717,7 +6711,7 @@ class TestTorchDeviceType(TestCase):
 
             # in-place
             b = torch.tensor([1, 0, 0, 10], dtype=dtype, device=device)
-            a.logical_xor_(b)
+            getattr(a, op + '_')(b)
             self.assertEqual(expected_res, a)
 
     def test_logical_xor(self, device):
@@ -14806,14 +14800,12 @@ def generate_tensor_op_tests(cls):
         if subtest_str:
             subtest_str = '_' + subtest_str
 
-        generate_test_function(cls, op_str, subtest_str, tensor_ctor, arg_ctor, half_precision, 
         generate_test_function(cls, op_str, subtest_str, tensor_ctor, arg_ctor, half_precision,
                                bfloat16_precision, float_precision, dtype_list, decorators)
 
         if make_inplace_variant:
             op_str = op_str + '_'
             subtest_str = 'inplace' + subtest_str
-            generate_test_function(cls, op_str, subtest_str, tensor_ctor, arg_ctor, half_precision, 
             generate_test_function(cls, op_str, subtest_str, tensor_ctor, arg_ctor, half_precision,
                                    bfloat16_precision, float_precision, dtype_list, decorators)
 
