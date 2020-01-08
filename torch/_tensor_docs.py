@@ -314,7 +314,7 @@ Examples::
         return input * scale.align_as(input)
 
     >>> num_channels = 3
-    >>> scale = torch.randn(num_channels, names='C')
+    >>> scale = torch.randn(num_channels, names=('C',))
     >>> imgs = torch.rand(32, 128, 128, num_channels, names=('N', 'H', 'W', 'C'))
     >>> more_imgs = torch.rand(32, num_channels, 128, 128, names=('N', 'C', 'H', 'W'))
     >>> videos = torch.randn(3, num_channels, 128, 128, 128, names=('N', 'C', 'H', 'W', 'D'))
@@ -399,6 +399,7 @@ Example::
     tensor([[False, True]], dtype=torch.bool)
     >>> a.any()
     tensor(True, dtype=torch.bool)
+
 .. function:: any(dim, keepdim=False, out=None) -> Tensor
 
 Returns True if any elements in each row of the tensor in the given
@@ -556,6 +557,48 @@ bitwise_not_() -> Tensor
 In-place version of :meth:`~Tensor.bitwise_not`
 """)
 
+add_docstr_all('bitwise_and',
+               r"""
+bitwise_and() -> Tensor
+
+See :func:`torch.bitwise_and`
+""")
+
+add_docstr_all('bitwise_and_',
+               r"""
+bitwise_and_() -> Tensor
+
+In-place version of :meth:`~Tensor.bitwise_and`
+""")
+
+add_docstr_all('bitwise_xor',
+               r"""
+bitwise_xor() -> Tensor
+
+See :func:`torch.bitwise_xor`
+""")
+
+add_docstr_all('bitwise_xor_',
+               r"""
+bitwise_xor_() -> Tensor
+
+In-place version of :meth:`~Tensor.bitwise_xor`
+""")
+
+add_docstr_all('logical_and',
+               r"""
+logical_and() -> Tensor
+
+See :func:`torch.logical_and`
+""")
+
+add_docstr_all('logical_and_',
+               r"""
+logical_and_() -> Tensor
+
+In-place version of :meth:`~Tensor.logical_and`
+""")
+
 add_docstr_all('logical_not',
                r"""
 logical_not() -> Tensor
@@ -568,6 +611,20 @@ add_docstr_all('logical_not_',
 logical_not_() -> Tensor
 
 In-place version of :meth:`~Tensor.logical_not`
+""")
+
+add_docstr_all('logical_or',
+               r"""
+logical_or() -> Tensor
+
+See :func:`torch.logical_or`
+""")
+
+add_docstr_all('logical_or_',
+               r"""
+logical_or_() -> Tensor
+
+In-place version of :meth:`~Tensor.logical_or`
 """)
 
 add_docstr_all('logical_xor',
@@ -1497,6 +1554,19 @@ lerp_(end, weight) -> Tensor
 In-place version of :meth:`~Tensor.lerp`
 """)
 
+add_docstr_all('lgamma',
+               r"""
+lgamma() -> Tensor
+
+See :func:`torch.lgamma`
+""")
+
+add_docstr_all('lgamma_', r"""
+lgamma_() -> Tensor
+
+In-place version of :meth:`~Tensor.lgamma`
+""")
+
 add_docstr_all('log',
                r"""
 log() -> Tensor
@@ -1901,6 +1971,20 @@ Example:
     torch.Size([5, 2, 3])
 """)
 
+add_docstr_all('polygamma',
+               r"""
+polygamma(n) -> Tensor
+
+See :func:`torch.polygamma`
+""")
+
+add_docstr_all('polygamma_',
+               r"""
+polygamma_(n) -> Tensor
+
+In-place version of :meth:`~Tensor.polygamma`
+""")
+
 add_docstr_all('pow',
                r"""
 pow(exponent) -> Tensor
@@ -2088,7 +2172,7 @@ Unlike :meth:`~Tensor.expand`, this function copies the tensor's data.
 
 .. warning::
 
-    :func:`torch.repeat` behaves differently from
+    :meth:`~Tensor.repeat` behaves differently from
     `numpy.repeat <https://docs.scipy.org/doc/numpy/reference/generated/numpy.repeat.html>`_,
     but is more similar to
     `numpy.tile <https://docs.scipy.org/doc/numpy/reference/generated/numpy.tile.html>`_.
@@ -2480,7 +2564,7 @@ add_docstr_all('argsort',
                r"""
 argsort(dim=-1, descending=False) -> LongTensor
 
-See :func: `torch.argsort`
+See :func:`torch.argsort`
 """)
 
 add_docstr_all('sparse_dim',
@@ -2505,6 +2589,20 @@ add_docstr_all('sqrt_',
 sqrt_() -> Tensor
 
 In-place version of :meth:`~Tensor.sqrt`
+""")
+
+add_docstr_all('square',
+               r"""
+square() -> Tensor
+
+See :func:`torch.square`
+""")
+
+add_docstr_all('square_',
+               r"""
+square_() -> Tensor
+
+In-place version of :meth:`~Tensor.square`
 """)
 
 add_docstr_all('squeeze',
@@ -3315,7 +3413,7 @@ Out-of-place version of :meth:`torch.Tensor.index_fill_`
 
 add_docstr_all('scatter',
                r"""
-scatter(dim, index, source) -> Tensor
+scatter(dim, index, src) -> Tensor
 
 Out-of-place version of :meth:`torch.Tensor.scatter_`
 """)
@@ -3339,14 +3437,6 @@ add_docstr_all('masked_fill',
 masked_fill(mask, value) -> Tensor
 
 Out-of-place version of :meth:`torch.Tensor.masked_fill_`
-""")
-
-add_docstr_all('grad',
-               r"""
-This attribute is ``None`` by default and becomes a Tensor the first time a call to
-:func:`backward` computes gradients for ``self``.
-The attribute will then contain the gradients computed and future calls to
-:func:`backward` will accumulate (add) gradients into it.
 """)
 
 add_docstr_all('requires_grad',
