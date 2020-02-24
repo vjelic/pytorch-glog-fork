@@ -23,7 +23,7 @@ int THCStorage_(elementSize)(THCState *state)
 void THCStorage_(set)(THCState *state, THCStorage *self, ptrdiff_t index, scalar_t value)
 {
   THArgCheck((index >= 0) && (index < self->numel()), 2, "index out of bounds");
-  cudaStream_t stream = THCState_getCurrentStream(state);
+  cudaStream_t stream = c10::cuda::getCurrentStream();
 #ifdef __HIP_PLATFORM_HCC__
   THCudaCheck(hipMemcpyWithStream(THCStorage_(data)(state, self) + index, &value, sizeof(scalar_t),
                               cudaMemcpyHostToDevice,
@@ -40,7 +40,7 @@ scalar_t THCStorage_(get)(THCState *state, const THCStorage *self, ptrdiff_t ind
 {
   THArgCheck((index >= 0) && (index < self->numel()), 2, "index out of bounds");
   scalar_t value;
-  cudaStream_t stream = THCState_getCurrentStream(state);
+  cudaStream_t stream = c10::cuda::getCurrentStream();
 #ifdef __HIP_PLATFORM_HCC__
   THCudaCheck(hipMemcpyWithStream(&value, THCStorage_(data)(state, self) + index, sizeof(scalar_t),
                               cudaMemcpyDeviceToHost, stream));
@@ -57,7 +57,7 @@ THCStorage* THCStorage_(new)(THCState *state)
   THStorage* storage = c10::make_intrusive<at::StorageImpl>(
       caffe2::TypeMeta::Make<scalar_t>(),
       0,
-      state->cudaDeviceAllocator,
+      c10::cuda::CUDACachingAllocator::get(),
       true).release();
   return storage;
 }
@@ -67,7 +67,7 @@ THCStorage* THCStorage_(newWithSize)(THCState *state, ptrdiff_t size)
   THStorage* storage = c10::make_intrusive<at::StorageImpl>(
       caffe2::TypeMeta::Make<scalar_t>(),
       size,
-      state->cudaDeviceAllocator,
+      c10::cuda::CUDACachingAllocator::get(),
       true).release();
   return storage;
 }
