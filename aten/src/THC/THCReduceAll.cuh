@@ -319,7 +319,7 @@ bool THC_reduceAll(THCState* state,
   // If our destination is not on the device, copy the value back to
   // the host (synchronous!)
   if (!outOnDevice) {
-    cudaStream_t stream = c10::cuda::getCurrentStream();
+    cudaStream_t stream = c10::cuda::getCurrentCUDAStream();
 #ifdef __HIP_PLATFORM_HCC__
     THCudaCheck(hipMemcpyWithStream(out,
                                        devOut,
