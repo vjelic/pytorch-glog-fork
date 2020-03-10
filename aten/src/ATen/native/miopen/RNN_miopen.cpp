@@ -57,6 +57,30 @@ namespace at { namespace native {
 
 namespace at { namespace native {
 
+// DropoutDescriptor
+
+struct DropoutDescriptorParams {
+    bool train;
+    double dropout;
+    Tensor dropout_state;
+    DropoutDescriptorParams() {}
+    void set(bool train_, double dropout_, Tensor dropout_state_) {
+      train = train_;
+      dropout = dropout_;
+      dropout_state = dropout_state_;
+    }
+    DropoutDescriptor descriptor(miopenHandle_t handle) const {
+      auto dropout_p = train ? dropout : 0;
+      DropoutDescriptor dropout_desc;
+      if (dropout_p == 0) {
+        dropout_desc.set_no_dropout(handle);
+      } else {
+        dropout_desc.set(handle, dropout_p, dropout_state);
+      }
+      return dropout_desc;
+    }
+};
+
 //RNNDescriptor.
 struct RNNDescriptorParams {
     int64_t hidden_size;
@@ -112,9 +136,9 @@ struct RNNDescriptorParams {
         this->bias_mode = bias_mode;
     }
 
-    RNNDescriptor descriptor() const {
+    RNNDescriptor descriptor(miopenHandle_t handle, DropoutDescriptor&& dropout_desc) const {
         RNNDescriptor rnn_desc;
-        rnn_desc.set(hidden_size, num_layers, input_mode, direction, rnn_mode, bias_mode, algo, datatype);
+        rnn_desc.set(hidden_size, num_layers, std::move(dropout_desc), input_mode, direction, rnn_mode, bias_mode, algo, datatype);
         return rnn_desc;
     }
 };
@@ -187,6 +211,7 @@ struct TensorDescriptorListParams {
 };
 
 struct RNNParams {
+    DropoutDescriptorParams dropout;
     RNNDescriptorParams rnn;
     TensorDescriptorListParams tensors;
 };
@@ -201,7 +226,7 @@ struct RNNDescriptors {
     TensorDescriptor cy_desc;
 
     RNNDescriptors(const RNNParams& fn, miopenHandle_t handle, Tensor x, Tensor y, Tensor hx, Tensor cx) {
-        rnn_desc = fn.rnn.descriptor();
+        rnn_desc = fn.rnn.descriptor(handle, fn.dropout.descriptor(handle));
         x_descs = fn.tensors.descriptors(x);
         y_descs = fn.tensors.descriptors(y);
         hx_desc.set(hx, 5);

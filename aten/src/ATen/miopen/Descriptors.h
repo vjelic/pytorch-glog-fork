@@ -129,15 +129,46 @@ struct ConvolutionDescriptor
   }
 };
 
+struct DropoutDescriptor
+  : public Descriptor<miopenDropoutDescriptor,
+                      &miopenCreateDropoutDescriptor,
+                      &miopenDestroyDropoutDescriptor>
+{
+  at::Tensor state;
+
+  void initialize_rng(miopenHandle_t handle, float dropout, long long int seed, const TensorOptions& options) {
+    AT_ASSERTM(dropout > 0, "dropout must be nonzero; otherwise call set_no_dropout");
+    size_t state_size;
+    MIOPEN_CHECK(miopenDropoutGetStatesSize(handle, &state_size));
+    AT_ASSERT(options.device().type() == kCUDA);
+    AT_ASSERT(options.dtype() == kByte);
+    state = at::empty({static_cast<int64_t>(state_size)}, options);
+    MIOPEN_CHECK(miopenSetDropoutDescriptor(mut_desc(), handle, dropout, state.data_ptr(), state_size, seed, false, false, MIOPEN_RNG_PSEUDO_XORWOW));
+  }
+
+  void set(miopenHandle_t handle, float dropout, at::Tensor state_) {
+    AT_ASSERTM(dropout > 0, "dropout must be nonzero; otherwise call set_no_dropout");
+    state = state_;
+    void *state_ptr = state.data_ptr();
+    size_t state_size = state.size(0);
+    MIOPEN_CHECK(miopenRestoreDropoutDescriptor(mut_desc(), handle, dropout, state_ptr, state_size, 0, false, false, MIOPEN_RNG_PSEUDO_XORWOW));
+  }
+
+  void set_no_dropout(miopenHandle_t handle) {
+    MIOPEN_CHECK(miopenSetDropoutDescriptor(mut_desc(), handle, 0, nullptr, 0, 0, false, false, MIOPEN_RNG_PSEUDO_XORWOW));
+  }
+};
 
 struct RNNDescriptor
   : public Descriptor<miopenRNNDescriptor,
                       &miopenCreateRNNDescriptor,
                       &miopenDestroyRNNDescriptor>
 {
-    void set(int64_t hidden_size, int64_t num_layers, miopenRNNInputMode_t input_mode, miopenRNNDirectionMode_t direction, miopenRNNMode_t rnn_mode,
-              miopenRNNBiasMode_t bias_mode, miopenRNNAlgo_t algorithm, miopenDataType_t datatype) {
-      MIOPEN_CHECK(miopenSetRNNDescriptor(mut_desc(), hidden_size, num_layers, input_mode, direction, rnn_mode, bias_mode, algorithm, datatype));
+    DropoutDescriptor dropout_desc_;
+    void set(int64_t hidden_size, int64_t num_layers, DropoutDescriptor&& dropout_desc, miopenRNNInputMode_t input_mode, miopenRNNDirectionMode_t direction,
+               miopenRNNMode_t rnn_mode, miopenRNNBiasMode_t bias_mode, miopenRNNAlgo_t algorithm, miopenDataType_t datatype) {
+      MIOPEN_CHECK(miopenSetRNNDescriptor_V2(mut_desc(), hidden_size, num_layers, dropout_desc_.desc(), input_mode, direction, rnn_mode, bias_mode,
+        algorithm, datatype));
     }
 };
 
