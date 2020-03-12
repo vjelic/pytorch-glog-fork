@@ -464,11 +464,17 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor> miopen_rnn(
 
     check_device(input_r, weight, {hx, cx});
     auto input = input_r;
+    if (fn_dropout_state.defined()) {
+        auto input_arg = TensorArg(input, "input", 1);
+        auto dropout_state_arg = TensorArg(fn_dropout_state, "dropout_states", 15);
+        checkSameGPU("miopen_rnn", input_arg, dropout_state_arg);
+    }
 
     RNNParams fn;
     auto datatype = getMiopenDataType(input);
     miopenRNNBiasMode_t bias_mode = (weight_stride0 == 4) ? miopenRNNwithBias : miopenRNNNoBias;
     fn.rnn.set(fn_mode, fn_hidden_size, fn_num_layers, fn_bidirectional, datatype, bias_mode);
+    fn.dropout.set(fn_train, fn_dropout, fn_dropout_state);
     fn.tensors.set(input.sizes(), fn_batch_sizes, batch_first);
 
     if (fn.rnn.rnn_mode != miopenLSTM) {
