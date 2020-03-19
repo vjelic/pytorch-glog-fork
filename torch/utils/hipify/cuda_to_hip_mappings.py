@@ -2890,7 +2890,7 @@ CUDA_IDENTIFIER_MAP = collections.OrderedDict(
         (
             "cuOccupancyMaxActiveBlocksPerMultiprocessor",
             (
-                "hipDrvOccupancyMaxActiveBlocksPerMultiprocessor",
+                "hipModuleOccupancyMaxActiveBlocksPerMultiprocessor",
                 CONV_OCCUPANCY,
                 API_DRIVER,
             ),
@@ -2898,7 +2898,7 @@ CUDA_IDENTIFIER_MAP = collections.OrderedDict(
         (
             "cuOccupancyMaxActiveBlocksPerMultiprocessorWithFlags",
             (
-                "hipDrvOccupancyMaxActiveBlocksPerMultiprocessorWithFlags",
+                "hipModuleOccupancyMaxActiveBlocksPerMultiprocessorWithFlags",
                 CONV_OCCUPANCY,
                 API_DRIVER,
                 HIP_UNSUPPORTED,
@@ -2906,12 +2906,12 @@ CUDA_IDENTIFIER_MAP = collections.OrderedDict(
         ),
         (
             "cuOccupancyMaxPotentialBlockSize",
-            ("hipDrvOccupancyMaxPotentialBlockSize", CONV_OCCUPANCY, API_DRIVER),
+            ("hipModuleOccupancyMaxPotentialBlockSize", CONV_OCCUPANCY, API_DRIVER),
         ),
         (
             "cuOccupancyMaxPotentialBlockSizeWithFlags",
             (
-                "hipDrvOccupancyMaxPotentialBlockSizeWithFlags",
+                "hipModuleOccupancyMaxPotentialBlockSizeWithFlags",
                 CONV_OCCUPANCY,
                 API_DRIVER,
                 HIP_UNSUPPORTED,
