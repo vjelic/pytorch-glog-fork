@@ -595,6 +595,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor> miopen_rnn_backward_input(
     RNNParams fn;
     auto datatype = getMiopenDataType(input);
     fn.rnn.set(fn_mode, fn_hidden_size, fn_num_layers, fn_bidirectional, datatype, miopenRNNwithBias);
+    fn.dropout.set(fn_train, fn_dropout, fn_dropout_state);
     fn.tensors.set(input.sizes(), fn_batch_sizes, batch_first);
 
     auto handle = getMiopenHandle();
@@ -711,6 +712,7 @@ std::vector<Tensor> miopen_rnn_backward_weight(
     auto datatype = getMiopenDataType(input);
     miopenRNNBiasMode_t bias_mode = (weight_stride0 == 4) ? miopenRNNwithBias : miopenRNNNoBias;
     fn.rnn.set(fn_mode, fn_hidden_size, fn_num_layers, fn_bidirectional, datatype, bias_mode);
+    fn.dropout.set(fn_train, fn_dropout, fn_dropout_state);
     fn.tensors.set(input.sizes(), fn_batch_sizes, batch_first);
 
     auto handle = getMiopenHandle();
