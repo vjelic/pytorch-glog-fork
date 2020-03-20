@@ -6,7 +6,9 @@
 #include <ATen/NativeFunctions.h>
 #include <ATen/TensorUtils.h>
 
-#include <ATen/cuda/CUDAConfig.h>
+#include <ATen/hip/HIPConfig.h>
+#include <ATen/hip/HIPEvent.h>
+#include <ATen/hip/Exceptions.h>
 #include <c10/util/Exception.h>
 
 #if !AT_ROCM_ENABLED()
@@ -31,6 +33,10 @@ namespace at { namespace native {
             const Tensor& reserve, std::array<bool, 4> output_mask
             ) {
         AT_ERROR("miopen_rnn_backward: ATen not compiled with MIOpen support.");
+    }
+
+    Tensor miopen_init_dropout_state(double dropout, bool train, int64_t dropout_seed, const TensorOptions& options) {
+        AT_ERROR("miopen_init_dropout_state: ATen not compiled with MIOpen support");
     }
 
 }} //namespace at::native
@@ -803,6 +809,14 @@ std::tuple<Tensor, Tensor, Tensor, std::vector<Tensor>> miopen_rnn_backward(
     return std::tuple<Tensor, Tensor, Tensor, std::vector<Tensor>>{dx, dhx, dcx, dw};
 }
 
+Tensor miopen_init_dropout_state(double dropout, bool train, int64_t dropout_seed, const TensorOptions& options) {
+  auto handle = getMiopenHandle();
+  DropoutDescriptor dropout_desc;
+  auto dropout_p = train ? dropout : 0;
+  dropout_desc.initialize_rng(handle, dropout_p, dropout_seed, options);
+  return dropout_desc.state;
+}
+
 namespace {
 
 std::tuple<Tensor, Tensor> unpack_hidden(const Tensor& hidden) {
@@ -828,6 +842,42 @@ Tensor pack_hidden<Tensor>(const Tensor& hx, const Tensor& cx) {
 template<>
 std::tuple<Tensor, Tensor> pack_hidden<std::tuple<Tensor, Tensor>>(const Tensor& hx, const Tensor& cx) {
     return std::make_tuple(hx, cx);
+}
+
+struct DropoutState {
+  at::Tensor buffer;
+  c10::optional<cuda::CUDAEvent> event;
+  std::mutex mutex;
+
+  void lock() {
+    mutex.lock();
+    if (event) {
+      event->block(c10::hip::HIPStreamMasqueradingAsCUDA(cuda::getCurrentHIPStream()));
+    }
+  }
+
+  void unlock() {
+    if (event) {
+      event->record();
+    }
+    mutex.unlock();
+  }
+};
+
+DropoutState& get_dropout_state(double dropout_p, bool train, TensorOptions options) {
+  static std::vector<DropoutState> dropout_state_cache { static_cast<size_t>(cuda::getNumGPUs()) };
+  static std::mutex state_cache_mut;
+
+  int device = cuda::current_device();
+  std::unique_lock<std::mutex> lock {state_cache_mut};
+  auto& state = dropout_state_cache.at(device);
+  if (train && dropout_p > 0 && !state.buffer.defined()) {
+    std::unique_lock<std::mutex> lock {state.mutex};
+    int64_t seed = at::empty({}, at::kLong).random_().item<int64_t>();
+    state.buffer = miopen_init_dropout_state(dropout_p, train, seed, options.dtype(at::kByte));
+    state.event.emplace();
+  }
+  return state;
 }
 
 template<typename hidden_type>
