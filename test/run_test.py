@@ -109,6 +109,9 @@ ROCM_BLACKLIST = [
     'distributed/rpc/jit/test_rpc_spawn',
     'distributed/rpc/jit/test_dist_autograd_spawn',
     'test_determination',
+    'test_jit_simple',
+    'test_jit_legacy',
+    'test_jit_fuser_legacy',
 ]
 
 # These tests are slow enough that it's worth calculating whether the patch
