@@ -894,12 +894,13 @@ std::pair<Tensor, hidden_type> _miopen_impl(
     TORCH_CHECK(_batch_sizes.dim() == 1, "batch_sizes tensor should be 1D");
     IntArrayRef batch_sizes { _batch_sizes.data_ptr<int64_t>(), static_cast<size_t>(_batch_sizes.size(0)) };
 
-    Tensor dropout_state = at::empty({0}, input.options());
+    auto & dropout_state = get_dropout_state(dropout_p, train, input.options());
+    std::unique_lock<DropoutState> lock { dropout_state };
 
     auto miopen_output = at::miopen_rnn(
         input, params, has_biases ? 4 : 2,
         hx, cx, static_cast<int>(mode), hidden_size, num_layers, /*batch_first=*/false,
-        dropout_p, train, bidirectional, batch_sizes, dropout_state);
+        dropout_p, train, bidirectional, batch_sizes, dropout_state.buffer);
 
     return {std::get<0>(miopen_output),
         pack_hidden<hidden_type>(std::get<1>(miopen_output), std::get<2>(miopen_output))};
@@ -914,12 +915,13 @@ std::pair<Tensor, hidden_type> _miopen_impl(
     std::tie(hx, cx) = unpack_hidden(hidden);
     int64_t hidden_size = hx.size(2);
 
-    Tensor dropout_state = at::empty({0}, input.options());
+    auto & dropout_state = get_dropout_state(dropout_p, train, input.options());
+    std::unique_lock<DropoutState> lock { dropout_state };
 
     auto miopen_output = at::miopen_rnn(
         input, params, has_biases ? 4 : 2,
         hx, cx, static_cast<int>(mode), hidden_size, num_layers, batch_first, dropout_p,
-        train, bidirectional, /*batch_sizes=*/{}, dropout_state);
+        train, bidirectional, /*batch_sizes=*/{}, dropout_state.buffer);
 
     return {std::get<0>(miopen_output),
         pack_hidden<hidden_type>(std::get<1>(miopen_output), std::get<2>(miopen_output))};
