@@ -876,7 +876,7 @@ DropoutState& get_dropout_state(double dropout_p, bool train, TensorOptions opti
   if (train && dropout_p > 0 && !state.buffer.defined()) {
     std::unique_lock<std::mutex> lock {state.mutex};
     int64_t seed = at::empty({}, at::kLong).random_().item<int64_t>();
-    state.buffer = miopen_init_dropout_state(dropout_p, train, seed, options.dtype(at::kByte));
+    state.buffer = at::miopen_init_dropout_state(dropout_p, train, seed, options.dtype(at::kByte));
     state.event.emplace();
   }
   return state;
