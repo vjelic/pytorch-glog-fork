@@ -167,7 +167,8 @@ struct RNNDescriptor
     DropoutDescriptor dropout_desc_;
     void set(int64_t hidden_size, int64_t num_layers, DropoutDescriptor&& dropout_desc, miopenRNNInputMode_t input_mode, miopenRNNDirectionMode_t direction,
                miopenRNNMode_t rnn_mode, miopenRNNBiasMode_t bias_mode, miopenRNNAlgo_t algorithm, miopenDataType_t datatype) {
-      MIOPEN_CHECK(miopenSetRNNDescriptor_V2(mut_desc(), hidden_size, num_layers, dropout_desc_.mut_desc(), input_mode, direction, rnn_mode, bias_mode,
+      dropout_desc_ = std::move(dropout_desc);
+      MIOPEN_CHECK(miopenSetRNNDescriptor_V2(mut_desc(), hidden_size, num_layers, dropout_desc_.desc(), input_mode, direction, rnn_mode, bias_mode,
         algorithm, datatype));
     }
 };
