@@ -113,7 +113,7 @@ if [[ "$BUILD_ENVIRONMENT" == *rocm* ]]; then
   # the build process, leaving undefined symbols in the shared lib
   # which will cause undefined symbol errors when later running
   # tests. Setting MAX_JOBS to smaller number to make CI less flaky.
-  export MAX_JOBS=4
+  export MAX_JOBS=64
 
   # ROCm CI is using Caffe2 docker images, which needs these wrapper
   # scripts to correctly use sccache.
@@ -142,7 +142,7 @@ if [[ "$BUILD_ENVIRONMENT" == *rocm* ]]; then
   fi
 
   python tools/amd_build/build_amd.py
-  python setup.py install --user
+  python setup.py bdist_wheel
 
   # runtime compilation of MIOpen kernels manages to crash sccache - hence undo the wrapping
   bash tools/amd_build/unwrap_clang.sh
