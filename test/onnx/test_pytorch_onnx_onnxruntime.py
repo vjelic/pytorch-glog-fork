@@ -458,6 +458,16 @@ class TestONNXRuntime(unittest.TestCase):
         x = torch.arange(-5, 5).to(dtype=torch.float32)
         self.run_test(MyModel(), x)
 
+    @skipIfUnsupportedMinOpsetVersion(12)
+    @unittest.skip("Enable once inverse is supported in ORT")
+    def test_inverse(self):
+        class Inverse(torch.nn.Module):
+            def forward(self, x):
+                return torch.inverse(x)
+
+        x = torch.randn(2, 3, 4, 4)
+        self.run_test(Inverse(), x)
+
     def test_clamp(self):
         class ClampModel(torch.nn.Module):
             def forward(self, x):
@@ -875,7 +885,7 @@ class TestONNXRuntime(unittest.TestCase):
     def test_size(self):
         class SizeModel(torch.nn.Module):
             def forward(self, input):
-                return torch.arange(input.size(0)), torch.arange(input.size(-1))
+                return torch.arange(input.size(0)), torch.arange(input.size(-1)), torch.ones(input.shape)
 
         x = torch.randn(5, 3, 2)
         self.run_test(SizeModel(), x)
@@ -1200,7 +1210,7 @@ class TestONNXRuntime(unittest.TestCase):
 
     def _interpolate_script(self, x, mode, use_size, is_upsample, align_corners=False):
         # test disabled
-        return 
+        return
 
         class MyModel(torch.jit.ScriptModule):
             __constants__ = ['mode', 'use_size', 'is_upsample', 'size', 'scale', 'size_array', 'scale_array', 'align_corners']
@@ -2220,7 +2230,6 @@ class TestONNXRuntime(unittest.TestCase):
         self.run_test(TensorFactory(), x)
 
     @skipIfUnsupportedMinOpsetVersion(9)
-    @unittest.skip("peephole removed")
     def test_tensor_factories_script(self):
         class TensorFactory(torch.jit.ScriptModule):
             @torch.jit.script_method
@@ -2393,6 +2402,22 @@ class TestONNXRuntime(unittest.TestCase):
                 return torch.full((3, 4), x)
         x = torch.tensor(12)
         self.run_test(FullModel(), x)
+
+    def test_l1_norm(self):
+        class NormModel(torch.nn.Module):
+            def forward(self, x):
+                return torch.norm(x, p=1, dim=-1, keepdim=False)
+
+        x = torch.randn(4, 2, 3, requires_grad=True)
+        self.run_test(NormModel(), x)
+
+    def test_l2_norm(self):
+        class NormModel(torch.nn.Module):
+            def forward(self, x):
+                return torch.norm(x, p=2, dim=-2, keepdim=False)
+
+        x = torch.randn(4, 2, 3, requires_grad=True)
+        self.run_test(NormModel(), x)
 
     def test_frobenius_norm(self):
         class NormModel(torch.nn.Module):
@@ -2877,6 +2902,19 @@ class TestONNXRuntime(unittest.TestCase):
         mat1 = torch.randn(2, 3)
         mat2 = torch.randn(3, 3)
         self.run_test(M(), input=(mat1, mat2))
+
+    def test_shape_constant_fold(self):
+        class ShapeModule(torch.nn.Module):
+            def __init__(self):
+                super(ShapeModule, self).__init__()
+                self.register_buffer("weight", torch.ones(5))
+
+            def forward(self, x):
+                shape = self.weight.shape[0]
+                return x + shape
+
+        x = torch.randn(2, 5)
+        self.run_test(ShapeModule(), (x,), rtol=1e-3, atol=1e-5) 
 
     def test_onnx_proto_checker(self):
         class Model(torch.nn.Module):
