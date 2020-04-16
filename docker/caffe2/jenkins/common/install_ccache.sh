@@ -14,17 +14,19 @@ if [ -z "${SCCACHE}" ]; then
   exit 1
 fi
 
+# hip-clang doesn't have a hcc any longer - uncoment for now
+
 # If rocm build, add hcc to sccache.
-if [[ "${BUILD_ENVIRONMENT}" == *-rocm* ]]; then
+#if [[ "${BUILD_ENVIRONMENT}" == *-rocm* ]]; then
   # HCC's symlink path: /opt/rocm/hcc/bin/hcc -> /opt/rocm/hcc/bin/clang -> /opt/rocm/hcc/bin/clang-7.0
-  HCC_DEST_PATH="$(readlink -f $(which hcc))"
-  HCC_REAL_BINARY="$(dirname $HCC_DEST_PATH)/clang-7.0_original"
-  mv "$HCC_DEST_PATH" "$HCC_REAL_BINARY"
+#  HCC_DEST_PATH="$(readlink -f $(which hcc))"
+#  HCC_REAL_BINARY="$(dirname $HCC_DEST_PATH)/clang-7.0_original"
+#  mv "$HCC_DEST_PATH" "$HCC_REAL_BINARY"
 
   # Create sccache wrapper.
-  (
-    echo "#!/bin/sh"
-    echo "exec $SCCACHE $HCC_REAL_BINARY \"\$@\""
-  ) > "$HCC_DEST_PATH"
-  chmod +x "$HCC_DEST_PATH"
-fi
+#  (
+#    echo "#!/bin/sh"
+#    echo "exec $SCCACHE $HCC_REAL_BINARY \"\$@\""
+#  ) > "$HCC_DEST_PATH"
+#  chmod +x "$HCC_DEST_PATH"
+#fi
