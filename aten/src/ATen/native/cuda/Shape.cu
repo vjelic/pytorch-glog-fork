@@ -214,7 +214,8 @@ void parallel_cat(Tensor &out, const TensorList &inputs, int64_t dimension,
         offset += dimSize;
       }
 #ifdef __HIP_PLATFORM_HCC__
-      /* HIP does not need H2D copy */
+      /* HIP does not need H2D copy, but we must still indicate the memory is in use */
+      AT_CUDA_CHECK(THCCachingHostAllocator_recordEvent(d_inputs_storage.data_ptr(), stream));
 #else
       at::native::copy_(d_inputs_storage, stackInputs_storage,
                         /* non_blocking= */ true);
