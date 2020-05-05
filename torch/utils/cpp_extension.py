@@ -1381,9 +1381,6 @@ def _get_rocm_arch_flags(cflags=None):
             if 'amdgpu-target' in flag:
                 return ['-fno-gpu-rdc']
     return [
-        '--amdgpu-target=gfx803',
-        '--amdgpu-target=gfx900',
-        '--amdgpu-target=gfx906',
         '--amdgpu-target=gfx908',
         '-fno-gpu-rdc'
     ]

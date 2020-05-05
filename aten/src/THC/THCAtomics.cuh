@@ -197,8 +197,20 @@ static inline __device__ void gpuAtomicAdd(double *address, double val) {
   atomicAdd(address, val);
 }
 
-static inline __device__ void gpuAtomicAdd(float *address, float val) {
-  atomicAdd(address, val);
+bool __hip_is_shared(const __attribute__((address_space(0))) void*)
+    asm("llvm.amdgcn.is.shared");
+void atomicAddNoRet_impl(__attribute__((address_space(1))) float*, float)
+    asm("llvm.amdgcn.global.atomic.fadd.p1f32.f32");
+
+static inline __device__ void gpuAtomicAdd(float* address, float val) {
+    using FP = __attribute__((address_space(0))) float*;
+    using GP = __attribute__((address_space(1))) float*;
+    using LP = __attribute__((address_space(3))) float*;
+
+    if (!__hip_is_shared((FP)address))
+        atomicAddNoRet_impl((GP)address, val);
+    else
+        __builtin_amdgcn_ds_faddf((LP)address, val, 0, 0, false);
 }
 
 /* Note [gpuAtomicAdd vs atomicAdd]
