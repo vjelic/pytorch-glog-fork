@@ -122,7 +122,6 @@ ROCM_BLACKLIST = [
     'distributed/rpc/test_rpc_spawn',
     'test_cpp_api_parity',
     'test_cpp_extensions_aot_ninja',
-    'test_cpp_extensions_jit',
     'test_determination',
     'test_jit_simple',
     'test_jit_legacy',
