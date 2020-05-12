@@ -135,6 +135,10 @@ if [ -z "${INSTALL_SETUPTOOLS}" ]; then
   pip install -U pip setuptools!=38.5.2
 fi
 
+# work-around when ninja might be installed outside of PATH
+pip uninstall ninja || echo "ninja not installed"
+pip install ninja
+
 # tornado 5.0 requires Python 2.7.9+ or 3.4+
 if [[ $($PYTHON -c 'import sys; print(int(sys.version_info <= (2, 7, 9) or sys.version_info <= (3, 4)))' == 1) ]]; then
     pip install 'tornado<5'
