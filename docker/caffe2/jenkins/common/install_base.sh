@@ -60,6 +60,10 @@ install_ubuntu() {
             protobuf-compiler
   fi
 
+  if [[ "$UBUNTU_VERSION" == 18.04 ]]; then
+    apt-get install -y --no-install-recommends gpg-agent
+  fi
+
   # Cleanup
   apt-get autoclean && apt-get clean
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*

@@ -11,7 +11,7 @@ install_ubuntu_deadsnakes() {
   apt-get install -y --no-install-recommends software-properties-common
   add-apt-repository ppa:deadsnakes/ppa
   apt-get update
-  apt-get install -y --no-install-recommends "$1"
+  apt-get install -y --no-install-recommends "$@"
 }
 
 install_ubuntu() {
@@ -31,7 +31,11 @@ install_ubuntu() {
       PYTHON=python3.5
       ;;
     3.6)
-      install_ubuntu_deadsnakes python3.6-dev
+      if [[ "$UBUNTU_VERSION" == 18.04 ]]; then
+        install_ubuntu_deadsnakes python3.6-dev python3.6-distutils
+      else
+        install_ubuntu_deadsnakes python3.6-dev
+      fi
       PYTHON=python3.6
       INSTALL_SETUPTOOLS=yes
       ;;
