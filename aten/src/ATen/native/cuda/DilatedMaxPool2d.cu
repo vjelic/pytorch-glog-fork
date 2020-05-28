@@ -661,6 +661,11 @@ std::tuple<Tensor, Tensor> max_pool2d_with_indices_cuda(
 {
   NoNamesGuard guard;
 
+  if (input.scalar_type() == at::kFloat && detail::getCUDAHooks().compiledWithMIOpen() && input.is_cuda() && !(dilation[0] > 1 || dilation[1] > 1)) {
+    std::cout << "INFO: Entered DilatedMaxPool2d.cu Have ability for MIOpen." << std::endl;
+    return at::miopen_max_pooling(input.contiguous(), kernel_size, stride, padding, dilation, ceil_mode);
+  }
+
   Tensor output = at::empty({0}, input.options());
   Tensor indices = at::empty({0}, input.options().dtype(kLong));
   max_pool2d_with_indices_out_cuda_template(
@@ -715,6 +720,11 @@ Tensor max_pool2d_with_indices_backward_cuda(
   const Tensor& indices)
 {
   auto gradInput = at::zeros_like(input, LEGACY_CONTIGUOUS_MEMORY_FORMAT);
+  if (input.is_cuda() && detail::getCUDAHooks().compiledWithMIOpen() && ((input.scalar_type() == at::kFloat))
+    && (!(dilation[0] > 1 || dilation[1] > 1))) {
+       //std::cout << "DilatedMaxPool2d.cu : Entered Max pooling backward with MIOpen." << std::endl;
+       return at::miopen_max_pooling_backward(gradOutput_.contiguous(), input.contiguous(), kernel_size, stride, padding, dilation, ceil_mode, indices.contiguous());   
+  }
   max_pool2d_with_indices_backward_out_cuda_template(
     gradInput,
     gradOutput_,
