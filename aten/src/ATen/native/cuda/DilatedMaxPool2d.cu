@@ -646,6 +646,18 @@ std::tuple<Tensor&, Tensor&> max_pool2d_with_indices_out_cuda(
   return std::tuple<Tensor&, Tensor&>(output, indices);
 }
 
+bool use_miopen(const at::Tensor& input, IntArrayRef dilation) {
+    const auto memory_format = input.suggest_memory_format();
+    bool is_miopen_acceptable = (input.scalar_type() == at::kFloat) &&
+                                (detail::getCUDAHooks().compiledWithMIOpen()) &&
+                                (input.is_cuda()) && 
+                                !(dilation[0] > 1 || dilation[1] > 1) &&
+                                (at::globalContext().userEnabledCuDNN()) &&
+                                (memory_format == at::MemoryFormat::Contiguous);
+
+    return is_miopen_acceptable;
+}
+
 std::tuple<Tensor, Tensor> max_pool2d_with_indices_cuda(
   const Tensor& input,
   IntArrayRef kernel_size,
@@ -656,8 +668,7 @@ std::tuple<Tensor, Tensor> max_pool2d_with_indices_cuda(
 {
   NoNamesGuard guard;
 
-  if (input.scalar_type() == at::kFloat && detail::getCUDAHooks().compiledWithMIOpen() && input.is_cuda() && !(dilation[0] > 1 || dilation[1] > 1)) {
-    std::cout << "INFO: Entered DilatedMaxPool2d.cu Have ability for MIOpen." << std::endl;
+  if (use_miopen(input, dilation)) {
     return at::miopen_max_pooling(input.contiguous(), kernel_size, stride, padding, dilation, ceil_mode);
   }
 
@@ -715,11 +726,10 @@ Tensor max_pool2d_with_indices_backward_cuda(
   const Tensor& indices)
 {
   auto gradInput = at::zeros_like(input, LEGACY_CONTIGUOUS_MEMORY_FORMAT);
-  if (input.is_cuda() && detail::getCUDAHooks().compiledWithMIOpen() && ((input.scalar_type() == at::kFloat))
-    && (!(dilation[0] > 1 || dilation[1] > 1))) {
-       //std::cout << "DilatedMaxPool2d.cu : Entered Max pooling backward with MIOpen." << std::endl;
-       return at::miopen_max_pooling_backward(gradOutput_.contiguous(), input.contiguous(), kernel_size, stride, padding, dilation, ceil_mode, indices.contiguous());   
+  if (use_miopen(input, dilation)) {
+    return at::miopen_max_pooling_backward(gradOutput_.contiguous(), input.contiguous(), kernel_size, stride, padding, dilation, ceil_mode, indices.contiguous());
   }
+
   max_pool2d_with_indices_backward_out_cuda_template(
     gradInput,
     gradOutput_,
