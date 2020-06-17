@@ -115,6 +115,7 @@ ROCM_BLACKLIST = [
     'distributed/rpc/test_rpc_spawn',
     'test_determination',
     'test_multiprocessing',
+    'test_jit_legacy',
     'test_tensorexpr',
     'test_type_hints',
 ]
