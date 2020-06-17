@@ -198,7 +198,11 @@ static inline __device__ void gpuAtomicAdd(double *address, double val) {
 }
 
 static inline __device__ void gpuAtomicAdd(float *address, float val) {
+#if defined(__HIP_PLATFORM_HCC__) && HIP_VERSION < 305
+  atomicAdd(address, val);
+#else
   atomicAddNoRet(address, val);
+#endif
 }
 
 /* Note [gpuAtomicAdd vs atomicAdd]
