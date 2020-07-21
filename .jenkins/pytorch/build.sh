@@ -125,7 +125,6 @@ if [[ "$BUILD_ENVIRONMENT" == *rocm* ]]; then
   if grep HIP_COMPILER=clang ${HIP_PATH}/lib/.hipInfo -q; then
     sed -i 's/ hip_hcc / amdhip64 /' $(dirname "${BASH_SOURCE[0]}")/../../third_party/gloo/cmake/Hip.cmake
   fi
-  exit 1
 
   # hcc used to run out of memory, silently exiting without stopping
   # the build process, leaving undefined symbols in the shared lib,
