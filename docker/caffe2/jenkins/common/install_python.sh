@@ -156,11 +156,12 @@ pip install --no-cache-dir \
     future \
     hypothesis \
     jupyter \
-    numpy \
+    numpy==1.18.5 \
     protobuf \
     pytest \
     pyyaml \
     scipy==1.1.0 \
+    scikit-learn==0.20.3 \
     scikit-image \
     tabulate \
     virtualenv \
