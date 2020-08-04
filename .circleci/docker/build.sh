@@ -214,6 +214,7 @@ case "$image" in
     DB=yes
     VISION=yes
     ROCM_VERSION=3.3
+    HIP_PLATFORM=hcc
     # newer cmake version required
     CMAKE_VERSION=3.6.3
     ;;
@@ -223,6 +224,7 @@ case "$image" in
     DB=yes
     VISION=yes
     ROCM_VERSION=3.3
+    HIP_PLATFORM=hcc
     ;;
   pytorch-linux-xenial-rocm3.5.1-py3.6)
     ANACONDA_PYTHON_VERSION=3.6
@@ -230,6 +232,7 @@ case "$image" in
     DB=yes
     VISION=yes
     ROCM_VERSION=3.5.1
+    HIP_PLATFORM=hcc
     # newer cmake version required
     CMAKE_VERSION=3.6.3
     ;;
@@ -239,6 +242,7 @@ case "$image" in
     DB=yes
     VISION=yes
     ROCM_VERSION=3.5.1
+    HIP_PLATFORM=hcc
     ;;
 esac
 
@@ -281,6 +285,7 @@ docker build \
        --build-arg "NINJA_VERSION=${NINJA_VERSION:-}" \
        --build-arg "KATEX=${KATEX:-}" \
        --build-arg "ROCM_VERSION=${ROCM_VERSION:-}" \
+       --build-arg "HIP_PLATFORM=${HIP_PLATFORM:-}" \
        -f $(dirname ${DOCKERFILE})/Dockerfile \
        -t "$tmp_tag" \
        "$@" \

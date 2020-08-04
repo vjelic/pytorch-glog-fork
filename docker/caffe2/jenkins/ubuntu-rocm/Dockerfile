@@ -52,7 +52,7 @@ ADD ./install_cmake.sh install_cmake.sh
 RUN if [ -n "${CMAKE_VERSION}" ]; then bash ./install_cmake.sh; fi
 
 # Install rocm
-ARG ROCM_VERSION
+ARG HIP_PLATFORM
 ADD ./install_rocm.sh install_rocm.sh
 RUN bash ./install_rocm.sh
 RUN rm install_rocm.sh
@@ -60,7 +60,7 @@ ENV PATH /opt/rocm/bin:$PATH
 ENV PATH /opt/rocm/hcc/bin:$PATH
 ENV PATH /opt/rocm/hip/bin:$PATH
 ENV PATH /opt/rocm/opencl/bin:$PATH
-ENV HIP_PLATFORM hcc
+ENV HIP_PLATFORM ${HIP_PLATFORM:-hcc}
 ENV LANG C.UTF-8
 ENV LC_ALL C.UTF-8
 

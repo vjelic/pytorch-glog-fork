@@ -34,10 +34,7 @@ if [[ "$image" == *cuda* ]]; then
   DOCKERFILE="${OS}-cuda/Dockerfile"
 fi
 
-# TODO: the version number here actually doesn't do anything at the
-# moment
 if [[ "$image" == *rocm* ]]; then
-  ROCM_VERSION="$(echo "${image}" | perl -n -e'/rocm(\d+\.\d+\.\d+|nightly)/ && print $1')"
   DOCKERFILE="${OS}-rocm/Dockerfile"
   # newer cmake version needed
   CMAKE_VERSION=3.6.3
@@ -111,6 +108,6 @@ docker build \
        --build-arg "GCC_VERSION=${GCC_VERSION}" \
        --build-arg "CLANG_VERSION=${CLANG_VERSION}" \
        --build-arg "CMAKE_VERSION=${CMAKE_VERSION:-}" \
-       --build-arg "ROCM_VERSION=${ROCM_VERSION}" \
+       --build-arg "HIP_PLATFORM=${HIP_PLATFORM}" \
        "$@" \
        "$(dirname ${DOCKERFILE})"
