@@ -2645,6 +2645,7 @@ t2.start()
             return op_with_args[0], op_with_args[1], op_with_args[2]
 
     @unittest.skipIf(not TEST_CUDNN, 'CUDNN not available')
+    @skipIfRocm
     def test_autocast_torch_fp16(self):
         with torch.backends.cudnn.flags(enabled=True, deterministic=True):
             for op_with_args in self.autocast_lists.torch_fp16:
