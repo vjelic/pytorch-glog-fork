@@ -257,6 +257,7 @@ case "$image" in
     ROCM_VERSION=3.3
     # newer cmake version required
     CMAKE_VERSION=3.6.3
+    BLIS_VERSION=0.7.0
     ;;
   pytorch-linux-bionic-rocm3.3-py3.6)
     ANACONDA_PYTHON_VERSION=3.6
@@ -264,6 +265,7 @@ case "$image" in
     DB=yes
     VISION=yes
     ROCM_VERSION=3.3
+    BLIS_VERSION=0.7.0
     ;;
   pytorch-linux-xenial-rocm3.5.1-py3.6)
     ANACONDA_PYTHON_VERSION=3.6
@@ -273,6 +275,7 @@ case "$image" in
     ROCM_VERSION=3.5.1
     # newer cmake version required
     CMAKE_VERSION=3.6.3
+    BLIS_VERSION=0.7.0
     ;;
   pytorch-linux-bionic-rocm3.5.1-py3.6)
     ANACONDA_PYTHON_VERSION=3.6
@@ -280,6 +283,7 @@ case "$image" in
     DB=yes
     VISION=yes
     ROCM_VERSION=3.5.1
+    BLIS_VERSION=0.7.0
     ;;
   *)
     # Catch-all for builds that are not hardcoded.
@@ -311,6 +315,12 @@ case "$image" in
     fi
     if [[ "$image" == *cmake* ]]; then
       extract_version_from_image_name cmake CMAKE_VERSION
+    fi
+    if [[ "$image" == *blis* ]]; then
+      extract_version_from_image_name blis BLIS_VERSION
+    fi
+    if [[ "$image" == *libflame* ]]; then
+      extract_version_from_image_name libflame LIBFLAME_VERSION
     fi
   ;;
 esac
@@ -357,6 +367,8 @@ docker build \
        --build-arg "NINJA_VERSION=${NINJA_VERSION:-}" \
        --build-arg "KATEX=${KATEX:-}" \
        --build-arg "ROCM_VERSION=${ROCM_VERSION:-}" \
+       --build-arg "BLIS_VERSION=${BLIS_VERSION:-}" \
+       --build-arg "LIBFLAME_VERSION=${LIBFLAME_VERSION:-}" \
        -f $(dirname ${DOCKERFILE})/Dockerfile \
        -t "$tmp_tag" \
        "$@" \

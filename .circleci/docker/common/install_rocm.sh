@@ -10,7 +10,6 @@ install_ubuntu() {
     fi
     apt-get install -y kmod
     apt-get install -y wget
-    apt-get install -y libopenblas-dev
 
     # Need the libc++1 and libc++abi1 libraries to allow torch._C to load at runtime
     apt-get install -y libc++1
@@ -55,7 +54,6 @@ install_centos() {
   yum update -y
   yum install -y kmod
   yum install -y wget
-  yum install -y openblas-devel
 
   yum install -y epel-release
   yum install -y dkms kernel-headers-`uname -r` kernel-devel-`uname -r`
