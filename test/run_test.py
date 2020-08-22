@@ -17,7 +17,6 @@ import torch._six
 from torch.utils import cpp_extension
 from torch.testing._internal.common_utils import TEST_WITH_ROCM, shell
 import torch.distributed as dist
-
 TESTS = [
     'test_autograd',
     'test_bundled_inputs',
@@ -132,6 +131,11 @@ ROCM_BLACKLIST = [
     'test_tensorexpr',
     'test_type_hints',
     'test_openmp',
+    'test_jit_cuda_fuser',
+    'distributed/test_distributed',
+    'test_jit',
+    'test_mkldnn',
+    'test_tensorboard',
 ]
 
 RUN_PARALLEL_BLACKLIST = [
