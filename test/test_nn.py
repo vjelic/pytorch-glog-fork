@@ -11470,6 +11470,7 @@ class TestNNDeviceType(NNTestCase):
             self.assertTrue(torch.allclose(x.grad, torch.ones_like(x.grad)))
 
     @onlyCUDA
+    @skipIfRocm
     @deviceCountAtLeast(2)
     def test_clip_grad_norm_multi_device(self, devices):
         class TestModel(nn.Module):
