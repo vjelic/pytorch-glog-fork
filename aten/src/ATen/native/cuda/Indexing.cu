@@ -310,8 +310,7 @@ __global__ void indexAddSmallIndex(cuda::detail::TensorInfo<T, IndexType> dst,
                                    int dstAddDim,
                                    int srcAddDim,
                                    IndexType innerSize,
-                                   int64_t dstAddDimSize,
-                                   T alpha) {
+                                   int64_t dstAddDimSize) {
   // In order to avoid reloading the index that we are copying, load
   // it once to handle all of the points that are being selected, so
   // it can be reused as much as possible. This kernel is chosen when
@@ -336,7 +335,7 @@ __global__ void indexAddSmallIndex(cuda::detail::TensorInfo<T, IndexType> dst,
           cuda::detail::IndexToOffset<T, IndexType, SrcDim>::get(linearIndex, src);
       srcOffset += srcIndex * src.strides[srcAddDim];
 
-      gpuAtomicAddNoreturn(&dst.data[dstOffset], alpha * src.data[srcOffset]);
+      gpuAtomicAddNoReturn(&dst.data[dstOffset], src.data[srcOffset]);
     }
   }
 }
@@ -356,8 +355,7 @@ __global__ void indexAddLargeIndex(cuda::detail::TensorInfo<T, IndexType> dst,
                                    int srcAddDim,
                                    IndexType totalSize,
                                    IndexType innerSize,
-                                   int64_t dstAddDimSize,
-                                   T alpha) {
+                                   int64_t dstAddDimSize) {
   // We stride over the output including the indexed dimension
   // (totalSize), and calculate the destination index point based on that
   for (IndexType linearIndex = blockIdx.x * blockDim.x + threadIdx.x;
@@ -386,7 +384,7 @@ __global__ void indexAddLargeIndex(cuda::detail::TensorInfo<T, IndexType> dst,
       cuda::detail::IndexToOffset<T, IndexType, SrcDim>::get(elementInSlice, src);
     srcOffset += srcIndex * src.strides[srcAddDim];
 
-    gpuAtomicAddNoReturn(&dst.data[dstOffset], alpha * src.data[srcOffset]);
+    gpuAtomicAddNoReturn(&dst.data[dstOffset], src.data[srcOffset]);
   }
 }
 
@@ -425,9 +423,7 @@ bool indexShouldBeMajor(cuda::detail::TensorInfo<scalar_t, unsigned int> &info,
   return false;
 }
 
-Tensor& index_add_cuda_(Tensor & self, int64_t dim, const Tensor & index, const Tensor & source, const at::Scalar alpha) {
-  // Nondeterministic because of atomicAdd usage
-  globalContext().alertNotDeterministic("index_add_cuda_");
+Tensor& index_add_cuda_(Tensor & self, int64_t dim, const Tensor & index, const Tensor & source) {
   dim = maybe_wrap_dim(dim, self.dim());
 
   TensorArg self_arg{self, "self", 1}, index_arg{index, "index", 3}, source_arg{source, "source", 4};
@@ -472,7 +468,7 @@ Tensor& index_add_cuda_(Tensor & self, int64_t dim, const Tensor & index, const 
   indexAddSmallIndex<TENSOR_TYPE, TYPE, SELF_DIM, SOURCE_DIM, IDX_DIM> \
     <<<smallIndexGrid, smallIndexBlock, 0, stream>>>(   \
       selfInfo, sourceInfo, indexInfo,                    \
-      selfAddDim, sourceAddDim, sliceSize, selfAddDimSize, alpha_scalar);
+      selfAddDim, sourceAddDim, sliceSize, selfAddDimSize);
 
 #define LARGE_INDEX(TENSOR_TYPE, TYPE,                        \
                     SELF_DIM, SOURCE_DIM, IDX_DIM, IDX_IS_MAJOR)  \
@@ -482,7 +478,7 @@ Tensor& index_add_cuda_(Tensor & self, int64_t dim, const Tensor & index, const 
       selfInfo, sourceInfo, indexInfo,                          \
       selfAddDim, sourceAddDim, sourceTotalSize,                     \
       (IDX_IS_MAJOR) ? sliceSize : numIndex,                \
-      selfAddDimSize, alpha_scalar);
+      selfAddDimSize);
 
   dim3 smallIndexGrid(std::min(THCCeilDiv(sliceSize, (ptrdiff_t)128), (ptrdiff_t)(mpc * 8)));
   dim3 smallIndexBlock(std::min(sliceSize, (ptrdiff_t)128));
@@ -508,8 +504,6 @@ Tensor& index_add_cuda_(Tensor & self, int64_t dim, const Tensor & index, const 
         auto indexInfo =
          cuda::detail::getTensorInfo<int64_t, unsigned int>(index);
         indexInfo.collapseDims();
-
-        auto alpha_scalar = alpha.to<scalar_t>();
 
         // A reasonable choice for when to have each thread iterate over
         // index to choose
@@ -562,8 +556,6 @@ Tensor& index_add_cuda_(Tensor & self, int64_t dim, const Tensor & index, const 
         cuda::detail::TensorInfo<int64_t, uint64_t> indexInfo =
           cuda::detail::getTensorInfo<int64_t, uint64_t>(index);
         indexInfo.collapseDims();
-
-        auto alpha_scalar = alpha.to<scalar_t>();
 
         LARGE_INDEX(scalar_t, uint64_t, -1, -1, -1, true);
       });
