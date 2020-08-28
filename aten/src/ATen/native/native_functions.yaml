@@ -3926,7 +3926,6 @@
     CUDA: legacy::cuda::_th_put_
 
 - func: index_add_(Tensor(a!) self, int dim, Tensor index, Tensor source, Scalar alpha=1) -> Tensor(a!)
-  use_c10_dispatcher: full
   variants: method
   dispatch:
     CPU: index_add_cpu_
