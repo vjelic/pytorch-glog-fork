@@ -337,7 +337,7 @@ __global__ void indexAddSmallIndex(cuda::detail::TensorInfo<T, IndexType> dst,
           cuda::detail::IndexToOffset<T, IndexType, SrcDim>::get(linearIndex, src);
       srcOffset += srcIndex * src.strides[srcAddDim];
 
-      gpuAtomicAddNoreturn(&dst.data[dstOffset], alpha * src.data[srcOffset]);
+      gpuAtomicAddNoReturn(&dst.data[dstOffset], alpha * src.data[srcOffset]);
     }
   }
 }
