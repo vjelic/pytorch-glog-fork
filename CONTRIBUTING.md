@@ -124,36 +124,36 @@ and `python setup.py clean`. Then you can install in `develop` mode again.
 
 ## Nightly Checkout & Pull
 
-The `tools/nightly.py` script is provided to ease pure Python development of
-PyTorch. This uses `conda` and `git` to check out the nightly development
-version of PyTorch and installs pre-built binaries into the current repository.
-This is like a development or editable install, but without needing the ability
-to compile any C++ code.
+The `tools/nightly_checkout.py` script is provided to ease pure Python development of
+PyTorch. This uses conda and git to check out the nightly development version of PyTorch
+and installs pre-built binaries into the current repository. This is like a development
+or editable install, but without needing the ability to compile any C++ code.
 
-You can use this script to check out a new nightly branch with the following:
+You can use this script to check out a new nightly branch with the following::
 
-```bash
-./tools/nightly.py checkout -b my-nightly-branch
-conda activate pytorch-deps
+```sh
+$ ./tools/nightly.py checkout -b my-nightly-branch
+$ conda activate pytorch-deps
 ```
 
 Or if you would like to re-use an existing conda environment, you can pass in
-the regular environment parameters (`--name` or `--prefix`):
+the regular environment parameters (--name or --prefix)::
 
-```bash
-./tools/nightly.py checkout -b my-nightly-branch -n my-env
-conda activate my-env
+```sh
+$ ./tools/nightly.py checkout -b my-nightly-branch -n my-env
+$ conda activate my-env
 ```
 
-You can also use this tool to pull the nightly commits into the current branch:
+You can also use this tool to pull the nightly commits into the current branch as
+well. This can be done with
 
-```bash
-./tools/nightly.py pull -n my-env
-conda activate my-env
+```sh
+$ ./tools/nightly.py pull -n my-env
+$ conda activate my-env
 ```
 
-Pulling will reinstall the PyTorch dependencies as well as the nightly binaries
-into the repo directory.
+Pulling will reinstalle the conda dependencies as well as the nightly binaries into
+the repo directory.
 
 ## Codebase structure
 

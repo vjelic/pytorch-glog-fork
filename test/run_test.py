@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
 import argparse
 from datetime import datetime
 import modulefinder
@@ -15,7 +17,6 @@ import torch._six
 from torch.utils import cpp_extension
 from torch.testing._internal.common_utils import TEST_WITH_ROCM, shell
 import torch.distributed as dist
-from typing import Dict, Optional
 
 TESTS = [
     'test_autograd',
@@ -86,7 +87,6 @@ TESTS = [
     'test_determination',
     'test_futures',
     'test_fx',
-    'test_functional_autograd_benchmark'
 ]
 
 WINDOWS_BLOCKLIST = [
@@ -140,7 +140,6 @@ SLOW_TESTS = [
     'distributed/test_distributed',
     'distributed/rpc/test_process_group_agent',
     'distributed/rpc/test_tensorpipe_agent',
-    'distributed/algorithms/ddp_comm_hooks/test_ddp_hooks',
     'test_cuda',
     'test_cuda_primary_ctx',
     'test_cpp_extensions_aot_ninja',
@@ -157,7 +156,7 @@ SLOW_TESTS = [
     'test_determination',
     'test_futures',
 ]
-_DEP_MODULES_CACHE: Dict[str, set] = {}
+_DEP_MODULES_CACHE = {}
 
 DISTRIBUTED_TESTS_CONFIG = {}
 
@@ -193,7 +192,6 @@ or `conda install ninja`. Alternatively, disable said tests with
 `run_test.py --exclude test_cpp_extensions_aot_ninja test_cpp_extensions_jit`.
 """
 
-PYTORCH_COLLECT_COVERAGE = bool(os.environ.get("PYTORCH_COLLECT_COVERAGE"))
 
 def print_to_stderr(message):
     print(message, file=sys.stderr)
@@ -201,7 +199,7 @@ def print_to_stderr(message):
 
 def get_executable_command(options, allow_pytest):
     if options.coverage:
-        executable = ['coverage', 'run', '--parallel-mode', '--source=torch']
+        executable = ['coverage', 'run', '--parallel-mode', '--source torch']
     else:
         executable = [sys.executable]
     if options.pytest:
@@ -382,8 +380,7 @@ def parse_args():
              'TestTorch with pytest in verbose and coverage mode: '
              'python run_test.py -vci torch -pt')
     parser.add_argument(
-        '-c', '--coverage', action='store_true', help='enable coverage',
-        default=PYTORCH_COLLECT_COVERAGE)
+        '-c', '--coverage', action='store_true', help='enable coverage')
     parser.add_argument(
         '-i',
         '--include',
@@ -566,7 +563,7 @@ def log_test_reason(file_type, filename, test, options):
 
 
 def get_dep_modules(test):
-    # Cache results in case of repetition
+    # Cache results in case of repitition
     if test in _DEP_MODULES_CACHE:
         return _DEP_MODULES_CACHE[test]
 
@@ -613,7 +610,7 @@ def determine_target(test, touched_files, options):
     # Some tests are faster to execute than to determine.
     if test not in SLOW_TESTS:
         if options.verbose:
-            print_to_stderr(f'Running {test} without determination')
+            print_to_stderr('Running {} without determination'.format(test))
         return True
     # HACK: "no_ninja" is not a real module
     if test.endswith('_no_ninja'):
@@ -651,30 +648,10 @@ def determine_target(test, touched_files, options):
 
     # If nothing has determined the test has run, don't run the test.
     if options.verbose:
-        print_to_stderr(f'Determination is skipping {test}')
+        print_to_stderr('Determination is skipping {}'.format(test))
 
     return False
 
-
-def run_test_module(test: str, test_directory: str, options) -> Optional[str]:
-    test_module = parse_test_module(test)
-
-    # Printing the date here can help diagnose which tests are slow
-    print_to_stderr('Running {} ... [{}]'.format(test, datetime.now()))
-    handler = CUSTOM_HANDLERS.get(test, run_test)
-    return_code = handler(test_module, test_directory, options)
-    assert isinstance(return_code, int) and not isinstance(
-        return_code, bool), 'Return code should be an integer'
-    if return_code == 0:
-        return None
-
-    message = f'{test} failed!'
-    if return_code < 0:
-        # subprocess.Popen returns the child process' exit signal as
-        # return code -N, where N is the signal number.
-        signal_name = SIGNALS_TO_NAMES_DICT[-return_code]
-        message += f' Received signal: {signal_name}'
-    return message
 
 def main():
     options = parse_args()
@@ -684,7 +661,7 @@ def main():
     if options.verbose:
         print_to_stderr('Selected tests: {}'.format(', '.join(selected_tests)))
 
-    if options.coverage and not PYTORCH_COLLECT_COVERAGE:
+    if options.coverage:
         shell(['coverage', 'erase'])
 
     if options.jit:
@@ -706,24 +683,33 @@ def main():
 
     has_failed = False
     failure_messages = []
-    try:
-        for test in selected_tests:
-            err_message = run_test_module(test, test_directory, options)
-            if err_message is None:
-                continue
+    for test in selected_tests:
+
+        test_module = parse_test_module(test)
+
+        # Printing the date here can help diagnose which tests are slow
+        print_to_stderr('Running {} ... [{}]'.format(test, datetime.now()))
+        handler = CUSTOM_HANDLERS.get(test, run_test)
+        return_code = handler(test_module, test_directory, options)
+        assert isinstance(return_code, int) and not isinstance(
+            return_code, bool), 'Return code should be an integer'
+        if return_code != 0:
             has_failed = True
-            failure_messages.append(err_message)
-            if not options.continue_through_error:
-                raise RuntimeError(err_message)
-            print_to_stderr(err_message)
-    finally:
-        if options.coverage:
-            test_dir = os.path.dirname(os.path.abspath(__file__))
-            if not PYTORCH_COLLECT_COVERAGE:
-                shell(['coverage', 'combine'], cwd=test_dir)
-                shell(['coverage', 'html'], cwd=test_dir)
+            message = '{} failed!'.format(test)
+            if return_code < 0:
+                # subprocess.Popen returns the child process' exit signal as
+                # return code -N, where N is the signal number.
+                signal_name = SIGNALS_TO_NAMES_DICT[-return_code]
+                message += ' Received signal: {}'.format(signal_name)
+            err = RuntimeError(message)
+            failure_messages.append(err)
+            if options.continue_through_error:
+                print_to_stderr(err)
             else:
-                shell(['coverage', 'combine', '--append'], cwd=test_dir)
+                raise RuntimeError(err)
+    if options.coverage:
+        shell(['coverage', 'combine'])
+        shell(['coverage', 'html'])
 
     if options.continue_through_error and has_failed:
         for err in failure_messages:

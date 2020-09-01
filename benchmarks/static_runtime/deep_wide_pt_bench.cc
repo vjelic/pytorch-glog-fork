@@ -1,5 +1,6 @@
 #include <benchmark/benchmark.h>
 #include <torch/csrc/jit/runtime/static/impl.h>
+
 #include "deep_wide_pt.h"
 
 const int embedding_size = 32;

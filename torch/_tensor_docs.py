@@ -544,18 +544,6 @@ asinh_() -> Tensor
 In-place version of :meth:`~Tensor.asinh`
 """)
 
-add_docstr_all('arcsinh', r"""
-arcsinh() -> Tensor
-
-See :func:`torch.arcsinh`
-""")
-
-add_docstr_all('arcsinh_', r"""
-arcsinh_() -> Tensor
-
-In-place version of :meth:`~Tensor.arcsinh`
-""")
-
 add_docstr_all('as_strided', r"""
 as_strided(size, stride, storage_offset=0) -> Tensor
 
@@ -586,40 +574,30 @@ arctan_() -> Tensor
 In-place version of :meth:`~Tensor.arctan`
 """)
 
-add_docstr_all('atan2', r"""
+add_docstr_all('atan2',
+               r"""
 atan2(other) -> Tensor
 
 See :func:`torch.atan2`
 """)
 
-add_docstr_all('atan2_', r"""
+add_docstr_all('atan2_',
+               r"""
 atan2_(other) -> Tensor
 
 In-place version of :meth:`~Tensor.atan2`
 """)
 
-add_docstr_all('atanh', r"""
+add_docstr_all('atanh',
+               r"""
 atanh() -> Tensor
 
 See :func:`torch.atanh`
 """)
 
-add_docstr_all('atanh_', r"""
-atanh_(other) -> Tensor
-
+add_docstr_all('atanh_',
+               r"""
 In-place version of :meth:`~Tensor.atanh`
-""")
-
-add_docstr_all('arctanh', r"""
-arctanh() -> Tensor
-
-See :func:`torch.arctanh`
-""")
-
-add_docstr_all('arctanh_', r"""
-arctanh_(other) -> Tensor
-
-In-place version of :meth:`~Tensor.arctanh`
 """)
 
 add_docstr_all('baddbmm',
@@ -2079,13 +2057,6 @@ max(dim=None, keepdim=False) -> Tensor or (Tensor, Tensor)
 See :func:`torch.max`
 """)
 
-add_docstr_all('maximum',
-               r"""
-maximum(other) -> Tensor
-
-See :func:`torch.maximum`
-""")
-
 add_docstr_all('argmax',
                r"""
 argmax(dim=None, keepdim=False) -> LongTensor
@@ -2112,13 +2083,6 @@ add_docstr_all('min',
 min(dim=None, keepdim=False) -> Tensor or (Tensor, Tensor)
 
 See :func:`torch.min`
-""")
-
-add_docstr_all('minimum',
-               r"""
-minimum(other) -> Tensor
-
-See :func:`torch.minimum`
 """)
 
 add_docstr_all('argmin',
@@ -2247,25 +2211,11 @@ neg() -> Tensor
 See :func:`torch.neg`
 """)
 
-add_docstr_all('negative',
-               r"""
-negative() -> Tensor
-
-See :func:`torch.negative`
-""")
-
 add_docstr_all('neg_',
                r"""
 neg_() -> Tensor
 
 In-place version of :meth:`~Tensor.neg`
-""")
-
-add_docstr_all('negative_',
-               r"""
-negative_() -> Tensor
-
-In-place version of :meth:`~Tensor.negative`
 """)
 
 add_docstr_all('nelement',
@@ -3167,10 +3117,18 @@ Example::
 
 """)
 
-add_docstr_all('sub', r"""
+add_docstr_all('sub',
+               r"""
 sub(other, *, alpha=1) -> Tensor
 
-See :func:`torch.sub`.
+Subtracts a scalar or tensor from :attr:`self` tensor. If both :attr:`alpha`
+and :attr:`other` are specified, each element of :attr:`other` is scaled by
+:attr:`alpha` before being used.
+
+When :attr:`other` is a tensor, the shape of :attr:`other` must be
+:ref:`broadcastable <broadcasting-semantics>` with the shape of the underlying
+tensor.
+
 """)
 
 add_docstr_all('sub_',
@@ -3178,18 +3136,6 @@ add_docstr_all('sub_',
 sub_(other, *, alpha=1) -> Tensor
 
 In-place version of :meth:`~Tensor.sub`
-""")
-
-add_docstr_all('subtract', r"""
-subtract(other, *, alpha=1) -> Tensor
-
-See :func:`torch.subtract`.
-""")
-
-add_docstr_all('subtract_', r"""
-subtract_(other, *, alpha=1) -> Tensor
-
-In-place version of :meth:`~Tensor.subtract`.
 """)
 
 add_docstr_all('sum',

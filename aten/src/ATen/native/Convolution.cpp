@@ -268,8 +268,7 @@ auto ConvParams::use_xnnpack(
                 padding,
                 stride,
                 dilation,
-                groups,
-                transposed);
+                groups);
   }
 #endif
   return false;

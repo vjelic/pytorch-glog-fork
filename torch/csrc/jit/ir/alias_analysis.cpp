@@ -476,7 +476,6 @@ void AliasDb::analyzeImpl(Node* node) {
     case prim::CudaFusionGroup:
     case prim::FunctionalGraph:
     case prim::DifferentiableGraph:
-    case prim::FallbackGraph:
       return analyzeSubgraph(node);
     case prim::fork:
       return analyzeFork(node);
@@ -523,7 +522,6 @@ void AliasDb::analyzeImpl(Node* node) {
       return analyzeBroadcastingChunk(node);
     case prim::SetAttr:
       return analyzeSetAttr(node);
-    case prim::profile_optional:
     case prim::profile:
       makePointerTo(node->output(), node->inputs().at(0));
       return;

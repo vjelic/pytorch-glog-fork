@@ -6,8 +6,6 @@ import torch.nn.intrinsic.modules.fused as torch_fused
 import torch.nn as nn
 import torch.nn.intrinsic as nni
 
-from typing import Type, List, Optional, Union, Callable, Tuple, Dict
-
 def fuse_conv_bn(conv, bn):
     r"""Given the conv and bn modules, fuses them and returns the fused module
 
@@ -50,7 +48,6 @@ def fuse_conv_bn_relu(conv, bn, relu):
     """
     assert(conv.training == bn.training == relu.training),\
         "Conv and BN both must be in the same mode (train or eval)."
-    fused_module : Optional[Type[nn.Sequential]] = None
     if conv.training:
         map_to_fused_module_train = {
             nn.Conv2d: torch_fused.ConvBnReLU2d,
@@ -72,12 +69,11 @@ def fuse_conv_bn_relu(conv, bn, relu):
         }
         fused_module = map_to_fused_module_eval[type(conv)]
         if fused_module is not None:
-            fused_conv = nn.utils.fusion.fuse_conv_bn_eval(conv, bn)
-            return fused_module(fused_conv, relu)
+            return fused_module(nn.utils.fusion.fuse_conv_bn_eval(conv, bn), relu)
         else:
             raise NotImplementedError("Cannot fuse eval modules: {}".format((conv, bn, relu)))
 
-OP_LIST_TO_FUSER_METHOD : Dict[Tuple, Union[nn.Sequential, Callable]] = {
+OP_LIST_TO_FUSER_METHOD = {
     (nn.Conv1d, nn.BatchNorm1d): fuse_conv_bn,
     (nn.Conv1d, nn.BatchNorm1d, nn.ReLU): fuse_conv_bn_relu,
     (nn.Conv2d, nn.BatchNorm2d): fuse_conv_bn,
@@ -123,26 +119,24 @@ def fuse_known_modules(mod_list):
     the fused operation. The rest of the elements are set to nn.Identity()
     """
     types = tuple(type(m) for m in mod_list)
-    fuser_method = OP_LIST_TO_FUSER_METHOD.get(types)
+    fuser_method = OP_LIST_TO_FUSER_METHOD.get(types, None)
     if fuser_method is None:
         raise NotImplementedError("Cannot fuse modules: {}".format(types))
-    new_mod : List[Optional[nn.Module]] = [None] * len(mod_list)
-    fused = fuser_method(*mod_list)
+    new_mod = [None] * len(mod_list)
+    new_mod[0] = fuser_method(*mod_list)
     # NOTE: forward hooks not processed in the two following for loops will be lost after the fusion
     # Move pre forward hooks of the base module to resulting fused module
     for handle_id, pre_hook_fn in mod_list[0]._forward_pre_hooks.items():
-        fused.register_forward_pre_hook(pre_hook_fn)
+        new_mod[0].register_forward_pre_hook(pre_hook_fn)
         del mod_list[0]._forward_pre_hooks[handle_id]
     # Move post forward hooks of the last module to resulting fused module
     for handle_id, hook_fn in mod_list[-1]._forward_hooks.items():
-        fused.register_forward_hook(hook_fn)
+        new_mod[0].register_forward_hook(hook_fn)
         del mod_list[-1]._forward_hooks[handle_id]
-    new_mod[0] = fused
 
     for i in range(1, len(mod_list)):
-        identity = nn.Identity()
-        identity.training = mod_list[0].training
-        new_mod[i] = identity
+        new_mod[i] = nn.Identity()
+        new_mod[i].training = mod_list[0].training
 
     return new_mod
 

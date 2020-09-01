@@ -184,8 +184,6 @@ Tensor mkldnn_max_pool2d(
     IntArrayRef padding,
     IntArrayRef dilation,
     bool ceil_mode) {
-  TORCH_CHECK(std::all_of(dilation.cbegin(), dilation.cend(), [](int64_t i) { return 1 == i; }),
-      "mkldnn_max_pool2d does not support dilation case");
   return _mkldnn_pooling(
       input,
       kernel_size,
@@ -203,8 +201,6 @@ Tensor mkldnn_max_pool3d(
     IntArrayRef padding,
     IntArrayRef dilation,
     bool ceil_mode) {
-  TORCH_CHECK(std::all_of(dilation.cbegin(), dilation.cend(), [](int64_t i) { return 1 == i; }),
-      "mkldnn_max_pool3d does not support dilation case");
   return _mkldnn_pooling(
       input,
       kernel_size,
@@ -224,7 +220,7 @@ Tensor mkldnn_avg_pool2d(
     bool count_include_pad,
     c10::optional<int64_t> divisor_override) {
   TORCH_CHECK(!divisor_override.has_value(),
-      "mkldnn_avg_pool2d operator does not support divisor");
+           "mkldnn_avg_pool2d operator does not support divisor");
   return _mkldnn_pooling(
       input,
       kernel_size,

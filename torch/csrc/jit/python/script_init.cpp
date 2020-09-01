@@ -45,6 +45,8 @@
 #include <utility>
 #include <vector>
 
+PYBIND11_MAKE_OPAQUE(torch::jit::ExtraFilesMap);
+
 namespace torch {
 namespace jit {
 
@@ -709,23 +711,12 @@ IValue pyIValueDeepcopy(const IValue& ivalue, const py::dict& memo) {
   return ivalue.deepcopy(ivalue_memo);
 }
 
-ExtraFilesMap extra_files_from_python(const py::dict& pydict) {
-  ExtraFilesMap r;
-  for (const auto& it : pydict) {
-    r[py::cast<std::string>(it.first)] = "";
-  }
-  return r;
-}
-
-void extra_files_to_python(const ExtraFilesMap& m, const py::dict& pydict) {
-  // py::dict is pointer-like type so it gets modified despite const&
-  for (const auto& it : m) {
-    pydict[py::str(it.first)] = py::bytes(it.second);
-  }
-}
-
 void initJitScriptBindings(PyObject* module) {
   auto m = py::handle(module).cast<py::module>();
+
+  // STL containers are not mutable by default and hence we need to bind as
+  // follows.
+  py::bind_map<ExtraFilesMap>(m, "ExtraFilesMap");
 
   // NOLINTNEXTLINE(bugprone-unused-raii)
   py::class_<c10::intrusive_ptr<CustomClassHolder>>(m, "Capsule");
@@ -1372,25 +1363,22 @@ void initJitScriptBindings(PyObject* module) {
       [](std::shared_ptr<CompilationUnit> cu,
          const std::string& filename,
          py::object map_location,
-         const py::dict& extra_files) {
+         ExtraFilesMap& extra_files) {
         c10::optional<at::Device> optional_device;
         if (!map_location.is(py::none())) {
           AT_ASSERT(THPDevice_Check(map_location.ptr()));
           optional_device =
               reinterpret_cast<THPDevice*>(map_location.ptr())->device;
         }
-        ExtraFilesMap extra_files_map = extra_files_from_python(extra_files);
-        auto ret = import_ir_module(
-            std::move(cu), filename, optional_device, extra_files_map);
-        extra_files_to_python(extra_files_map, extra_files);
-        return ret;
+        return import_ir_module(
+            std::move(cu), filename, optional_device, extra_files);
       });
   m.def(
       "import_ir_module_from_buffer",
       [](std::shared_ptr<CompilationUnit> cu,
          const std::string& buffer,
          py::object map_location,
-         const py::dict& extra_files) {
+         ExtraFilesMap& extra_files) {
         std::istringstream in(buffer);
         c10::optional<at::Device> optional_device;
         if (!map_location.is(py::none())) {
@@ -1398,11 +1386,8 @@ void initJitScriptBindings(PyObject* module) {
           optional_device =
               reinterpret_cast<THPDevice*>(map_location.ptr())->device;
         }
-        ExtraFilesMap extra_files_map = extra_files_from_python(extra_files);
-        auto ret = import_ir_module(
-            std::move(cu), in, optional_device, extra_files_map);
-        extra_files_to_python(extra_files_map, extra_files);
-        return ret;
+        return import_ir_module(
+            std::move(cu), in, optional_device, extra_files);
       });
   m.def(
       "_load_for_lite_interpreter",

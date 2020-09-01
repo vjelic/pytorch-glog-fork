@@ -11,7 +11,7 @@ Tensor mkldnn_linear(
     const Tensor& self,
     const Tensor& weight,
     const Tensor& bias) {
-  TORCH_CHECK(false, "mkldnn_linear: ATen not compiled with MKLDNN support");
+  AT_ERROR("mkldnn_linear: ATen not compiled with MKLDNN support");
 }
 
 } // namespace native

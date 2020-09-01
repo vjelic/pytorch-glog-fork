@@ -7,12 +7,13 @@ r"""Importing this file includes common utility methods and base clases for
 checking quantization api and properties of resulting modules.
 """
 
+import copy
+import io
+import functools
 import torch
 import torch.nn as nn
 import torch.nn.quantized as nnq
 import torch.nn.quantized.dynamic as nnqd
-import torch.distributed as dist
-
 from torch.testing._internal.common_utils import TestCase
 from torch.quantization import QuantWrapper, QuantStub, DeQuantStub, \
     default_qconfig, default_dynamic_qconfig, default_per_channel_qconfig, QConfig, default_observer, default_weight_observer, \
@@ -32,49 +33,9 @@ from torch.quantization._quantize_fx import (
     fuse,
 )
 
-import copy
-import io
-import functools
-import time
-import os
-
 import unittest
 import numpy as np
 from torch.testing import FileCheck
-
-class NodeSpec:
-    ''' Used for checking GraphModule Node
-    '''
-    def __init__(self, op, target):
-        '''
-        op: call_function | call_module
-        target:
-          for call_function, target would be a function
-          for call_module, target would be the type of PyTorch module
-        '''
-        self.op = op
-        self.target = target
-
-    @classmethod
-    def call_function(cls, target):
-        return NodeSpec('call_function', target)
-
-    @classmethod
-    def call_method(cls, target):
-        return NodeSpec('call_method', target)
-
-    @classmethod
-    def call_module(cls, target):
-        return NodeSpec('call_module', target)
-
-    def __hash__(self):
-        return hash((self.op, self.target))
-
-    def __eq__(self, other):
-        if not isinstance(other, NodeSpec):
-            return NotImplemented
-
-        return self.op == other.op and self.target == other.target
 
 def test_only_eval_fn(model, calib_data):
     r"""
@@ -105,85 +66,6 @@ def test_only_train_fn(model, train_data, loss_fn=_default_loss_fn):
             total += target.size(0)
             correct += (predicted == target).sum().item()
     return train_loss, correct, total
-
-class AverageMeter(object):
-    """Computes and stores the average and current value"""
-    def __init__(self, name, fmt=':f'):
-        self.name = name
-        self.fmt = fmt
-        self.reset()
-
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
-        self.count += n
-        self.avg = self.sum / self.count
-
-    def __str__(self):
-        fmtstr = '{name} {val' + self.fmt + '} ({avg' + self.fmt + '})'
-        return fmtstr.format(**self.__dict__)
-
-
-def accuracy(output, target, topk=(1,)):
-    """Computes the accuracy over the k top predictions for the specified values of k"""
-    with torch.no_grad():
-        maxk = max(topk)
-        batch_size = target.size(0)
-
-        _, pred = output.topk(maxk, 1, True, True)
-        pred = pred.t()
-        correct = pred.eq(target.view(1, -1).expand_as(pred))
-
-        res = []
-        for k in topk:
-            correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
-            res.append(correct_k.mul_(100.0 / batch_size))
-        return res
-
-def train_one_epoch(model, criterion, optimizer, data_loader, device, ntrain_batches):
-    model.train()
-    cnt = 0
-    for image, target in data_loader:
-        start_time = time.time()
-        print('.', end='')
-        cnt += 1
-        image, target = image.to(device), target.to(device)
-        output = model(image)
-        loss = criterion(output, target)
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        acc1, acc5 = accuracy(output, target, topk=(1, 5))
-        if cnt >= ntrain_batches:
-            return
-    return
-
-def ddp_setup(rank, world_size):
-    os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
-
-    # initialize the process group
-    dist.init_process_group("gloo", rank=rank, world_size=world_size)
-
-def ddp_cleanup():
-    dist.destroy_process_group()
-
-def run_ddp(rank, world_size, prepared):
-    ddp_setup(rank, world_size)
-    prepared.cuda()
-    prepared = torch.nn.parallel.DistributedDataParallel(prepared, device_ids=[rank])
-    prepared.to(rank)
-    model_with_ddp = prepared
-    optimizer = torch.optim.SGD(model_with_ddp.parameters(), lr=0.0001)
-    train_one_epoch(model_with_ddp, criterion, optimizer, dataset, rank, 1)
-    ddp_cleanup()
-
 
 def convert_dynamic(module):
     convert(module, DEFAULT_DYNAMIC_MODULE_MAPPING, inplace=True)
@@ -259,13 +141,6 @@ def skipIfNoFBGEMM(fn):
         else:
             fn(*args, **kwargs)
     return wrapper
-
-try:
-    import torchvision  # noqa: F401
-    HAS_TORCHVISION = True
-except ImportError:
-    HAS_TORCHVISION = False
-skip_if_no_torchvision = unittest.skipIf(not HAS_TORCHVISION, "no torchvision")
 
 def get_script_module(model, tracing, data):
     return torch.jit.trace(model, data) if tracing else torch.jit.script(model)
@@ -508,16 +383,11 @@ class QuantizationTestCase(TestCase):
 
         return models[False]
 
-    def checkGraphModuleNodes(
-            self, graph_module,
-            expected_node=None,
-            expected_node_occurrence=None,
-            expected_node_list=None):
+    def checkGraphModule(self, graph_module, check_spec):
         """ Check if GraphModule contains the target node
         Args:
             graph_module: the GraphModule instance we want to check
-            expected_node, expected_node_occurrence, expected_node_list:
-               see docs for checkGraphModeFxOp
+            check_spec: see docs for checkGraphModeFxOp
         """
         nodes_in_graph = dict()
         node_list = []
@@ -525,9 +395,9 @@ class QuantizationTestCase(TestCase):
         for node in graph_module.graph.nodes:
             n = None
             if node.op == 'call_function' or node.op == 'call_method':
-                n = NodeSpec(node.op, node.target)
+                n = (node.op, node.target)
             elif node.op == 'call_module':
-                n = NodeSpec(node.op, type(modules[node.target]))
+                n = (node.op, type(modules[node.target]))
 
             if n is not None:
                 node_list.append(n)
@@ -536,35 +406,36 @@ class QuantizationTestCase(TestCase):
                 else:
                     nodes_in_graph[n] = 1
 
-        if expected_node is not None:
-            self.assertTrue(expected_node in nodes_in_graph, 'node:' + str(expected_node) +
+        if isinstance(check_spec, tuple):
+            target_node = check_spec
+            self.assertTrue(target_node in nodes_in_graph, 'node:' + str(target_node) +
                             ' not found in the graph module')
-
-        if expected_node_occurrence is not None:
-            for expected_node, occurrence in expected_node_occurrence.items():
+        elif isinstance(check_spec, dict):
+            node_occurrence_map = check_spec
+            for target_node, occurrence in node_occurrence_map.items():
                 self.assertTrue(
-                    expected_node in nodes_in_graph,
-                    'Check failed for node:' + str(expected_node) +
+                    target_node in nodes_in_graph,
+                    'Check failed for node:' + str(target_node) +
                     ' not found')
                 self.assertTrue(
-                    nodes_in_graph[expected_node] == occurrence,
-                    'Check failed for node:' + str(expected_node) +
+                    nodes_in_graph[target_node] == occurrence,
+                    'Check failed for node:' + str(target_node) +
                     ' Expected occurrence:' + str(occurrence) +
-                    ' Found occurrence:' + str(nodes_in_graph[expected_node]))
-
-        if expected_node_list is not None:
+                    ' Found occurrence:' + str(nodes_in_graph[target_node]))
+        elif isinstance(check_spec, list):
+            ordered_node_check_list = check_spec
             cur_index = 0
             for n in node_list:
-                if cur_index == len(expected_node_list):
+                if cur_index == len(ordered_node_check_list):
                     return
-                if n == expected_node_list[cur_index]:
+                if n == ordered_node_check_list[cur_index]:
                     cur_index += 1
             self.assertTrue(
-                cur_index == len(expected_node_list),
+                cur_index == len(ordered_node_check_list),
                 "Check failed for graph:" +
                 self.printGraphModule(graph_module, print_str=False) +
                 "Expected ordered list:" +
-                str(expected_node_list))
+                str(ordered_node_check_list))
 
     def printGraphModule(self, graph_module, print_str=True):
         modules = dict(graph_module.root.named_modules())
@@ -579,29 +450,26 @@ class QuantizationTestCase(TestCase):
             print(str_to_print)
         return str_to_print
 
-    def checkGraphModeFxOp(self, model, inputs, quant_type,
-                           expected_node=None,
-                           expected_node_occurrence=None,
-                           expected_node_list=None,
-                           debug=False):
+    def checkGraphModeFxOp(self, model, inputs, check_spec, quant_type=QuantType.STATIC, debug=False):
         """ Quantizes model with graph mode quantization on fx and check if the
         quantized model contains the quantized_node
 
         Args:
             model: floating point torch.nn.Module
             inputs: one positional sample input arguments for model
-            expected_node: NodeSpec
-                  e.g. NodeSpec.call_function(torch.quantize_per_tensor)
-            expected_node_occurrence: a dict from NodeSpec to
-                  expected number of occurences (int)
-                  e.g. {NodeSpec.call_function(torch.quantize_per_tensor) : 1,
-                        NodeSpec.call_method('dequantize'): 1}
-            expected_node_list: a list of NodeSpec, used to check the order
-                  of the occurrence of Node
-                  e.g. [NodeSpec.call_function(torch.quantize_per_tensor),
-                        NodeSpec.call_module(nnq.Conv2d),
-                        NodeSpec.call_function(F.hardtanh_),
-                        NodeSpec.call_method('dequantize')]
+            check_spec:
+              either:
+                quntized_node: a tuple of 2 elements, first element is
+                   the op type for GraphModule node, second element
+                   is the target function for call_function and
+                   type of the module for call_module
+                   e.g. ('call_function', torch.ops.quantized.conv2d)
+                node map: a dict from node(tuple of 2 elements) to
+                   number of occurences (int)
+                   e.g. {('call_function', torch.quantize_per_tensor) : 1)}
+                ordered node list: a list of node(tuple of 2 elements)
+                   e.g. [('call_function', torch.quantize_per_tensor),
+                         ('call_function', torch.dequantize)]
         """
         # TODO: make img_data a single example instead of a list
         if type(inputs) == list:
@@ -641,8 +509,7 @@ class QuantizationTestCase(TestCase):
             print('quantized graph module:', type(qgraph))
             self.printGraphModule(qgraph)
             print()
-        self.checkGraphModuleNodes(
-            qgraph, expected_node, expected_node_occurrence, expected_node_list)
+        self.checkGraphModule(qgraph, check_spec)
 
 # Below are a series of neural net models to use in testing quantization
 # Single layer models

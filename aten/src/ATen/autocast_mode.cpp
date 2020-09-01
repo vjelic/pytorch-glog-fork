@@ -202,6 +202,8 @@ Tensor binary_cross_entropy_banned(const Tensor &, const Tensor &, const c10::op
            "safe to autocast.");
 }
 
+
+#ifndef USE_STATIC_DISPATCH
 namespace {
 /*****************************************************************************************************************
 This section performs load-time registration for autocast wrappers.
@@ -376,6 +378,7 @@ TORCH_LIBRARY_IMPL(aten, Autocast, m) {
 }
 
 }
+#endif
 
 } // namespace autocast
 } // namespace at

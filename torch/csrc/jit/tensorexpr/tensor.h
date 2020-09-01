@@ -99,7 +99,9 @@ TORCH_API Tensor* Compute(
     const std::vector<DimArg>& dim_args,
     const std::function<ExprHandle(const std::vector<VarHandle>&)>& body_func);
 
-inline void unpack_dim_args(
+namespace {
+
+static inline void unpack_dim_args(
     const std::vector<DimArg>& dim_args,
     std::vector<const Expr*>* dims,
     std::vector<const Var*>* vars) {
@@ -110,6 +112,7 @@ inline void unpack_dim_args(
     vars->push_back(new Var(dim_arg.name_hint(), kInt));
   }
 }
+} // namespace
 
 // Handle reductions over a Reducer and a body_func which produces values.
 template <typename BodyFunc>

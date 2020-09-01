@@ -11,7 +11,7 @@ Tensor mkldnn_softmax(
     const Tensor& self,
     const int64_t dim,
     const bool half_to_float) {
-  TORCH_CHECK(false, "mkldnn_softmax: ATen not compiled with MKLDNN support");
+  AT_ERROR("mkldnn_softmax: ATen not compiled with MKLDNN support");
 }
 
 } // namespace native
@@ -28,7 +28,7 @@ Tensor mkldnn_softmax(
     const Tensor& self,
     const int64_t dim,
     const bool half_to_float) {
-  TORCH_CHECK(
+  AT_ASSERTM(
       !half_to_float,
       "softmax with half to float conversion is not supported on Mkldnn");
   const int64_t wrapped_dim = maybe_wrap_dim(dim, self.dim());
