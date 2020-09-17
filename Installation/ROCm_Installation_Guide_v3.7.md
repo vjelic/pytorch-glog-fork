@@ -69,8 +69,6 @@ To install from a Debian Repository:
 
 1.  Run the following code to ensure that your system is up to date:
 
-```{=html}
-<!-- -->
 ```
     sudo apt update
 
@@ -90,8 +88,6 @@ future release.
 -   Old Key: <http://repo.radeon.com/rocm/apt/debian/rocm.gpg.key>
 -   New Key: <http://repo.radeon.com/rocm/rocm.gpg.key>
 
-```{=html}
-<!-- -->
 ```
     wget -q -O - http://repo.radeon.com/rocm/rocm.gpg.key | sudo apt-key add -
 
@@ -106,8 +102,6 @@ The current rocm.gpg.key is not available in a standard key ring distribution, b
 
 3.  Install the ROCm meta-package. Update the appropriate repository list and install the rocm-dkms meta-package:
 
-```{=html}
-<!-- -->
 ```
     sudo apt update
 
@@ -116,15 +110,11 @@ The current rocm.gpg.key is not available in a standard key ring distribution, b
 4.  Set permissions. To access the GPU, you must be a user in the video and render groups. Ensure your user account is a member of the video
     and render groups prior to using ROCm. To identify the groups you are a member of, use the following command:
 
-```{=html}
-<!-- -->
 ```
     groups
 
 5.  To add your user to the video and render groups, use the following command with the sudo password:
 
-```{=html}
-<!-- -->
 ```
     sudo usermod -a -G video $LOGNAME
 
@@ -133,8 +123,6 @@ The current rocm.gpg.key is not available in a standard key ring distribution, b
 6.  By default, you must add any future users to the video and render groups. To add future users to the video and render groups, run the
     following command:
 
-```{=html}
-<!-- -->
 ```
     echo 'ADD_EXTRA_GROUPS=1' | sudo tee -a /etc/adduser.conf
 
@@ -146,8 +134,6 @@ The current rocm.gpg.key is not available in a standard key ring distribution, b
 8.  After restarting the system, run the following commands to verify that the ROCm installation is successful. If you see your GPUs
     listed by both commands, the installation is considered successful.
 
-```{=html}
-<!-- -->
 ```
     /opt/rocm/bin/rocminfo
     /opt/rocm/opencl/bin/clinfo
