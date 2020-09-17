@@ -12,9 +12,9 @@
 
 -   [Supported Operating Systems](#supported-operating-systems)
 
-    > -   [Ubuntu](#ubuntu)
-    > -   [CentOS RHEL](#centos-rhel)
-    > -   [SLES 15 Service Pack 1](#sles-15-service-pack-1)
+     -   [Ubuntu](#ubuntu)
+     -   [CentOS RHEL](#centos-rhel)
+     -   [SLES 15 Service Pack 1](#sles-15-service-pack-1)
     
 -   [ROCm Installation Known Issues and
     Workarounds](#rocm-installation-known-issues-and-workarounds)
