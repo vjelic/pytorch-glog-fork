@@ -22,7 +22,7 @@
 -   [Getting the ROCm Source Code](#getting-the-rocm-source-code)
 
 
-## Deploying ROCm {#Deploying ROCm}
+## Deploying ROCm 
 
 AMD hosts both Debian and RPM repositories for the ROCm v3.x packages.
 
@@ -44,7 +44,7 @@ The AMD ROCm platform is designed to support the following operating systems:
 -   CentOS 8.2 & RHEL 8.2 (Kernel 4.18.0 ) (devtoolset is not required)
 -   SLES 15 SP1
 
-**FRESH INSTALLATION OF AMD ROCm V3.7 RECOMMENDED**
+### FRESH INSTALLATION OF AMD ROCm V3.7 RECOMMENDED
 
 A fresh and clean installation of AMD ROCm v3.7 is recommended. An upgrade from previous releases to AMD ROCm v3.7 is not supported.
 
@@ -56,7 +56,16 @@ fresh ROCm installation if you want to upgrade from AMD ROCm v3.3 or older to 3.
 -   For ROCm v3.5 and releases thereafter, the *clinfo* path is changed
     to - */opt/rocm/opencl/bin/clinfo*.
     
--   For ROCm v3.3 and older releases, the *clinfo* path remains
-    unchanged - */opt/rocm/opencl/bin/x86\_64/clinfo*.
+-   For ROCm v3.3 and older releases, the *clinfo* path remains unchanged - */opt/rocm/opencl/bin/x86\_64/clinfo*.
+
+    
+## Supported Operating Systems
+
+### Ubuntu
+
+**Installing a ROCm Package from a Debian Repository**
+
+To install from a Debian Repository:
+
 
 
