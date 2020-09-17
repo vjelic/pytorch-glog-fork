@@ -77,7 +77,9 @@ To install from a Debian Repository:
     sudo apt install libnuma-dev
 
     sudo reboot 
-
+    
+ ```
+ 
 2.  Add the ROCm apt repository.
 
 For Debian-based systems like Ubuntu, configure the Debian ROCm repository as follows:
@@ -88,10 +90,13 @@ future release.
 -   Old Key: <http://repo.radeon.com/rocm/apt/debian/rocm.gpg.key>
 -   New Key: <http://repo.radeon.com/rocm/rocm.gpg.key>
 
+
 ```
     wget -q -O - http://repo.radeon.com/rocm/rocm.gpg.key | sudo apt-key add -
 
     echo 'deb [arch=amd64] http://repo.radeon.com/rocm/apt/debian/ xenial main' | sudo tee /etc/apt/sources.list.d/rocm.list
+
+```
 
 The gpg key may change; ensure it is updated when installing a new release. If the key signature verification fails while updating, re-add
 the key from the ROCm apt repository.
@@ -106,12 +111,15 @@ The current rocm.gpg.key is not available in a standard key ring distribution, b
     sudo apt update
 
     sudo apt install rocm-dkms && sudo reboot
+ ```
 
 4.  Set permissions. To access the GPU, you must be a user in the video and render groups. Ensure your user account is a member of the video
     and render groups prior to using ROCm. To identify the groups you are a member of, use the following command:
 
 ```
     groups
+    
+ ```
 
 5.  To add your user to the video and render groups, use the following command with the sudo password:
 
@@ -119,6 +127,8 @@ The current rocm.gpg.key is not available in a standard key ring distribution, b
     sudo usermod -a -G video $LOGNAME
 
     sudo usermod -a -G render $LOGNAME
+    
+```
 
 6.  By default, you must add any future users to the video and render groups. To add future users to the video and render groups, run the
     following command:
@@ -129,19 +139,26 @@ The current rocm.gpg.key is not available in a standard key ring distribution, b
     echo 'EXTRA_GROUPS=video' | sudo tee -a /etc/adduser.conf
 
     echo 'EXTRA_GROUPS=render' | sudo tee -a /etc/adduser.conf
+ 
+ ```
 
 7.  Restart the system.
+
 8.  After restarting the system, run the following commands to verify that the ROCm installation is successful. If you see your GPUs
     listed by both commands, the installation is considered successful.
 
 ```
     /opt/rocm/bin/rocminfo
     /opt/rocm/opencl/bin/clinfo
+    
+ ```
 
 Note: To run the ROCm programs, add the ROCm binaries in your PATH.
 
+```
+
     echo 'export PATH=$PATH:/opt/rocm/bin:/opt/rocm/profiler/bin:/opt/rocm/opencl/bin' | sudo tee -a /etc/profile.d/rocm.sh
 
-
+```
 
 
