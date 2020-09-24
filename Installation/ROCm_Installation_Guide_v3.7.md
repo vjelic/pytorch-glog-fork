@@ -153,7 +153,7 @@ The current rocm.gpg.key is not available in a standard key ring distribution, b
     
  ```
 
-Note: To run the ROCm programs, add the ROCm binaries in your PATH.
+**Note**: To run the ROCm programs, add the ROCm binaries in your PATH.
 
 ```
 
@@ -177,7 +177,7 @@ Instead, install the following development subset of packages:
     sudo apt update
     sudo apt install rocm-dev
 
-Note: To execute ROCm enabled applications, you must install the full ROCm driver stack on your system.
+**Note**: To execute ROCm enabled applications, you must install the full ROCm driver stack on your system.
 
 ### Using Debian-based ROCm with Upstream Kernel Drivers
 
@@ -200,7 +200,7 @@ This section describes how to install ROCm on supported RPM-based systems such a
 RHEL is a subscription-based operating system. You must enable the external repositories to install on the devtoolset-7 environment and the
 dkms support files.
 
-Note: The following steps do not apply to the CentOS installation.
+**Note**: The following steps do not apply to the CentOS installation.
 
 1.  The subscription for RHEL must be enabled and attached to a pool ID. See the Obtaining an RHEL image and license page for instructions on
     registering your system with the RHEL subscription server and attaching to a pool id.
