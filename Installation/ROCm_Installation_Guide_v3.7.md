@@ -212,10 +212,13 @@ Note: The following steps do not apply to the CentOS installation.
     sudo subscription-manager repos --enable rhel-7-server-optional-rpms
     sudo subscription-manager repos --enable rhel-7-server-extras-rpms
 
+```
+
 3.  Enable additional repositories by downloading and installing the epel-release-latest-7/epel-release-latest-8 repository RPM:
 
 ```
     sudo rpm -ivh <repo>
+```
 
 For more details,
 
@@ -232,7 +235,7 @@ For more details,
 
 To setup the Devtoolset-7 environment, follow the instructions on this page: <https://www.softwarecollections.org/en/scls/rhscl/devtoolset-7/>
 
-Note: devtoolset-7 is a software collections package and is not supported by AMD.
+**Note**: devtoolset-7 is a software collections package and is not supported by AMD.
 
 ### Installing CentOS v7.7/v8.1 for DKMS
 
@@ -250,8 +253,8 @@ To install ROCm on your system, follow the instructions below:
 
 2.  Create a /etc/yum.repos.d/rocm.repo file with the following contents:
 
--   CentOS/RHEL 7.x : <http://repo.radeon.com/rocm/yum/rpm>
--   CentOS/RHEL 8.x : <http://repo.radeon.com/rocm/centos8/rpm>
+     -   CentOS/RHEL 7.x : <http://repo.radeon.com/rocm/yum/rpm>
+     -   CentOS/RHEL 8.x : <http://repo.radeon.com/rocm/centos8/rpm>
 
 ```
     [ROCm] 
@@ -261,13 +264,18 @@ To install ROCm on your system, follow the instructions below:
     gpgcheck=1
     gpgkey=http://repo.radeon.com/rocm/rocm.gpg.key
 
-Note: The URL of the repository must point to the location of the repositories' repodata database.
+```
+
+**Note**: The URL of the repository must point to the location of the repositories' repodata database.
 
 3.  Install ROCm components using the following command:
 
 **Note**: This step is applicable only for CentOS/RHEL v8.1 and is not required for v7.8.
 
+```
     sudo yum install rocm-dkms && sudo reboot
+    
+```
 
 4.  Restart the system. The rock-dkms component is installed and the /dev/kfd device is now available.
 
@@ -276,19 +284,23 @@ Note: The URL of the repository must point to the location of the repositories' 
 
 ```
     groups
+    
+```
 
 6.  To add your user to the video group, use the following command with the sudo password:
 
 ```
     sudo usermod -a -G video $LOGNAME
+ ```
 
 7.  By default, add any future users to the video group. Run the following command to add users to the video group:
 
 ```
     echo 'ADD_EXTRA_GROUPS=1' | sudo tee -a /etc/adduser.conf
     echo 'EXTRA_GROUPS=video' | sudo tee -a /etc/adduser.conf
+```
 
-Note: Before updating to the latest version of the operating system, delete the ROCm packages to avoid DKMS-related issues.
+**Note**: Before updating to the latest version of the operating system, delete the ROCm packages to avoid DKMS-related issues.
 
 8.  Restart the system.
 
@@ -327,7 +339,7 @@ development subset of packages:
 
     sudo yum install rocm-dev
 
-Note: To execute ROCm-enabled applications, you will require a system installed with the full ROCm driver stack.
+**Note**: To execute ROCm-enabled applications, you will require a system installed with the full ROCm driver stack.
 
 
 ### Using ROCm with Upstream Kernel Drivers
@@ -355,7 +367,7 @@ The following section tells you how to perform an install and uninstall ROCm on 
 ```
     sudo SUSEConnect --product PackageHub/15.1/x86_64
     sudo zypper install dkms
-
+```
 2.  Add the ROCm repo.
 
 ```
@@ -365,7 +377,7 @@ The following section tells you how to perform an install and uninstall ROCm on 
     sudo rpm --import http://repo.radeon.com/rocm/rocm.gpg.key
     sudo zypper --gpg-auto-import-keys install rocm-dkms
     sudo reboot
-
+```
 3.  Run the following command once
 
 ```
@@ -373,7 +385,7 @@ The following section tells you how to perform an install and uninstall ROCm on 
     allow_unsupported_modules 1
     EOF
     sudo modprobe amdgpu
-
+```
 4.  Verify the ROCm installation.
 
 5.  Run /opt/rocm/bin/rocminfo and /opt/rocm/opencl/bin/clinfo commands to list the GPUs and verify that the ROCm installation is
@@ -387,13 +399,13 @@ The following section tells you how to perform an install and uninstall ROCm on 
 
 ```
     sudo usermod -a -G video $LOGNAME
-
+```
 8.  By default, add any future users to the video group. Run the following command to add users to the video group:
 
 ```
     echo 'ADD_EXTRA_GROUPS=1' | sudo tee -a /etc/adduser.conf
     echo 'EXTRA_GROUPS=video' | sudo tee -a /etc/adduser.conf
-
+```
 9.  Restart the system.
 
 10. Test the basic ROCm installation.
@@ -404,8 +416,8 @@ The following section tells you how to perform an install and uninstall ROCm on 
 ```
     /opt/rocm/bin/rocminfo
     /opt/rocm/opencl/bin/clinfo
-
-Note: To run the ROCm programs more efficiently, add the ROCm binaries in your PATH.
+```
+**Note**: To run the ROCm programs more efficiently, add the ROCm binaries in your PATH.
 
      echo \'export
      PATH=\$PATH:/opt/rocm/bin:/opt/rocm/profiler/bin:/opt/rocm/opencl/bin\'\|sudo
@@ -417,9 +429,9 @@ To uninstall, use the following command:
 
     sudo zypper remove rocm-opencl rocm-dkms rock-dkms
 
-Note: Ensure all other installed packages/components are removed. 
+**Note**: Ensure all other installed packages/components are removed. 
 
-Note: Ensure all the content in the /opt/rocm directory is completely removed. If the command does not remove all the ROCm components/packages, ensure
+**Note**: Ensure all the content in the /opt/rocm directory is completely removed. If the command does not remove all the ROCm components/packages, ensure
 you remove them individually.
 
 
@@ -449,7 +461,7 @@ repo:
     curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
     chmod a+x ~/bin/repo
 
-Note: You can choose a different folder to install the repo into if you desire. \~/bin/ is used as an example.
+**Note**: You can choose a different folder to install the repo into if you desire. \~/bin/ is used as an example.
 
 # Downloading the ROCm Source Code
 
@@ -461,7 +473,7 @@ install the repo, you must use that chosen directory in the code as shown below:
     ~/bin/repo init -u https://github.com/RadeonOpenCompute/ROCm.git -b roc-3.7.x
     repo sync
 
-Note: Using this sample code will cause the repo to download the open source code associated with this ROCm release. Ensure that you have
+**Note**: Using this sample code will cause the repo to download the open source code associated with this ROCm release. Ensure that you have
 ssh-keys configured on your machine for your GitHub ID prior to the download.
 
 
