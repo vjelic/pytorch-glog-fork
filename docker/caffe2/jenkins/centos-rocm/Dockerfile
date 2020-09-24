@@ -25,7 +25,7 @@ RUN if [ -n "${GLIBC_VERSION}" ]; then bash ./install_glibc.sh; fi
 RUN rm install_glibc.sh
 
 # Install rocm
-ARG ROCM_VERSION
+ARG HIP_PLATFORM
 ADD ./install_rocm.sh install_rocm.sh
 RUN bash ./install_rocm.sh
 RUN rm install_rocm.sh
@@ -33,7 +33,7 @@ ENV PATH /opt/rocm/bin:$PATH
 ENV PATH /opt/rocm/hcc/bin:$PATH
 ENV PATH /opt/rocm/hip/bin:$PATH
 ENV PATH /opt/rocm/opencl/bin:$PATH
-ENV HIP_PLATFORM hcc
+ENV HIP_PLATFORM ${HIP_PLATFORM:-hcc}
 ENV LC_ALL en_US.utf8
 ENV LANG en_US.utf8
 
