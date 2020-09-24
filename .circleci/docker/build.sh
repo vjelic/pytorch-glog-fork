@@ -261,6 +261,7 @@ case "$image" in
     DB=yes
     VISION=yes
     ROCM_VERSION=3.7
+    HIP_PLATFORM=hcc
     ;;
   *)
     # Catch-all for builds that are not hardcoded.
@@ -340,6 +341,7 @@ docker build \
        --build-arg "NINJA_VERSION=${NINJA_VERSION:-}" \
        --build-arg "KATEX=${KATEX:-}" \
        --build-arg "ROCM_VERSION=${ROCM_VERSION:-}" \
+       --build-arg "HIP_PLATFORM=${HIP_PLATFORM:-}" \
        -f $(dirname ${DOCKERFILE})/Dockerfile \
        -t "$tmp_tag" \
        "$@" \
