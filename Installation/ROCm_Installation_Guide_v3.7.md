@@ -161,13 +161,13 @@ The current rocm.gpg.key is not available in a standard key ring distribution, b
 
 ```
 
-### Uninstalling ROCm Packages from Ubuntu
+#### Uninstalling ROCm Packages from Ubuntu
 
 To uninstall the ROCm packages from Ubuntu 16.04.6 or Ubuntu 18.04.4, run the following command:
 
     sudo apt autoremove rocm-opencl rocm-dkms rocm-dev rocm-utils && sudo reboot
 
-### Installing Development Packages for Cross Compilation
+#### Installing Development Packages for Cross Compilation
 
 It is recommended that you develop and test development packages on different systems. For example, some development or build systems may
 not have an AMD GPU installed. In this scenario, you must avoid installing the ROCk kernel driver on the development system.
@@ -179,7 +179,7 @@ Instead, install the following development subset of packages:
 
 **Note**: To execute ROCm enabled applications, you must install the full ROCm driver stack on your system.
 
-### Using Debian-based ROCm with Upstream Kernel Drivers
+#### Using Debian-based ROCm with Upstream Kernel Drivers
 
 You can install the ROCm user-level software without installing the AMD\'s custom ROCk kernel driver. To use the upstream kernels, run the
 following commands instead of installing rocm-dkms:
@@ -189,13 +189,13 @@ following commands instead of installing rocm-dkms:
     echo 'SUBSYSTEM=="kfd", KERNEL=="kfd", TAG+="uaccess", GROUP="video"' | sudo tee /etc/udev/rules.d/70-kfd.rules
 
 
-# CentOS RHEL
+### CentOS RHEL
 
-## CentOS v7.7/RHEL v7.8 and CentOS/RHEL 8.1
+#### CentOS v7.7/RHEL v7.8 and CentOS/RHEL 8.1
 
 This section describes how to install ROCm on supported RPM-based systems such as CentOS v7.7/RHEL v7.8 and CentOS/RHEL v8.1.
 
-### Preparing RHEL for Installation
+#### Preparing RHEL for Installation
 
 RHEL is a subscription-based operating system. You must enable the external repositories to install on the devtoolset-7 environment and the
 dkms support files.
@@ -245,7 +245,7 @@ Use the dkms tool to install the kernel drivers on CentOS/RHEL:
     sudo yum install -y dkms kernel-headers-`uname -r` kernel-devel-`uname -r`
 
 
-### Installing ROCm 
+#### Installing ROCm 
 
 To install ROCm on your system, follow the instructions below:
 
@@ -306,7 +306,7 @@ To install ROCm on your system, follow the instructions below:
 
 9.  Test the ROCm installation.
 
-### Testing the ROCm Installation
+#### Testing the ROCm Installation
 
 After restarting the system, run the following commands to verify that the ROCm installation is successful. If you see your GPUs listed, you
 are good to go!
@@ -318,20 +318,20 @@ are good to go!
 
     echo 'export PATH=$PATH:/opt/rocm/bin:/opt/rocm/profiler/bin:/opt/rocm/opencl/bin' | sudo tee -a /etc/profile.d/rocm.sh
 
-### Compiling Applications Using HCC, HIP, and Other ROCm Software
+#### Compiling Applications Using HCC, HIP, and Other ROCm Software
 
 To compile applications or samples, run the following command to use gcc-7.2 provided by the devtoolset-7 environment:
 
     scl enable devtoolset-7 bash
     
 
-### Uninstalling ROCm from CentOS/RHEL
+#### Uninstalling ROCm from CentOS/RHEL
 
 To uninstall the ROCm packages, run the following command:
 
     sudo yum autoremove rocm-opencl rocm-dkms rock-dkms
 
-### Installing Development Packages for Cross Compilation
+#### Installing Development Packages for Cross Compilation
 
 You can develop and test ROCm packages on different systems. For example, some development or build systems may not have an AMD GPU
 installed. In this scenario, you can avoid installing the ROCm kernel driver on your development system. Instead, install the following
@@ -342,7 +342,7 @@ development subset of packages:
 **Note**: To execute ROCm-enabled applications, you will require a system installed with the full ROCm driver stack.
 
 
-### Using ROCm with Upstream Kernel Drivers
+#### Using ROCm with Upstream Kernel Drivers
 
 You can install ROCm user-level software without installing AMD\'s custom ROCk kernel driver. To use the upstream kernel drivers, run the
 following commands
@@ -356,7 +356,7 @@ following commands
 **Note**: Ensure you restart the system after ROCm installation.
 
 
-# SLES 15 Service Pack 1
+### SLES 15 Service Pack 1
 
 The following section tells you how to perform an install and uninstall ROCm on SLES 15 SP 1.
 
@@ -423,7 +423,7 @@ The following section tells you how to perform an install and uninstall ROCm on 
      PATH=\$PATH:/opt/rocm/bin:/opt/rocm/profiler/bin:/opt/rocm/opencl/bin\'\|sudo
      tee -a /etc/profile.d/rocm.sh
 
-## Uninstallation
+#### Uninstallation
 
 To uninstall, use the following command:
 
@@ -435,9 +435,9 @@ To uninstall, use the following command:
 you remove them individually.
 
 
-# ROCm Installation Known Issues and Workarounds
+## ROCm Installation Known Issues and Workarounds
 
-## Closed source components
+### Closed source components
 
 The ROCm platform relies on some closed source components to provide functionalities like HSA image support. These components are only
 available through the ROCm repositories, and they may be deprecated or become open source components in the future. These components are made
@@ -445,14 +445,14 @@ available in the following packages:
 
      -   hsa-ext-rocr-dev
      
-# Getting the ROCm Source Code
+## Getting the ROCm Source Code
 
 AMD ROCm is built from open source software. It is, therefore, possible to modify the various components of ROCm by downloading the source code
 and rebuilding the components. The source code for ROCm components can be cloned from each of the GitHub repositories using git. For easy
 access to download the correct versions of each of these tools, the ROCm repository contains a repo manifest file called default.xml. You can use
 the manifest file to download the source code for ROCm software.
 
-## Installing the Repo
+### Installing the Repo
 
 The repo tool from GoogleÂ® allows you to manage multiple git repositories simultaneously. Run the following commands to install the
 repo:
@@ -463,7 +463,7 @@ repo:
 
 **Note**: You can choose a different folder to install the repo into if you desire. \~/bin/ is used as an example.
 
-# Downloading the ROCm Source Code
+### Downloading the ROCm Source Code
 
 The following example shows how to use the repo binary to download the ROCm source code. If you choose a directory other than \~/bin/ to
 install the repo, you must use that chosen directory in the code as shown below:
