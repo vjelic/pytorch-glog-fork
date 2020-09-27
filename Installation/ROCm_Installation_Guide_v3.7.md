@@ -10,7 +10,7 @@
 
 -   [Prerequisites](#prerequisites-1)
 
--   [Supported Operating Systems](#supported-operating-systems)
+-   [Install ROCm on Supported Operating Systems](#supported-operating-systems)
 
      -   [Ubuntu](#ubuntu)
      -   [CentOS RHEL](#centos-rhel)
@@ -18,8 +18,6 @@
     
 -   [ROCm Installation Known Issues and
     Workarounds](#rocm-installation-known-issues-and-workarounds)
-
--   [Getting the ROCm Source Code](#getting-the-rocm-source-code)
 
 
 ## Deploying ROCm 
@@ -444,38 +442,3 @@ available through the ROCm repositories, and they may be deprecated or become op
 available in the following packages:
 
      -   hsa-ext-rocr-dev
-     
-## Getting the ROCm Source Code
-
-AMD ROCm is built from open source software. It is, therefore, possible to modify the various components of ROCm by downloading the source code
-and rebuilding the components. The source code for ROCm components can be cloned from each of the GitHub repositories using git. For easy
-access to download the correct versions of each of these tools, the ROCm repository contains a repo manifest file called default.xml. You can use
-the manifest file to download the source code for ROCm software.
-
-### Installing the Repo
-
-The repo tool from GoogleÂ® allows you to manage multiple git repositories simultaneously. Run the following commands to install the
-repo:
-
-    mkdir -p ~/bin/
-    curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
-    chmod a+x ~/bin/repo
-
-**Note**: You can choose a different folder to install the repo into if you desire. \~/bin/ is used as an example.
-
-### Downloading the ROCm Source Code
-
-The following example shows how to use the repo binary to download the ROCm source code. If you choose a directory other than \~/bin/ to
-install the repo, you must use that chosen directory in the code as shown below:
-
-    mkdir -p ~/ROCm/
-    cd ~/ROCm/
-    ~/bin/repo init -u https://github.com/RadeonOpenCompute/ROCm.git -b roc-3.7.x
-    repo sync
-
-**Note**: Using this sample code will cause the repo to download the open source code associated with this ROCm release. Ensure that you have
-ssh-keys configured on your machine for your GitHub ID prior to the download.
-
-
-
-
