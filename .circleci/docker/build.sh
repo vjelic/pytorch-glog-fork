@@ -263,6 +263,13 @@ case "$image" in
     ROCM_VERSION=3.7
     HIP_PLATFORM=hcc
     ;;
+  pytorch-linux-bionic-rocm3.8-py3.6)
+    ANACONDA_PYTHON_VERSION=3.6
+    PROTOBUF=yes
+    DB=yes
+    VISION=yes
+    ROCM_VERSION=3.8
+    ;;
   *)
     # Catch-all for builds that are not hardcoded.
     PROTOBUF=yes
