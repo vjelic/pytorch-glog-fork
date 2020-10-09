@@ -1386,6 +1386,9 @@ std::shared_ptr<ProcessGroup::Work> ProcessGroupNCCL::alltoall_base(
             at::Tensor& output,
             ncclComm_t comm,
             at::cuda::CUDAStream& stream) {
+          // See [Sync Streams].
+          c10::cuda::CUDACachingAllocator::recordStream(
+              output.storage().data_ptr(), stream);
           return ncclAlltoall(
               input.data_ptr(),
               output.data_ptr(),
@@ -1415,6 +1418,7 @@ std::shared_ptr<ProcessGroup::Work> ProcessGroupNCCL::alltoall_base(
               inputSplitSizes, input, &send_lengths, &send_offsets);
           c10d::computeLengthsAndOffsets(
               outputSplitSizes, output, &recv_lengths, &recv_offsets);
+          // See [Sync Streams].
           c10::cuda::CUDACachingAllocator::recordStream(
               output.storage().data_ptr(), stream);
           return ncclAlltoallv(
