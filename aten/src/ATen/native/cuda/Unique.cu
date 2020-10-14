@@ -164,6 +164,7 @@ std::tuple<Tensor, Tensor, Tensor> unique_dim_cuda_template(
   auto options = self.options().dtype(kLong);
   Tensor input_flat = self.transpose(dim, 0).contiguous().view({num_inp, -1});
   int64_t n = input_flat.size(1);
+  int64_t limit = input_flat.numel();
   scalar_t *input_flat_ptr = input_flat.data_ptr<scalar_t>();
 
   Tensor indices = at::arange(0, num_inp, options);
@@ -172,8 +173,16 @@ std::tuple<Tensor, Tensor, Tensor> unique_dim_cuda_template(
     thrust::sort(policy, indices_data, indices_data + num_inp,
       [=] __device__ (int64_t a, int64_t b) -> bool {
         for (int64_t i = 0; i < n; ++i) {
+#ifdef __HIP_PLATFORM_HCC__
+          int64_t off_a = i + a * n;
+          int64_t off_b = i + b * n;
+          if (off_a >= limit || off_b >= limit) return false;
+          scalar_t lhs = input_flat_ptr[off_a];
+          scalar_t rhs = input_flat_ptr[off_b];
+#else
           scalar_t lhs = input_flat_ptr[i + a * n];
           scalar_t rhs = input_flat_ptr[i + b * n];
+#endif
           if (lhs < rhs) {
             return true;
           } else if (lhs > rhs) {
@@ -192,8 +201,16 @@ std::tuple<Tensor, Tensor, Tensor> unique_dim_cuda_template(
     return_inverse, return_counts, options,
     [=] __device__ (int64_t a, int64_t b) -> bool {
       for (int64_t i = 0; i < n; ++i) {
+#ifdef __HIP_PLATFORM_HCC__
+        int64_t off_a = i + a * n;
+        int64_t off_b = i + b * n;
+        if (off_a >= limit || off_b >= limit) return true;
+        scalar_t lhs = input_flat_ptr[off_a];
+        scalar_t rhs = input_flat_ptr[off_b];
+#else
         scalar_t lhs = input_flat_ptr[i + a * n];
         scalar_t rhs = input_flat_ptr[i + b * n];
+#endif
         if (lhs != rhs) {
           return false;
         }
@@ -202,8 +219,16 @@ std::tuple<Tensor, Tensor, Tensor> unique_dim_cuda_template(
     },
     [=] __device__ (int64_t a, int64_t b) -> int64_t {
       for (int64_t i = 0; i < n; ++i) {
+#ifdef __HIP_PLATFORM_HCC__
+        int64_t off_a = i + a * n;
+        int64_t off_b = i + b * n;
+        if (off_a >= limit || off_b >= limit) return 0;
+        scalar_t lhs = input_flat_ptr[off_a];
+        scalar_t rhs = input_flat_ptr[off_b];
+#else
         scalar_t lhs = input_flat_ptr[i + a * n];
         scalar_t rhs = input_flat_ptr[i + b * n];
+#endif
         if (lhs != rhs) {
           return 1;
         }
