@@ -253,6 +253,16 @@ else
   $PYTHON setup.py install --user
 
   report_compile_cache_stats
+
+  if [[ $BUILD_ENVIRONMENT == *rocm* && -e "/opt/cache/bin/sccache" ]]; then
+  # remove sccache wrappers post-build; runtime compilation of MIOpen kernels does not yet fully support them
+      sudo rm -rf /opt/cache/bin
+      pushd /opt/rocm/llvm/bin
+      sudo mv original/clang .
+      sudo mv original/clang++ .
+      sudo rm -rf original
+      popd
+  fi
 fi
 
 ###############################################################################
