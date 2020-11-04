@@ -146,7 +146,10 @@ if [[ "$BUILD_ENVIRONMENT" == *rocm* ]]; then
 
   # remove sccache wrappers post-build; runtime compilation of MIOpen kernels does not yet fully support them
   if [[ -e "/opt/cache/bin/sccache" ]]; then
-      sudo rm -rf /opt/cache/bin
+      sudo rm -f /opt/cache/bin/cc
+      sudo rm -f /opt/cache/bin/c++
+      sudo rm -f /opt/cache/bin/gcc
+      sudo rm -f /opt/cache/bin/g++
       pushd /opt/rocm/llvm/bin
       sudo mv original/clang .
       sudo mv original/clang++ .
