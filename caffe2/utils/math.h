@@ -174,11 +174,11 @@ CAFFE2_API void Gemm(
     const int N,
     const int K,
     const float alpha,
-    const float* A,
-    const float* B,
+    const T* A,
+    const T* B,
     const float beta,
-    const float* C,
-    float* D,
+    const T* C,
+    T* D,
     Context* context);
 #endif
 

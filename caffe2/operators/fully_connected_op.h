@@ -99,26 +99,26 @@ class FullyConnectedOp final : public Operator<Context> {
     //auto C = caffe2::empty({N}, at::dtype<T_B>()).device(Context::GetDeviceType());
     if(FuseBiasAdd) {
     //std::cout << "-------------> Rohith: calling GemmExt2\n";
-    std::cout << "In wrapper - M: " << M << std::endl;
-    std::cout << "In wrapper - N: " << N << std::endl;
-    std::cout << "In wrapper - K: " << K << std::endl;
-    std::cout << "In wrapper - TransposeWeight: " << TransposeWeight << std::endl;
-    math::Gemm<float, Context, Engine, FuseBiasAdd>(
+    //std::cout << "In wrapper - M: " << M << std::endl;
+    //std::cout << "In wrapper - N: " << N << std::endl;
+    //std::cout << "In wrapper - K: " << K << std::endl;
+    //std::cout << "In wrapper - TransposeWeight: " << TransposeWeight << std::endl;
+    math::Gemm<T_X, Context, Engine, FuseBiasAdd>(
         CblasNoTrans,
         TransposeWeight ? CblasTrans : CblasNoTrans,
         M,
         N,
         K,
         1,
-        X.template data<float>(),
-        W.template data<float>(),
+        X.template data<T_X>(),
+        W.template data<T_W>(),
         1,
-        b.template data<float>(),
-        Y->template mutable_data<float>(),
+        b.template data<T_B>(),
+        Y->template mutable_data<T_Y>(),
         &context_
     ); 
     } else {
-    std::cout << "-------------> Rohith: calling Gemm\n";
+    //std::cout << "-------------> Rohith: calling Gemm\n";
     math::Gemm<T_X, Context, Engine>(
         CblasNoTrans,
         TransposeWeight ? CblasTrans : CblasNoTrans,
