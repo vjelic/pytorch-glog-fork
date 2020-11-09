@@ -542,7 +542,7 @@ CAFFE2_CUDA_EXPORT void Gemm<float, CUDAContext, DefaultEngine, true>(
     const float* C,
     float* D,
     CUDAContext* context) {
-    std::cout << "----------------------> calling rocblas_ext2\n"; 
+    //std::cout << "----------------------> calling rocblas_ext2\n"; 
     //std::cout << "Rohit: In rbext2 - M: " << M << std::endl;
     //std::cout << "Rohit: In rbext2 - N: " << N << std::endl;
     //std::cout << "Rohit: In rbext2 - K: " << K << std::endl;
@@ -572,6 +572,60 @@ CAFFE2_CUDA_EXPORT void Gemm<float, CUDAContext, DefaultEngine, true>(
         0,
         D,
         rocblas_datatype_f32_r,
+        1,
+        N,
+        rocblas_datatype_f32_r,
+        rocblas_gemm_algo_standard,
+        0,
+        0));
+  
+
+}
+
+template<>
+CAFFE2_CUDA_EXPORT void Gemm<at::Half, CUDAContext, DefaultEngine, true>(
+    const CBLAS_TRANSPOSE trans_A,
+    const CBLAS_TRANSPOSE trans_B,
+    const int M,
+    const int N,
+    const int K,
+    const float alpha,
+    const at::Half* A,
+    const at::Half* B,
+    const float beta,
+    const at::Half* C,
+    at::Half* D,
+    CUDAContext* context) {
+    //std::cout << "----------------------> calling rocblas_ext2\n"; 
+    //std::cout << "Rohit: In rbext2 - M: " << M << std::endl;
+    //std::cout << "Rohit: In rbext2 - N: " << N << std::endl;
+    //std::cout << "Rohit: In rbext2 - K: " << K << std::endl;
+    //std::cout << "Rohit: In rbext2 - M: " << M << std::endl;
+    const int row_stride_A = (trans_A == CblasNoTrans) ? 1 : K;
+    const int col_stride_A = (trans_A == CblasNoTrans) ? K : 1;
+    const int row_stride_B = (trans_B == CblasNoTrans) ? 1 : N;
+    const int col_stride_B = (trans_B == CblasNoTrans) ? N : 1;
+    ROCBLAS_ENFORCE(rocblas_gemm_ext2(
+        context->rocblashandle(),
+        N,
+        M,
+        K,
+        &alpha,
+        B,
+        rocblas_datatype_f16_r,
+        row_stride_B,
+        col_stride_B,
+        A,
+        rocblas_datatype_f16_r,
+        row_stride_A,
+        col_stride_A,
+        &beta,
+        C,
+        rocblas_datatype_f16_r,
+        1,
+        0,
+        D,
+        rocblas_datatype_f16_r,
         1,
         N,
         rocblas_datatype_f32_r,
