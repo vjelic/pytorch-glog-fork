@@ -6,6 +6,17 @@ namespace {
 
 void createCublasHandle(cublasHandle_t *handle) {
   TORCH_CUDABLAS_CHECK(cublasCreate(handle));
+#ifdef __HIP_PLATFORM_HCC__
+  auto det_env = std::getenv("PYTORCH_ROCBLAS_DETERMINISTIC");
+  if(det_env)
+  {
+    if(std::stoi(std::string(det_env)) == 1)
+    {
+      std::cout << "Setting rocBLAS atomics OFF" << std::endl;
+      rocblas_set_atomics_mode(*handle,  rocblas_atomics_not_allowed);
+    }
+  }
+#endif
 }
 
 void destroyCublasHandle(cublasHandle_t handle) {
