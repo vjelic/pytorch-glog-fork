@@ -109,6 +109,17 @@ class CAFFE2_CUDA_API ThreadLocalCUDAObjects {
     auto& r = cublas_handles_[cuda_stream];
     if (r == nullptr) {
       CUBLAS_ENFORCE(cublasCreate(&r));
+#ifdef __HIP_PLATFORM_HCC__
+      auto det_env = std::getenv("PYTORCH_ROCBLAS_DETERMINISTIC");
+      if(det_env)
+      {
+        if(std::stoi(std::string(det_env)) == 1)
+        {
+          std::cout << "Setting rocBLAS atomics OFF" << std::endl;
+          rocblas_set_atomics_mode(r,  rocblas_atomics_not_allowed);
+        }
+      }
+#endif
       // The default is CUBLAS_POINTER_MODE_HOST. You can override
       // it after obtaining the cublas handle, but do that with
       // caution.
