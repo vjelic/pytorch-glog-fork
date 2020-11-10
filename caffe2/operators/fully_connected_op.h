@@ -97,7 +97,7 @@ class FullyConnectedOp final : public Operator<Context> {
     //const float alpha = 1;
     //const float beta = 1;
     //auto C = caffe2::empty({N}, at::dtype<T_B>()).device(Context::GetDeviceType());
-    if(FuseBiasAdd) {
+    if(FuseBiasAdd && X.template IsType<float>()) {
     //std::cout << "-------------> Rohith: calling GemmExt2\n";
     //std::cout << "In wrapper - M: " << M << std::endl;
     //std::cout << "In wrapper - N: " << N << std::endl;
