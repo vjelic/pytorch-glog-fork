@@ -80,7 +80,7 @@ class TestFcOperator(serial.SerializedTestCase):
             self.assertGradientChecks(gc, op, [X, W, b], i, [0],
                                       threshold=threshold, stepsize=stepsize)
 
-    @settings(max_examples=50, deadline=20000, suppress_health_check=[HealthCheck.filter_too_much])
+    @settings(max_examples=50, suppress_health_check=[HealthCheck.filter_too_much])
     @serial.given(n=st.integers(1, 5),
            m=st.integers(0, 5),
            k=st.integers(1, 5),
