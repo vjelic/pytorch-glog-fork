@@ -24,6 +24,7 @@ install_ubuntu() {
     DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-unauthenticated \
                    rocm-dev \
                    rocm-utils \
+                   rocm-libs \
                    rocfft \
                    miopen-hip \
                    rocblas \
@@ -70,6 +71,7 @@ install_centos() {
   yum install -y \
                    rocm-dev \
                    rocm-utils \
+                   rocm-libs \
                    rocfft \
                    miopen-hip \
                    rocblas \
