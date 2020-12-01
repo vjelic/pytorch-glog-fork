@@ -21,12 +21,15 @@ if (( $num_gpus == 0 )); then
 fi
 if (( $num_gpus >= 1 )); then
     "$PYTHON" "$caffe2_pypath/python/examples/imagenet_trainer.py" --train_data null --batch_size 128 --epoch_size 12800 --num_epochs 2 --num_gpus 1
-    # Let's skip the fp16 bench runs for now, as it recompiles the miopen kernels and can take 10+min to run. 
+    # Let's skip the fp16 bench runs for now, as it recompiles the miopen kernels and can take 10+min to run.
     # We can resume when we (1) bindmount the miopen cache folder in jenkins; (2) install the pre-compiled miopen kernel library in the docker
     # "$PYTHON" "$caffe2_pypath/python/examples/imagenet_trainer.py" --train_data null --batch_size 256 --epoch_size 25600 --num_epochs 2 --num_gpus 1 --float16_compute --dtype float16
 fi
 if (( $num_gpus >= 4 )); then
     "$PYTHON" "$caffe2_pypath/python/examples/imagenet_trainer.py" --train_data null --batch_size 512 --epoch_size 51200 --num_epochs 2 --num_gpus 4
+fi
+if (( $num_gpus >= 8 )); then
+    "$PYTHON" "$caffe2_pypath/python/examples/imagenet_trainer.py" --train_data null --batch_size 1024 --epoch_size 102400 --num_epochs 2 --num_gpus 8
 fi
 
 # ResNext
@@ -40,6 +43,9 @@ fi
 if (( $num_gpus >= 4 )); then
     "$PYTHON" "$caffe2_pypath/python/examples/imagenet_trainer.py" --resnext_num_groups 32 --resnext_width_per_group 4 --num_layers 101 --train_data null --batch_size 128 --epoch_size 12800 --num_epochs 2 --num_gpus 4
 fi
+if (( $num_gpus >= 8 )); then
+    "$PYTHON" "$caffe2_pypath/python/examples/imagenet_trainer.py" --resnext_num_groups 32 --resnext_width_per_group 4 --num_layers 101 --train_data null --batch_size 256 --epoch_size 25600 --num_epochs 2 --num_gpus 8
+fi
 
 # Shufflenet
 if (( $num_gpus == 0 )); then
@@ -50,4 +56,7 @@ if (( $num_gpus >= 1 )); then
 fi
 if (( $num_gpus >= 4 )); then
     "$PYTHON" "$caffe2_pypath/python/examples/imagenet_trainer.py" --train_data null --batch_size 128 --epoch_size 12800 --num_epochs 2 --num_gpus 4 --model shufflenet
+fi
+if (( $num_gpus >= 8 )); then
+    "$PYTHON" "$caffe2_pypath/python/examples/imagenet_trainer.py" --train_data null --batch_size 256 --epoch_size 25600 --num_epochs 2 --num_gpus 8 --model shufflenet
 fi
