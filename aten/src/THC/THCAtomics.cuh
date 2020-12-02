@@ -313,7 +313,7 @@ static inline __device__ bool __hip_is_shared(const __attribute__((address_space
 #if HIP_VERSION <= 309
 static inline __device__ void atomicAddNoRet_impl(__attribute__((address_space(1))) float*, float) asm("llvm.amdgcn.global.atomic.fadd.p1f32.f32");
 #else
-static inline __device__ float atomicAddNoRet_impl(__attribute__((address_space(1))) float*, float) asm("llvm.amdgcn.global.atomic.fadd.p1f32.f32");
+static inline __device__ float atomicAddNoRet_impl(__attribute__((address_space(1))) float*, float) asm("llvm.amdgcn.global.atomic.fadd.f32.p1f32.f32");
 #endif
 static inline __device__ void gpuAtomicAddNoReturn(float* address, float val) {
     using FP = __attribute__((address_space(0))) float*;
