@@ -284,7 +284,11 @@ NvrtcFunction nvrtcCompile(
   const char* disable_fma = getenv("PYTORCH_CUDA_FUSER_DISABLE_FMA");
   // int disable_fma_flag = disable_fma ? atoi(disable_fma) : 0;
   if (disable_fma && atoi(disable_fma)) {
+#ifdef __HIP_PLATFORM_HCC__
+    args.push_back("-ffp-contract=off");
+#else
     args.push_back("--fmad=false");
+#endif
   }
 
   const char* ptxas_opt_level = getenv("PYTORCH_CUDA_FUSER_JIT_OPT_LEVEL");
