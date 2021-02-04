@@ -252,11 +252,6 @@ def saved_variables(
             'suffix': '_sizes',
             'type': 'IntArrayRef',
         }),
-        # replace self.options() with self_options
-        (r'{}.options\(\)', {
-            'suffix': '_options',
-            'type': 'at::TensorOptions',
-        }),
         # replace zeros_like(self) with self_info
         (r'zeros_like\({}\)', {
             'suffix': '_info',
