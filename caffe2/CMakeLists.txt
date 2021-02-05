@@ -1093,7 +1093,7 @@ if(USE_OPENMP AND OPENMP_FOUND)
 endif()
 
 if($ENV{TH_BINARY_BUILD})
-  if(NOT MSVC AND USE_CUDA AND NOT APPLE)
+  if(NOT MSVC AND NOT APPLE AND (USE_CUDA OR USE_ROCM))
     # Note [Extra MKL symbols for MAGMA in torch_cpu]
     #
     # When we build CUDA libraries and link against MAGMA, MAGMA makes use of
