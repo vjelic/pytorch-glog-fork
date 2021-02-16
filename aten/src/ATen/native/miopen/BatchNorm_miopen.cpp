@@ -62,7 +62,6 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
             running_mean{ running_mean_t, "running_mean", 4 },
             running_var{ running_var_t, "running_var", 5 };
   CheckedFrom c = "miopen_batch_norm";
-  setMIOpenStreamToCurrent();
 
   checkAllDefined(c, {input, weight, bias});
   if (!training) {
@@ -92,7 +91,8 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
   auto output_t = at::empty(input->sizes(), input->options());
   TensorArg output{ output_t, "output", 0 };
 
-  auto handle = getMiopenHandle();
+  auto handle_ = getMiopenHandle();
+  auto handle = handle_.handle();
   auto dataType = getMiopenDataType(*input);
   TensorDescriptor idesc{ *input, 4 };  // input descriptor
   TensorDescriptor wdesc{ expandScale(*weight, input->dim()), 4 };  // descriptor for weight, bias, running_mean, etc.
@@ -151,7 +151,6 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
             save_mean{ save_mean_t, "save_mean", 4 },
             save_var{ save_var_t, "save_var", 5 };
   CheckedFrom c = "miopen_batch_norm_backward";
-  setMIOpenStreamToCurrent();
 
   checkAllDefined(c, {input, grad_output, weight, save_mean, save_var});
   checkAllSameGPU(c, {input, grad_output, weight, save_mean, save_var});
@@ -181,7 +180,8 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
   auto grad_weight_t = at::empty(weight->sizes(), weight->options());
   auto grad_bias_t   = at::empty(weight->sizes(), weight->options());
 
-  auto handle = getMiopenHandle();
+  auto handle_ = getMiopenHandle();
+  auto handle = handle_.handle();
   auto dataType = getMiopenDataType(*input);
 
   TensorDescriptor idesc{ *input, 4 };  // input, output, grad_output descriptor

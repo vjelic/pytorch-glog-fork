@@ -1,8 +1,8 @@
-#include <ATen/miopen/Handle.h>
-
 #include <ATen/miopen/Exceptions.h>
+#include <ATen/miopen/Handle.h>
+#include <c10/hip/HIPStream.h>
 
-#include <unordered_map>
+#include <memory>
 #include <mutex>
 
 namespace at { namespace native {
@@ -22,18 +22,19 @@ struct Handle {
 };
 
 std::mutex mutex;
-std::unordered_map<int, Handle> handles;
 
-}  // namespace
+std::once_flag flag;
 
+std::unique_ptr<Handle> handle;
 
-miopenHandle_t getMiopenHandle()
+};
+
+MIOpenHandle getMiopenHandle()
 {
-  int device;
-  HIP_CHECK(hipGetDevice(&device));
-
-  std::lock_guard<std::mutex> guard(mutex);
-  return handles[device].handle;
+  std::call_once(flag, [](){ handle.reset(new Handle); });
+  std::unique_lock<std::mutex> lock(mutex);
+  MIOPEN_CHECK(miopenSetStream(handle->handle, at::hip::getCurrentHIPStream()));
+  return MIOpenHandle(std::move(lock), handle->handle);
 }
 
 }} // namespace at::native

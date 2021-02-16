@@ -472,7 +472,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor> miopen_rnn(
     }
 
     auto y = output;
-    auto handle = getMiopenHandle();
+    auto handle_ = getMiopenHandle();
+    auto handle = handle_.handle();
     miopenRNNAlgo_t algo = miopenRNNdefault;
     fn.rnn.set_algo(algo);
 
@@ -509,7 +510,6 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor> miopen_rnn(
         size_t reserver_size;
         MIOPEN_CHECK(miopenGetRNNTrainingReserveSize(handle, descs.rnn_desc.desc(), fn.tensors.seq_length, x_descs_arr.data(), &reserver_size));
         reserve = at::empty(reserver_size, input.options().dtype(kByte));
-        setMIOpenStreamToCurrent();
         MIOPEN_CHECK(miopenRNNForwardTraining(handle, descs.rnn_desc.desc(), fn.tensors.seq_length,
                 x_descs_arr.data(), x.data_ptr(),
                 descs.hx_desc.desc(), hx.data_ptr(),
@@ -521,7 +521,6 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor> miopen_rnn(
                 workspace.data_ptr(), workspace_size, reserve.data_ptr(), reserver_size ));
     } else { //Inference.
         reserve = at::empty({0}, input.options().dtype(kByte));
-        setMIOpenStreamToCurrent();
         MIOPEN_CHECK(miopenRNNForwardInference(handle, descs.rnn_desc.desc(), fn.tensors.seq_length,
                 x_descs_arr.data(), x.data_ptr(),
                 descs.hx_desc.desc(), hx.data_ptr(),
@@ -560,7 +559,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor> miopen_rnn_backward_input(
     fn.rnn.set(fn_mode, fn_hidden_size, fn_num_layers, fn_bidirectional, datatype, miopenRNNwithBias);
     fn.tensors.set(input.sizes(), fn_batch_sizes, batch_first);
 
-    auto handle = getMiopenHandle();
+    auto handle_ = getMiopenHandle();
+    auto handle = handle_.handle();
 
     if(fn.rnn.rnn_mode != miopenLSTM) {
         TORCH_CHECK(!cx.defined(), "rnn: illegal defined cx for non-LSTM RNN");
@@ -630,7 +630,6 @@ std::tuple<Tensor, Tensor, Tensor, Tensor> miopen_rnn_backward_input(
         ));
     auto workspace = at::empty(workspace_size, input.options().dtype(kByte));
 
-    setMIOpenStreamToCurrent();
     MIOPEN_CHECK(miopenRNNBackwardData(
         handle,
         descs.rnn_desc.desc(),
@@ -676,7 +675,8 @@ std::vector<Tensor> miopen_rnn_backward_weight(
     fn.rnn.set(fn_mode, fn_hidden_size, fn_num_layers, fn_bidirectional, datatype, bias_mode);
     fn.tensors.set(input.sizes(), fn_batch_sizes, batch_first);
 
-    auto handle = getMiopenHandle();
+    auto handle_ = getMiopenHandle();
+    auto handle = handle_.handle();
 
     if (fn.rnn.rnn_mode != miopenLSTM) {
         TORCH_CHECK(!cx.defined(), "rnn: illegal defined cx for non-LSTM RNN");
@@ -715,7 +715,6 @@ std::vector<Tensor> miopen_rnn_backward_weight(
     auto x_descs_arr = descs.get_x_descs();
     auto y_descs_arr = descs.get_y_descs();
 
-    setMIOpenStreamToCurrent();
     MIOPEN_CHECK(miopenRNNBackwardWeights(
         handle,
         descs.rnn_desc.desc(),

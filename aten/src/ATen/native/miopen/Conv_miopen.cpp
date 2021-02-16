@@ -527,7 +527,8 @@ void miopen_convolution_add_bias_(CheckedFrom c, const TensorArg& output, const 
   bdesc.set(bias->expand({1, bias->size(0)}), output->dim());
   odesc.set(*output);
 
-  auto handle = getMiopenHandle();
+  auto handle_ = getMiopenHandle();
+  auto handle = handle_.handle();
   auto dataType = getMiopenDataType(*bias);
   Constant one(dataType, 1);
   Constant zero(dataType, 0);
@@ -563,7 +564,8 @@ void raw_miopen_convolution_forward_out(
   miopenConvolutionMode_t c_mode = miopenConvolution;
 
   ConvolutionArgs args{ input, output, weight };
-  args.handle = getMiopenHandle();
+  auto handle_ = getMiopenHandle();
+  args.handle = handle_.handle();
   setConvolutionParams(&args.params, args.handle, input, weight, padding, stride, dilation, groups, deterministic);
   args.idesc.set(input);
   args.wdesc.set(weight);
@@ -624,7 +626,6 @@ Tensor miopen_convolution(
   TensorArg input  { input_t,  "input",  1 },
             weight { weight_t, "weight", 2 },
             bias   { bias_t,   "bias",   3 };
-  setMIOpenStreamToCurrent();
   CheckedFrom c = "miopen_convolution";
   auto output_t = miopen_convolution_forward(
     c, input, weight, padding, stride, dilation, groups, benchmark, deterministic);
@@ -644,7 +645,8 @@ void raw_miopen_depthwise_convolution_forward_out(
   miopenConvolutionMode_t c_mode = miopenDepthwise;
 
   ConvolutionArgs args{ input, output, weight };
-  args.handle = getMiopenHandle();
+  auto handle_ = getMiopenHandle();
+  args.handle = handle_.handle();
   setConvolutionParams(&args.params, args.handle, input, weight, padding, stride, dilation, groups, deterministic);
   args.idesc.set(input);
   args.wdesc.set(weight);
@@ -699,7 +701,6 @@ Tensor miopen_depthwise_convolution(
   TensorArg input  { input_t,  "input",  1 },
             weight { weight_t, "weight", 2 },
             bias   { bias_t,   "bias",   3 };
-  setMIOpenStreamToCurrent();
   CheckedFrom c = "miopen_depthwise_convolution";
   auto output_t = miopen_depthwise_convolution_forward(
     c, input, weight, padding, stride, dilation, groups, benchmark, deterministic);
@@ -716,7 +717,6 @@ Tensor miopen_convolution_transpose_backward_input(
 {
   TensorArg grad_output { grad_output_t,  "grad_output", 1 },
             weight      { weight_t, "weight", 2 };
-  setMIOpenStreamToCurrent();
   return miopen_convolution_forward(
     "miopen_convolution_transpose_backward_input",
     grad_output, weight, padding, stride, dilation, groups, benchmark, deterministic);
@@ -760,7 +760,8 @@ void raw_miopen_convolution_backward_input_out(
   miopenConvolutionMode_t c_mode = miopenConvolution;
 
   ConvolutionArgs args{ grad_input, grad_output, weight };
-  args.handle = getMiopenHandle();
+  auto handle_ = getMiopenHandle();
+  args.handle = handle_.handle();
   setConvolutionParams(&args.params, args.handle, grad_input, weight, padding, stride, dilation, groups, deterministic);
   args.idesc.set(grad_input);
   args.wdesc.set(weight);
@@ -827,7 +828,6 @@ Tensor miopen_convolution_backward_input(
 {
   TensorArg grad_output{ grad_output_t, "grad_output", 1 },
             weight{ weight_t, "weight", 2 };
-  setMIOpenStreamToCurrent();
   return miopen_convolution_backward_input(
       "miopen_convolution_backward_input",
       input_size, grad_output, weight,
@@ -846,7 +846,8 @@ void raw_miopen_depthwise_convolution_backward_input_out(
   miopenConvolutionMode_t c_mode = miopenDepthwise;
 
   ConvolutionArgs args{ grad_input, grad_output, weight };
-  args.handle = getMiopenHandle();
+  auto handle_ = getMiopenHandle();
+  args.handle = handle_.handle();
   setConvolutionParams(&args.params, args.handle, grad_input, weight, padding, stride, dilation, groups, deterministic);
   args.idesc.set(grad_input);
   args.wdesc.set(weight);
@@ -897,7 +898,6 @@ Tensor miopen_depthwise_convolution_backward_input(
 {
   TensorArg grad_output{ grad_output_t, "grad_output", 1 },
             weight{ weight_t, "weight", 2 };
-  setMIOpenStreamToCurrent();
   return miopen_depthwise_convolution_backward_input(
       "miopen_depthwise_convolution_backward_input",
       input_size, grad_output, weight,
@@ -978,7 +978,8 @@ void raw_miopen_convolution_backward_weight_out(
   miopenConvolutionMode_t c_mode = miopenConvolution;
 
   ConvolutionArgs args{ input, grad_output, grad_weight };
-  args.handle = getMiopenHandle();
+  auto handle_ = getMiopenHandle();
+  args.handle = handle_.handle();
   setConvolutionParams(&args.params, args.handle, input, grad_weight, padding, stride, dilation, groups, deterministic);
   args.idesc.set(input);
   args.wdesc.set(grad_weight);
@@ -1033,7 +1034,8 @@ void raw_miopen_depthwise_convolution_backward_weight_out(
   miopenConvolutionMode_t c_mode = miopenDepthwise;
 
   ConvolutionArgs args{ input, grad_output, grad_weight };
-  args.handle = getMiopenHandle();
+  auto handle_ = getMiopenHandle();
+  args.handle = handle_.handle();
   setConvolutionParams(&args.params, args.handle, input, grad_weight, padding, stride, dilation, groups, deterministic);
   args.idesc.set(input);
   args.wdesc.set(grad_weight);
@@ -1087,7 +1089,6 @@ Tensor miopen_convolution_backward_weight(
 {
   TensorArg grad_output{ grad_output_t, "grad_output", 1 },
             input{ input_t, "input", 2 };
-  setMIOpenStreamToCurrent();
   return miopen_convolution_backward_weight(
       "miopen_convolution_backward_weight",
       weight_size, grad_output, input,
@@ -1103,7 +1104,6 @@ Tensor miopen_convolution_transpose_backward_weight(
 {
   TensorArg grad_output{ grad_output_t, "grad_output", 1 },
             input{ input_t, "input", 2 };
-  setMIOpenStreamToCurrent();
   return miopen_convolution_backward_weight(
       "miopen_convolution_backward_weight",
       weight_size, input, grad_output,
@@ -1119,7 +1119,6 @@ Tensor miopen_depthwise_convolution_backward_weight(
 {
   TensorArg grad_output{ grad_output_t, "grad_output", 1 },
             input{ input_t, "input", 2 };
-  setMIOpenStreamToCurrent();
   return miopen_depthwise_convolution_backward_weight(
       "miopen_depthwise_convolution_backward_weight",
       weight_size, grad_output, input,
@@ -1136,7 +1135,6 @@ Tensor miopen_convolution_backward_bias(
     const Tensor& grad_output_t)
 {
   TensorArg grad_output{ grad_output_t, "grad_output", 1 };
-  setMIOpenStreamToCurrent();
 
   auto grad_bias_t = at::empty( { grad_output->size(output_channels_dim) }, grad_output->options());
 
@@ -1146,7 +1144,8 @@ Tensor miopen_convolution_backward_bias(
                          static_cast<size_t>(grad_output->dim())};
   TensorDescriptor odesc{*grad_output};
 
-  auto handle = getMiopenHandle();
+  auto handle_ = getMiopenHandle();
+  auto handle = handle_.handle();
   auto dataType = getMiopenDataType(*grad_bias);
   Constant one(dataType, 1);
   Constant zero(dataType, 0);
