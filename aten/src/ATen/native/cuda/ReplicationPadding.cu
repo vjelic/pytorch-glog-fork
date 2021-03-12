@@ -69,7 +69,7 @@ __global__ void replication_pad_backward_kernel(
   int inputPointX = imin(imax(padL, outputPointX), gradInput.size(2) + padL - 1) - oStartX + iStartX;
 
   scalar_t valueToCopy = gradOutput[batch][plane][outputPointX];
-  gpuAtomicAdd(&gradInput[batch][plane][inputPointX], valueToCopy);
+  gpuAtomicAddNoReturn(&gradInput[batch][plane][inputPointX], valueToCopy);
 }
 
 template <typename scalar_t>
@@ -123,7 +123,7 @@ __global__ void replication_pad_backward_kernel(
   int inputPointY = imin(imax(padT, outputPointY), gradInput.size(2) + padT - 1) - oStartY + iStartY;
 
   scalar_t valueToCopy = gradOutput[batch][plane][outputPointY][outputPointX];
-  gpuAtomicAdd(&gradInput[batch][plane][inputPointY][inputPointX], valueToCopy);
+  gpuAtomicAddNoReturn(&gradInput[batch][plane][inputPointY][inputPointX], valueToCopy);
 }
 
 template <typename scalar_t>
@@ -197,7 +197,7 @@ __global__ void replication_pad_backward_kernel(
 
   scalar_t valueToCopy =
     gradOutput[batch][plane][outputPointZ][outputPointY][outputPointX];
-  gpuAtomicAdd(&gradInput[batch][plane][inputPointZ][inputPointY][inputPointX],
+  gpuAtomicAddNoReturn(&gradInput[batch][plane][inputPointZ][inputPointY][inputPointX],
       valueToCopy);
 }
 
@@ -786,7 +786,7 @@ Tensor& replication_pad1d_backward_out_cuda(
     IntArrayRef paddingSize)
 {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("replication_pad1d_backward_out_cuda");
   replication_pad1d_backward_out_cuda_template(
       gradInput, gradOutput, input, paddingSize);
@@ -799,7 +799,7 @@ Tensor replication_pad1d_backward_cuda(
     IntArrayRef paddingSize)
 {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("replication_pad1d_backward_cuda");
   auto gradInput = at::empty_like(input, LEGACY_CONTIGUOUS_MEMORY_FORMAT);
   replication_pad1d_backward_out_cuda_template(
@@ -834,7 +834,7 @@ Tensor& replication_pad2d_backward_out_cuda(
     IntArrayRef paddingSize)
 {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("replication_pad2d_backward_out_cuda");
   replication_pad2d_backward_out_cuda_template(
       gradInput, gradOutput, input, paddingSize);
@@ -847,7 +847,7 @@ Tensor replication_pad2d_backward_cuda(
     IntArrayRef paddingSize)
 {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("replication_pad2d_backward_cuda");
   auto gradInput = at::empty_like(input, LEGACY_CONTIGUOUS_MEMORY_FORMAT);
   replication_pad2d_backward_out_cuda_template(
@@ -882,7 +882,7 @@ Tensor& replication_pad3d_backward_out_cuda(
     IntArrayRef paddingSize)
 {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("replication_pad3d_backward_out_cuda");
   replication_pad3d_backward_out_cuda_template(
       gradInput, gradOutput, input, paddingSize);
@@ -895,7 +895,7 @@ Tensor replication_pad3d_backward_cuda(
     IntArrayRef paddingSize)
 {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("replication_pad3d_backward_cuda");
   auto gradInput = at::empty_like(input, LEGACY_CONTIGUOUS_MEMORY_FORMAT);
   replication_pad3d_backward_out_cuda_template(

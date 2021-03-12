@@ -141,7 +141,7 @@ __global__ static void max_pool3d_with_indices_backward_single_out_frame(
   {
     int maxIndex = indices[slice][oFrame][oRow][oColumn];
     if (maxIndex != -1) {
-      gpuAtomicAdd(&gradInputData[slice * itime * iheight * iwidth + maxIndex],
+      gpuAtomicAddNoReturn(&gradInputData[slice * itime * iheight * iwidth + maxIndex],
                 gradOutput[slice][oFrame][oRow][oColumn]);
     }
   }
@@ -463,7 +463,7 @@ Tensor& max_pool3d_with_indices_backward_out_cuda(
   const Tensor& indices)
 {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("max_pool3d_with_indices_backward_out_cuda");
   max_pool3d_with_indices_backward_out_cuda_template(
     gradInput,
@@ -489,7 +489,7 @@ Tensor max_pool3d_with_indices_backward_cuda(
   const Tensor& indices)
 {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("max_pool3d_with_indices_backward_cuda");
   auto gradInput = at::zeros_like(input, LEGACY_CONTIGUOUS_MEMORY_FORMAT);
   max_pool3d_with_indices_backward_out_cuda_template(

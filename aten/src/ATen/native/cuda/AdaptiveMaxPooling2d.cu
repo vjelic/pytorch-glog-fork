@@ -185,7 +185,7 @@ __global__ void atomicadaptivemaxgradinput(
       int argmax = (*ptr_ind);
 
       // atomic add since different threads could update same variable
-      gpuAtomicAdd(&(gradInput[argmax]), z);
+      gpuAtomicAddNoReturn(&(gradInput[argmax]), z);
     }
   }
 }
@@ -444,7 +444,7 @@ Tensor& adaptive_max_pool2d_backward_out_cuda(
   const Tensor& indices)
 {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("adaptive_max_pool2d_backward_out_cuda");
   adaptive_max_pool2d_backward_out_cuda_template(
     gradInput,
@@ -460,7 +460,7 @@ Tensor adaptive_max_pool2d_backward_cuda(
   const Tensor& indices)
 {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("adaptive_max_pool2d_backward_cuda");
   auto gradInput = at::zeros_like(input, LEGACY_CONTIGUOUS_MEMORY_FORMAT);
   adaptive_max_pool2d_backward_out_cuda_template(

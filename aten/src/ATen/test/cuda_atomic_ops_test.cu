@@ -12,7 +12,7 @@ __global__ void addition_test_kernel(T * a, T * sum) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int idx = (tid) % arraysize;
 
-  gpuAtomicAdd(&sum[idx], a[idx]);
+  gpuAtomicAddNoReturn(&sum[idx], a[idx]);
 }
 
 template <typename T>

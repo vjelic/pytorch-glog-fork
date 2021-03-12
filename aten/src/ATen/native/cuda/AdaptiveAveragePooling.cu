@@ -200,7 +200,7 @@ namespace {
         for(ih = 0; ih < kH; ++ih) {
           for(iw = 0; iw < kW; ++iw) {
             // atomic add since different threads could update same variable
-            gpuAtomicAdd(&(ptr_gradInput[iw]), grad_delta);
+            gpuAtomicAddNoReturn(&(ptr_gradInput[iw]), grad_delta);
           }
           ptr_gradInput += isizeW; // next input line
         }
@@ -753,7 +753,7 @@ namespace {
     const Tensor& input)
   {
     // See Note [Writing Nondeterministic Operations]
-    // Nondeterministic because of atomicAdd usage
+    // Nondeterministic because of atomicAddNoReturn usage
     globalContext().alertNotDeterministic("adaptive_avg_pool2d_backward_out_cuda");
     gradInput.resize_as_(input);
     adaptive_avg_pool2d_backward_out_cuda_template(
@@ -766,7 +766,7 @@ namespace {
     const Tensor& input)
   {
     // See Note [Writing Nondeterministic Operations]
-    // Nondeterministic because of atomicAdd usage
+    // Nondeterministic because of atomicAddNoReturn usage
     globalContext().alertNotDeterministic("adaptive_avg_pool2d_backward_cuda");
     auto gradInput = at::zeros_like(input, LEGACY_CONTIGUOUS_MEMORY_FORMAT);
     adaptive_avg_pool2d_backward_out_cuda_template(

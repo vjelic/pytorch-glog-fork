@@ -114,7 +114,7 @@ __global__ void fractional_max_pool2d_backward_out_cuda_frame(
     int inputH = index / gradInput.size(3);
     assert(inputH < gradInput.size(2));
 
-    gpuAtomicAdd(
+    gpuAtomicAddNoReturn(
       &gradInput[batch][plane][inputH][inputW],
       gradOutput[batch][plane][outputH][outputW]
     );
@@ -324,7 +324,7 @@ Tensor& fractional_max_pool2d_backward_out_cuda(
   const at::Tensor& indices)
 {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("fractional_max_pool2d_backward_out_cuda");
   fractional_max_pool2d_backward_out_cuda_template(
     gradInput,
@@ -344,7 +344,7 @@ Tensor fractional_max_pool2d_backward_cuda(
   const at::Tensor& indices)
 {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("fractional_max_pool2d_backward_cuda");
   Tensor gradInput = at::empty({0}, input.options());
   fractional_max_pool2d_backward_out_cuda_template(
