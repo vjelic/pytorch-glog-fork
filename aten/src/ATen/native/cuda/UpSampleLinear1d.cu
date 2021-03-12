@@ -104,8 +104,8 @@ __global__ void upsample_linear1d_out_frame_backward(
     for (int n = 0; n < batchsize; n++) {
       for (int c = 0; c < channels; ++c) {
         const scalar_t d2val = odata[n][c][w2];
-        gpuAtomicAdd(&idata[n][c][w1], static_cast<scalar_t>(w0lambda * d2val));
-        gpuAtomicAdd(
+        gpuAtomicAddNoReturn(&idata[n][c][w1], static_cast<scalar_t>(w0lambda * d2val));
+        gpuAtomicAddNoReturn(
             &idata[n][c][w1 + w1p], static_cast<scalar_t>(w1lambda * d2val));
       }
     }
@@ -256,7 +256,7 @@ Tensor& upsample_linear1d_backward_out_cuda(
     bool align_corners,
     c10::optional<double> scales) {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("upsample_linear1d_backward_out_cuda");
   upsample_linear1d_backward_out_cuda_template(
       grad_input, grad_output, output_size, input_size, align_corners, scales);
@@ -270,7 +270,7 @@ Tensor upsample_linear1d_backward_cuda(
     bool align_corners,
     c10::optional<double> scales) {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("upsample_linear1d_backward_cuda");
   Tensor grad_input = at::empty_like(grad_output, LEGACY_CONTIGUOUS_MEMORY_FORMAT);
   upsample_linear1d_backward_out_cuda_template(
@@ -300,7 +300,7 @@ Tensor upsample_linear1d_backward_cuda(
     bool align_corners,
     c10::optional<ArrayRef<double>> scale_factors) {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("upsample_linear1d_backward_cuda");
   auto osize = compute_output_size(input_size, output_size, scale_factors);
   auto scale_w = get_scale_value(scale_factors, 0);

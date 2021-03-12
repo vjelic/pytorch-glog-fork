@@ -211,7 +211,7 @@ __global__ void EmbeddingBag_accGradParametersKernel_max(
       index_t word_idx = max_indices[bag * stride + featureDim];
       if (word_idx >= 0) {
         // If bag is empty, we have max_indices[idx] set to -1 in forward.
-        gpuAtomicAdd(&(gradWeight[word_idx * stride + featureDim]),
+        gpuAtomicAddNoReturn(&(gradWeight[word_idx * stride + featureDim]),
                 gradOutput[bag * stride + featureDim]);
       }
     }
@@ -350,7 +350,7 @@ Tensor _embedding_bag_dense_backward_cuda(const Tensor &grad_, const Tensor &ind
                                    bool scale_grad_by_freq, int64_t mode,
                                    const Tensor& per_sample_weights) {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("_embedding_bag_dense_backward_cuda");
 
   // indices, offsets and offset2bag are assumed having correct dtypes and

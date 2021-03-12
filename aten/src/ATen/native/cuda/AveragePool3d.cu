@@ -253,7 +253,7 @@ __global__ void avg_pool3d_cuda_update_grad_input_atomic(
       {
         for (int iCol = wstart; iCol < wend; ++iCol)
         {
-          gpuAtomicAdd(&gradInput[slice][iFrame][iRow][iCol], val);
+          gpuAtomicAddNoReturn(&gradInput[slice][iFrame][iRow][iCol], val);
         }
       }
     }
@@ -551,7 +551,7 @@ void avg_pool3d_backward_out_cuda_template(
 
 
   // Optimizing for stride 1 is probably only of limited value, but this
-  // specialization yields 3x speedup over the gpuAtomicAdd implementation.
+  // specialization yields 3x speedup over the gpuAtomicAddNoReturn implementation.
   // Padding must be 0, otherwise, pool size may change.
   if (dT == 1 && dH == 1 && dW == 1 && padT == 0 && padH == 0 && padW == 0) {
     AT_DISPATCH_FLOATING_TYPES_AND2(kHalf, kBFloat16, input.scalar_type(),
@@ -694,7 +694,7 @@ Tensor& avg_pool3d_backward_out_cuda(
   c10::optional<int64_t> divisor_override)
 {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("avg_pool3d_backward_out_cuda");
   avg_pool3d_backward_out_cuda_template(
     gradInput,
@@ -720,7 +720,7 @@ Tensor avg_pool3d_backward_cuda(
   c10::optional<int64_t> divisor_override)
 {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("avg_pool3d_backward_cuda");
   auto gradInput = at::zeros_like(input, LEGACY_CONTIGUOUS_MEMORY_FORMAT);
   avg_pool3d_backward_out_cuda_template(

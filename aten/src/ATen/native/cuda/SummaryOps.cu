@@ -75,7 +75,7 @@ __global__ void kernelHistogram1D(
       if (bVal >= minvalue && bVal <= maxvalue) {
         // Use value at `b` as an offset of `smem`
         const IndexType bin = getBin<input_t, IndexType>(bVal, minvalue, maxvalue, nbins);
-        gpuAtomicAdd(&smem[bin], getOp(linearIndex));
+        gpuAtomicAddNoReturn(&smem[bin], getOp(linearIndex));
       }
     }
     __syncthreads();
@@ -85,7 +85,7 @@ __global__ void kernelHistogram1D(
     for (IndexType i = threadIdx.x; i < a.sizes[0]; i += blockDim.x) {
       const IndexType aOffset =
           detail::IndexToOffset<output_t, IndexType, ADims>::get(i, a);
-      gpuAtomicAdd(&a.data[aOffset], smem[i]);
+      gpuAtomicAddNoReturn(&a.data[aOffset], smem[i]);
     }
 
   } else if (MemoryType == CUDAHistogramMemoryType::MULTI_BLOCK) {
@@ -104,7 +104,7 @@ __global__ void kernelHistogram1D(
         const IndexType pIdx = p.strides[0] * blockIdx.x + bin;
         const IndexType pOffset =
             detail::IndexToOffset<output_t, IndexType, PDims>::get(pIdx, p);
-        gpuAtomicAdd(&p.data[pOffset], getOp(linearIndex));
+        gpuAtomicAddNoReturn(&p.data[pOffset], getOp(linearIndex));
       }
     }
     __syncthreads();
@@ -117,7 +117,7 @@ __global__ void kernelHistogram1D(
     for (IndexType i = threadIdx.x; i < a.sizes[0]; i += blockDim.x) {
       const IndexType aOffset =
           detail::IndexToOffset<output_t, IndexType, ADims>::get(i, a);
-      gpuAtomicAdd(&a.data[aOffset], p.data[pOffset + i]);
+      gpuAtomicAddNoReturn(&a.data[aOffset], p.data[pOffset + i]);
     }
 
   } else {
@@ -134,7 +134,7 @@ __global__ void kernelHistogram1D(
         const IndexType bin = getBin<input_t, IndexType>(bVal, minvalue, maxvalue, nbins);
         const IndexType aOffset =
             detail::IndexToOffset<output_t, IndexType, ADims>::get(bin, a);
-        gpuAtomicAdd(&a.data[aOffset], getOp(linearIndex));
+        gpuAtomicAddNoReturn(&a.data[aOffset], getOp(linearIndex));
       }
     }
   }
@@ -365,7 +365,7 @@ Tensor _bincount_cuda(
     const Tensor& weights,
     int64_t minlength) {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("_bincount_cuda");
   return AT_DISPATCH_INTEGRAL_TYPES(self.scalar_type(), "bincount_cuda", [&] {
     const auto scalar = weights.scalar_type();
@@ -385,7 +385,7 @@ Tensor _histc_cuda(
     AT_ERROR("HalfTensor is not supported");
   }
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("_histc_cuda");
   return AT_DISPATCH_ALL_TYPES(self.scalar_type(), "histc", [&] {
     return _histc_cuda_template<scalar_t>(self, nbins, min.to<scalar_t>(), max.to<scalar_t>());

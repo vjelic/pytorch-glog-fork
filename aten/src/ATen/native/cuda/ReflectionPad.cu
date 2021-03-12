@@ -4,7 +4,7 @@
 #include <ATen/NativeFunctions.h>
 #include <ATen/TensorUtils.h>
 #include <ATen/Utils.h>
-// keeping THC headers for gpuAtomicAdd
+// keeping THC headers for gpuAtomicAddNoReturn
 #include <THC/THCAtomics.cuh>
 
 #include <thrust/pair.h>
@@ -101,7 +101,7 @@ __global__ void reflection_pad1d_backward_out_kernel(
 
   if (output_x < output_w) {
     auto index_pair = get_index_mapping1d(input_w, output_w, output_x, pad_l);
-    gpuAtomicAdd(
+    gpuAtomicAddNoReturn(
       &grad_input[index_pair.first], grad_output[index_pair.second]);
   }
 }
@@ -142,7 +142,7 @@ __global__ void reflection_pad2d_backward_out_kernel(
       pad_l, pad_t,
       output_xy);
 
-    gpuAtomicAdd(&grad_input[index_pair.first], grad_output[index_pair.second]);
+    gpuAtomicAddNoReturn(&grad_input[index_pair.first], grad_output[index_pair.second]);
   }
 }
 
@@ -415,7 +415,7 @@ Tensor& reflection_pad1d_backward_out_cuda(
     const Tensor& input,
     IntArrayRef padding) {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("reflection_pad1d_backward_out_cuda");
   grad_input.resize_as_(input);
   grad_input.zero_();
@@ -429,7 +429,7 @@ Tensor reflection_pad1d_backward_cuda(
     const Tensor& input,
     IntArrayRef padding) {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("reflection_pad1d_backward_cuda");
   auto grad_input = at::zeros_like(input, LEGACY_CONTIGUOUS_MEMORY_FORMAT);
   reflection_pad1d_backward_out_template(
@@ -454,7 +454,7 @@ Tensor& reflection_pad2d_backward_out_cuda(
     const Tensor& input,
     IntArrayRef padding) {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("reflection_pad2d_backward_out_cuda");
   grad_input.resize_as_(input);
   grad_input.zero_();
@@ -468,7 +468,7 @@ Tensor reflection_pad2d_backward_cuda(
     const Tensor& input,
     IntArrayRef padding) {
   // See Note [Writing Nondeterministic Operations]
-  // Nondeterministic because of atomicAdd usage
+  // Nondeterministic because of atomicAddNoReturn usage
   globalContext().alertNotDeterministic("reflection_pad2d_backward_cuda");
   auto grad_input = at::zeros_like(input, LEGACY_CONTIGUOUS_MEMORY_FORMAT);
   reflection_pad2d_backward_out_template(
