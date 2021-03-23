@@ -40,6 +40,13 @@ if(USE_CUDA)
   target_compile_definitions(test_cpp_rpc PRIVATE "USE_CUDA")
 endif()
 
+if(USE_ROCM)
+  target_link_libraries(test_cpp_rpc PRIVATE
+    ${ROCM_LIBRARIES})
+
+  target_compile_definitions(test_cpp_rpc PRIVATE "USE_ROCM")
+endif()
+
 if(INSTALL_TEST)
   install(TARGETS test_cpp_rpc DESTINATION bin)
   # Install PDB files for MSVC builds

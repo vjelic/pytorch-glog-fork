@@ -19,6 +19,13 @@ if(USE_DISTRIBUTED AND NOT WIN32)
     target_compile_definitions(test_dist_autograd PRIVATE "USE_CUDA")
   endif()
 
+  if(USE_ROCM)
+    target_link_libraries(test_dist_autograd PRIVATE
+      ${ROCM_LIBRARIES})
+
+    target_compile_definitions(test_dist_autograd PRIVATE "USE_ROCM")
+  endif()
+
   if(INSTALL_TEST)
     install(TARGETS test_dist_autograd DESTINATION bin)
     # Install PDB files for MSVC builds

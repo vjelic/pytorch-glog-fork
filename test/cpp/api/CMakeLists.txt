@@ -38,7 +38,7 @@ set(TORCH_API_TEST_SOURCES
   ${TORCH_API_TEST_DIR}/torch_include.cpp
 )
 
-if(USE_CUDA)
+if(USE_CUDA OR USE_ROCM)
   list(APPEND TORCH_API_TEST_SOURCES ${TORCH_API_TEST_DIR}/parallel.cpp)
 endif()
 
@@ -54,6 +54,13 @@ if(USE_CUDA)
     ${TORCH_CUDA_LIBRARIES})
 
   target_compile_definitions(test_api PRIVATE "USE_CUDA")
+endif()
+
+if(USE_ROCM)
+  target_link_libraries(test_api PRIVATE
+    ${ROCM_LIBRARIES})
+
+  target_compile_definitions(test_api PRIVATE "USE_ROCM")
 endif()
 
 if(NOT MSVC)

@@ -62,7 +62,7 @@ set(JIT_TEST_SRCS
   ${JIT_TEST_ROOT}/test_utils.cpp
 )
 
-if(USE_CUDA)
+if(USE_CUDA OR USE_ROCM)
   list(APPEND JIT_TEST_SRCS ${JIT_TEST_ROOT}/test_gpu.cpp)
 endif()
 
@@ -102,9 +102,7 @@ if(USE_CUDA)
   target_compile_definitions(test_jit PRIVATE USE_CUDA)
 elseif(USE_ROCM)
   target_link_libraries(test_jit PRIVATE
-    ${ROCM_HIPRTC_LIB}
-    ${PYTORCH_HIP_HCC_LIBRARIES}
-    ${TORCH_CUDA_LIBRARIES})
+    ${ROCM_LIBRARIES})
 
   target_compile_definitions(test_jit PRIVATE USE_ROCM)
 endif()

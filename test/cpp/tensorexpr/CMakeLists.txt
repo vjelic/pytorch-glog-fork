@@ -21,7 +21,7 @@ set(TENSOREXPR_TEST_SRCS
   ${TENSOREXPR_TEST_ROOT}/test_type.cpp
 )
 
-if(USE_CUDA)
+if(USE_CUDA OR USE_ROCM)
   list(APPEND TENSOREXPR_TEST_SRCS ${TENSOREXPR_TEST_ROOT}/test_cuda.cpp)
 endif()
 
@@ -56,17 +56,15 @@ if(USE_CUDA)
     ${CUDA_CUDA_LIB}
     ${TORCH_CUDA_LIBRARIES})
   target_compile_definitions(tutorial_tensorexpr PRIVATE USE_CUDA)
-elseif(USE_ROCM)
+endif()
+
+if(USE_ROCM)
   target_link_libraries(test_tensorexpr PRIVATE
-    ${ROCM_HIPRTC_LIB}
-    ${PYTORCH_HIP_HCC_LIBRARIES}
-    ${TORCH_CUDA_LIBRARIES})
+    ${ROCM_LIBRARIES})
   target_compile_definitions(test_tensorexpr PRIVATE USE_ROCM)
 
   target_link_libraries(tutorial_tensorexpr PRIVATE
-    ${ROCM_HIPRTC_LIB}
-    ${PYTORCH_HIP_HCC_LIBRARIES}
-    ${TORCH_CUDA_LIBRARIES})
+    ${ROCM_LIBRARIES})
   target_compile_definitions(tutorial_tensorexpr PRIVATE USE_ROCM)
 endif()
 

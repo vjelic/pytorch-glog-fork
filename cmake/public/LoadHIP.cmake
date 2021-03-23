@@ -85,6 +85,8 @@ if(HIP_FOUND)
   find_package_and_print_version(hipcub REQUIRED)
   find_package_and_print_version(rocthrust REQUIRED)
 
+  set(ROCM_LIBRARIES ${hip_LIBRARIES})
+
   #if(HIP_COMPILER STREQUAL clang)
   #  set(hip_library_name amdhip64)
   #else()
