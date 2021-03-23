@@ -12,19 +12,18 @@ else()
   set(PYTORCH_ROCM_ARCH $ENV{PYTORCH_ROCM_ARCH})
 endif()
 
-# Add HIP to the CMake prefix path, for find_package later
-list(APPEND CMAKE_PREFIX_PATH "${ROCM_PATH}")
+# Find the HIP Module, specifically FindHIP.cmake, that contains CMake macros HIP_ADD_LIBRARY, etc.
+# This is different from find(hip) later that looks for hip-config.cmake
+list(APPEND CMAKE_MODULE_PATH "${ROCM_PATH}/hip/cmake")
+find_package(HIP MODULE)
 
-macro(find_package_and_print_version PACKAGE_NAME)
-  find_package("${PACKAGE_NAME}" ${ARGN})
-  message("${PACKAGE_NAME} VERSION: ${${PACKAGE_NAME}_VERSION}")
-endmacro()
-
-# Find the HIP Package
-find_package_and_print_version(hip)
-
-if(hip_FOUND)
+if(HIP_FOUND)
   set(PYTORCH_FOUND_HIP TRUE)
+
+  macro(find_package_and_print_version PACKAGE_NAME)
+    find_package("${PACKAGE_NAME}" ${ARGN})
+    message("${PACKAGE_NAME} VERSION: ${${PACKAGE_NAME}_VERSION}")
+  endmacro()
 
   # Find ROCM version for checks
   file(READ "${ROCM_PATH}/.info/version-dev" ROCM_VERSION_DEV_RAW)
@@ -49,6 +48,9 @@ if(hip_FOUND)
   execute_process(COMMAND dpkg -l COMMAND grep hip_base COMMAND awk "{print $2 \" VERSION: \" $3}")
 
   message("\n***** Library versions from cmake find_package *****\n")
+
+  # Add HIP to the CMake prefix path, for find_package later
+  list(APPEND CMAKE_PREFIX_PATH "${ROCM_PATH}")
 
   #set(hip_DIR ${HIP_PATH}/lib/cmake/hip)
   #set(hsa-runtime64_DIR ${ROCM_PATH}/lib/cmake/hsa-runtime64)

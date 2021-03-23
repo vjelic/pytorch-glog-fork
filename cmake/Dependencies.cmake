@@ -1188,11 +1188,11 @@ endif()
 if(USE_ROCM)
   include(${CMAKE_CURRENT_LIST_DIR}/public/LoadHIP.cmake)
   if(PYTORCH_FOUND_HIP)
-    message(INFO "Compiling with HIP for AMD.")
+    message("Compiling with HIP for AMD.")
     caffe2_update_option(USE_ROCM ON)
 
     if(USE_NCCL AND NOT USE_SYSTEM_NCCL)
-      message(INFO "Forcing USE_SYSTEM_NCCL to ON since it's required by using RCCL")
+      message("Forcing USE_SYSTEM_NCCL to ON since it's required by using RCCL")
       caffe2_update_option(USE_SYSTEM_NCCL ON)
     endif()
 
@@ -1247,7 +1247,11 @@ if(USE_ROCM)
         roc::rocblas roc::rocfft hip::hiprand roc::hipsparse)
     endif()
   else()
+    message(WARNING
+      "Not compiling with ROCm. Suppress this warning with "
+      "-DUSE_ROCM=OFF.")
     caffe2_update_option(USE_ROCM OFF)
+    set(CAFFE2_USE_ROCM OFF)
   endif()
 endif()
 
