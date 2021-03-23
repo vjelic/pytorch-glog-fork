@@ -1184,12 +1184,17 @@ if(USE_CUDA)
   endif()
 endif()
 
-# ---[ HIP
+# ---[ ROCm
 if(USE_ROCM)
   include(${CMAKE_CURRENT_LIST_DIR}/public/LoadHIP.cmake)
   if(PYTORCH_FOUND_HIP)
-    message("Compiling with HIP for AMD.")
-    caffe2_update_option(USE_ROCM ON)
+    set(Caffe2_PUBLIC_HIP_DEPENDENCY_LIBS
+      hip::hiprand roc::rocblas MIOpen roc::rccl roc::hipsparse)
+    if(ROCM_VERSION_DEV VERSION_GREATER_EQUAL "4.1.0")
+      list(APPEND Caffe2_PUBLIC_HIP_DEPENDENCY_LIBS hip::hipfft)
+    else()
+      list(APPEND Caffe2_PUBLIC_HIP_DEPENDENCY_LIBS roc::rocfft)
+    endif()
 
     if(USE_NCCL AND NOT USE_SYSTEM_NCCL)
       message("Forcing USE_SYSTEM_NCCL to ON since it's required by using RCCL")
@@ -1227,25 +1232,21 @@ if(USE_ROCM)
       list(APPEND HIP_CLANG_FLAGS --amdgpu-target=${pytorch_rocm_arch})
     endforeach()
 
-    set(Caffe2_HIP_INCLUDE
-       $<INSTALL_INTERFACE:include> ${Caffe2_HIP_INCLUDE})
-    # This is needed for library added by hip_add_library (same for hip_add_executable)
-    hip_include_directories(${Caffe2_HIP_INCLUDE})
+    #set(Caffe2_HIP_INCLUDE
+    #   $<INSTALL_INTERFACE:include> ${Caffe2_HIP_INCLUDE})
+    ## This is needed for library added by hip_add_library (same for hip_add_executable)
+    #hip_include_directories(${Caffe2_HIP_INCLUDE})
 
-    set(Caffe2_HIP_DEPENDENCY_LIBS
-      ${PYTORCH_HIP_HCC_LIBRARIES} ${PYTORCH_MIOPEN_LIBRARIES} ${PYTORCH_RCCL_LIBRARIES} ${hipcub_LIBRARIES} ${ROCM_HIPRTC_LIB} ${ROCM_ROCTX_LIB})
-
-    # Note [rocblas & rocfft cmake bug]
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # TODO: There is a bug in rocblas's & rocfft's cmake files that exports the wrong targets name in ${rocblas_LIBRARIES}
-    # If you get this wrong, you'll get a complaint like 'ld: cannot find -lrocblas-targets'
-    if(ROCM_VERSION_DEV VERSION_GREATER_EQUAL "4.1.0")
-      list(APPEND Caffe2_HIP_DEPENDENCY_LIBS
-        roc::rocblas roc::rocfft hip::hipfft hip::hiprand roc::hipsparse)
-    else()
-      list(APPEND Caffe2_HIP_DEPENDENCY_LIBS
-        roc::rocblas roc::rocfft hip::hiprand roc::hipsparse)
-    endif()
+    #include_directories(SYSTEM ${HIP_PATH}/include)
+    #include_directories(SYSTEM ${ROCBLAS_PATH}/include)
+    #include_directories(SYSTEM ${ROCFFT_PATH}/include)
+    #if(ROCM_VERSION_DEV VERSION_GREATER_EQUAL "4.1.0")
+    #  include_directories(SYSTEM ${HIPFFT_PATH}/include)
+    #endif()
+    #include_directories(SYSTEM ${HIPSPARSE_PATH}/include)
+    #include_directories(SYSTEM ${HIPRAND_PATH}/include)
+    #include_directories(SYSTEM ${ROCRAND_PATH}/include)
+    #include_directories(SYSTEM ${THRUST_PATH})
   else()
     message(WARNING
       "Not compiling with ROCm. Suppress this warning with "
@@ -1253,22 +1254,6 @@ if(USE_ROCM)
     caffe2_update_option(USE_ROCM OFF)
     set(CAFFE2_USE_ROCM OFF)
   endif()
-endif()
-
-# ---[ ROCm
-if(USE_ROCM)
-  # We check again for USE_ROCM because it might have been set to OFF
-  # in the if above
-  include_directories(SYSTEM ${HIP_PATH}/include)
-  include_directories(SYSTEM ${ROCBLAS_PATH}/include)
-  include_directories(SYSTEM ${ROCFFT_PATH}/include)
-  if(ROCM_VERSION_DEV VERSION_GREATER_EQUAL "4.1.0")
-    include_directories(SYSTEM ${HIPFFT_PATH}/include)
-  endif()
-  include_directories(SYSTEM ${HIPSPARSE_PATH}/include)
-  include_directories(SYSTEM ${HIPRAND_PATH}/include)
-  include_directories(SYSTEM ${ROCRAND_PATH}/include)
-  include_directories(SYSTEM ${THRUST_PATH})
 endif()
 
 # ---[ NCCL
