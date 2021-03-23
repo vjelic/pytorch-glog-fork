@@ -38,9 +38,7 @@ if(USE_CUDA)
     ${TORCH_CUDA_LIBRARIES})
 
   target_compile_definitions(test_cpp_rpc PRIVATE "USE_CUDA")
-endif()
-
-if(USE_ROCM)
+elseif(USE_ROCM)
   target_link_libraries(test_cpp_rpc PRIVATE
     ${ROCM_LIBRARIES})
 

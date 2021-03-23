@@ -17,9 +17,7 @@ if(USE_DISTRIBUTED AND NOT WIN32)
       ${TORCH_CUDA_LIBRARIES})
 
     target_compile_definitions(test_dist_autograd PRIVATE "USE_CUDA")
-  endif()
-
-  if(USE_ROCM)
+  elseif(USE_ROCM)
     target_link_libraries(test_dist_autograd PRIVATE
       ${ROCM_LIBRARIES})
 

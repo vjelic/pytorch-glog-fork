@@ -42,6 +42,8 @@ set(ATEN_INSTALL_INCLUDE_SUBDIR "include" CACHE PATH "ATen install include subdi
 
 if(USE_CUDA)
   list(APPEND ATen_CUDA_INCLUDE ${CUDA_INCLUDE_DIRS})
+elseif(USE_ROCM)
+  list(APPEND ATen_HIP_INCLUDE ${hip_INCLUDE_DIRS})
 endif()
 
 set(TH_LINK_STYLE STATIC)

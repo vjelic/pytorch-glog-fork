@@ -804,6 +804,7 @@ if(USE_ROCM)
   hip_add_library(torch_hip ${Caffe2_HIP_SRCS})
   set(CUDA_LINK_LIBRARIES_KEYWORD)
   torch_compile_options(torch_hip)  # see cmake/public/utils.cmake
+  target_compile_definitions(torch_hip PRIVATE USE_ROCM)
   # TODO: Not totally sure if this is live or not
   if(USE_NCCL)
     target_link_libraries(torch_hip PRIVATE __caffe2_nccl)
@@ -1403,6 +1404,21 @@ elseif(USE_CUDA)
   target_link_libraries(torch_cuda PUBLIC torch_cpu_library ${Caffe2_PUBLIC_CUDA_DEPENDENCY_LIBS})
 endif()
 
+# ---[ ROCm library.
+if(USE_ROCM)
+  target_link_libraries(torch_hip INTERFACE ${hip_LIBRARIES})
+  target_link_libraries(torch_hip PUBLIC c10_hip ${ROCM_ROCTX_LIB})
+
+  target_include_directories(
+      torch_hip INTERFACE $<INSTALL_INTERFACE:include>)
+  target_include_directories(
+      torch_hip PRIVATE ${Caffe2_HIP_INCLUDE})
+  target_link_libraries(
+      torch_hip PRIVATE ${Caffe2_HIP_DEPENDENCY_LIBS})
+
+  target_link_libraries(torch_hip PUBLIC torch_cpu_library ${Caffe2_PUBLIC_HIP_DEPENDENCY_LIBS})
+endif()
+
 # ---[ Metal(OSX) modification
 if(APPLE AND USE_PYTORCH_METAL)
   if(NOT INTERN_BUILD_MOBILE)
@@ -1441,6 +1457,9 @@ if(BUILD_SHARED_LIBS)
   if(USE_CUDA)
     target_link_libraries(torch_global_deps ${Caffe2_PUBLIC_CUDA_DEPENDENCY_LIBS})
     target_link_libraries(torch_global_deps torch::cudart torch::nvtoolsext)
+  elseif(USE_ROCM)
+    target_link_libraries(torch_global_deps ${Caffe2_PUBLIC_HIP_DEPENDENCY_LIBS})
+    target_link_libraries(torch_global_deps ${hip_LIBRARIES} ${ROCM_ROCTX_LIB})
   endif()
   if(USE_TBB)
     target_link_libraries(torch_global_deps tbb)
@@ -1449,38 +1468,38 @@ if(BUILD_SHARED_LIBS)
   install(TARGETS torch_global_deps DESTINATION "${TORCH_INSTALL_LIB_DIR}")
 endif()
 
-# ---[ Caffe2 HIP sources.
-if(USE_ROCM)
-  # Call again since Caffe2_HIP_INCLUDE is extended with ATen include dirs.
-  # Get Compile Definitions from the directory (FindHIP.cmake bug)
-  get_directory_property(MY_DEFINITIONS COMPILE_DEFINITIONS)
-  if(MY_DEFINITIONS)
-    foreach(_item ${MY_DEFINITIONS})
-      list(APPEND HIP_CLANG_FLAGS "-D${_item}")
-    endforeach()
-  endif()
-
-  # Call again since Caffe2_HIP_INCLUDE is extended with ATen include dirs.
-  hip_include_directories(${Caffe2_HIP_INCLUDE})
-
-  # Since PyTorch files contain HIP headers, these flags are required for the necessary definitions to be added.
-  target_compile_options(torch_hip PUBLIC ${HIP_CXX_FLAGS})  # experiment
-  target_link_libraries(torch_hip PUBLIC c10_hip)
-
-  if(NOT INTERN_BUILD_MOBILE)
-    # TODO: Cut this over to ATEN_HIP_FILES_GEN_LIB.  At the moment, we
-    # only generate CUDA files
-    # NB: This dependency must be PRIVATE, because we don't install
-    # ATEN_CUDA_FILES_GEN_LIB (it's a synthetic target just to get the
-    # correct dependency from generated files.)
-    target_link_libraries(torch_hip PRIVATE ATEN_CUDA_FILES_GEN_LIB)
-  endif()
-  target_link_libraries(torch_hip PUBLIC torch_cpu_library ${Caffe2_HIP_DEPENDENCY_LIBS})
-
-  # Since PyTorch files contain HIP headers, this is also needed to capture the includes.
-  target_include_directories(torch_hip PRIVATE ${Caffe2_HIP_INCLUDE})
-  target_include_directories(torch_hip INTERFACE $<INSTALL_INTERFACE:include>)
-endif()
+## ---[ Caffe2 HIP sources.
+#if(USE_ROCM)
+#  # Call again since Caffe2_HIP_INCLUDE is extended with ATen include dirs.
+#  # Get Compile Definitions from the directory (FindHIP.cmake bug)
+#  get_directory_property(MY_DEFINITIONS COMPILE_DEFINITIONS)
+#  if(MY_DEFINITIONS)
+#    foreach(_item ${MY_DEFINITIONS})
+#      list(APPEND HIP_CLANG_FLAGS "-D${_item}")
+#    endforeach()
+#  endif()
+#
+#  # Call again since Caffe2_HIP_INCLUDE is extended with ATen include dirs.
+#  hip_include_directories(${Caffe2_HIP_INCLUDE})
+#
+#  # Since PyTorch files contain HIP headers, these flags are required for the necessary definitions to be added.
+#  target_compile_options(torch_hip PUBLIC ${HIP_CXX_FLAGS})  # experiment
+#  target_link_libraries(torch_hip PUBLIC c10_hip)
+#
+#  if(NOT INTERN_BUILD_MOBILE)
+#    # TODO: Cut this over to ATEN_HIP_FILES_GEN_LIB.  At the moment, we
+#    # only generate CUDA files
+#    # NB: This dependency must be PRIVATE, because we don't install
+#    # ATEN_CUDA_FILES_GEN_LIB (it's a synthetic target just to get the
+#    # correct dependency from generated files.)
+#    target_link_libraries(torch_hip PRIVATE ATEN_CUDA_FILES_GEN_LIB)
+#  endif()
+#  target_link_libraries(torch_hip PUBLIC torch_cpu_library ${Caffe2_HIP_DEPENDENCY_LIBS})
+#
+#  # Since PyTorch files contain HIP headers, this is also needed to capture the includes.
+#  target_include_directories(torch_hip PRIVATE ${Caffe2_HIP_INCLUDE})
+#  target_include_directories(torch_hip INTERFACE $<INSTALL_INTERFACE:include>)
+#endif()
 
 if(BUILD_STATIC_RUNTIME_BENCHMARK)
   add_subdirectory(${TORCH_ROOT}/benchmarks/static_runtime ${PROJECT_BINARY_DIR}/bin)

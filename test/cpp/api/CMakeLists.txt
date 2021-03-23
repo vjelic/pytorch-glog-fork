@@ -54,9 +54,7 @@ if(USE_CUDA)
     ${TORCH_CUDA_LIBRARIES})
 
   target_compile_definitions(test_api PRIVATE "USE_CUDA")
-endif()
-
-if(USE_ROCM)
+elseif(USE_ROCM)
   target_link_libraries(test_api PRIVATE
     ${ROCM_LIBRARIES})
 

@@ -56,9 +56,7 @@ if(USE_CUDA)
     ${CUDA_CUDA_LIB}
     ${TORCH_CUDA_LIBRARIES})
   target_compile_definitions(tutorial_tensorexpr PRIVATE USE_CUDA)
-endif()
-
-if(USE_ROCM)
+elseif(USE_ROCM)
   target_link_libraries(test_tensorexpr PRIVATE
     ${ROCM_LIBRARIES})
   target_compile_definitions(test_tensorexpr PRIVATE USE_ROCM)
