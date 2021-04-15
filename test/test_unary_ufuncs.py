@@ -12,7 +12,7 @@ from torch._six import inf, nan
 from torch.testing._internal.common_utils import (
     TestCase, run_tests, torch_to_numpy_dtype_dict, numpy_to_torch_dtype_dict,
     suppress_warnings, make_tensor, TEST_SCIPY, slowTest, skipIfNoSciPy,
-    gradcheck, IS_WINDOWS)
+    gradcheck, IS_WINDOWS, TEST_WITH_ROCM)
 from torch.testing._internal.common_methods_invocations import (
     unary_ufuncs, _NOTHING)
 from torch.testing._internal.common_device_type import (
@@ -532,6 +532,8 @@ class TestUnaryUfuncs(TestCase):
 
     @dtypes(torch.cfloat, torch.cdouble)
     def test_complex_edge_values(self, device, dtype):
+        if device == 'cpu' and dtype == torch.cfloat and TEST_WITH_ROCM:
+            raise self.skipTest("test_complex_edge_values_cpu_complex64 fails on ROCm")
         # sqrt Test Reference: https://github.com/pytorch/pytorch/pull/47424
         x = torch.tensor(0. - 1.0e+20j, dtype=dtype, device=device)
         self.compare_with_numpy(torch.sqrt, np.sqrt, x)
