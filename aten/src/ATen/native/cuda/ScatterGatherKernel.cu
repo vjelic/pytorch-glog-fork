@@ -29,7 +29,7 @@ class ReduceAdd {
 public:
   template <typename scalar_t>
   constexpr C10_DEVICE void operator() (scalar_t * self_data, const scalar_t * src_data) const {
-    gpuAtomicAddNoReturn(self_data, *src_data);
+    gpuAtomicAdd(self_data, *src_data);
   }
 };
 static ReduceAdd reduce_add;

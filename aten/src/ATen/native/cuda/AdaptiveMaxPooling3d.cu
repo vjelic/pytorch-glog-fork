@@ -262,7 +262,7 @@ __global__ void atomicadaptivemaxgradinput(
       int64_t *ptr_ind = indices_dt + oh*osizeW + ow;
       T grad_delta = *ptr_gradOutput;
       int64_t argmax = (*ptr_ind);
-      gpuAtomicAddNoReturn(&(gradInput_d[argmax]), grad_delta);
+      gpuAtomicAdd(&(gradInput_d[argmax]), grad_delta);
     }
   }
 }
