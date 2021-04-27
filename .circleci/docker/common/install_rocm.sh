@@ -7,6 +7,9 @@ install_magma() {
     git clone https://bitbucket.org/icl/magma.git
     pushd magma
     git checkout 878b1ce02e9cfe4a829be22c8f911e9c0b6bd88f
+    # Work around non-asii characters in certain magma sources; remove this after upstream magma fixes this.
+    perl -i.bak -pe 's/[^[:ascii:]]//g' sparse/control/magma_zfree.cpp
+    perl -i.bak -pe 's/[^[:ascii:]]//g' sparse/control/magma_zsolverinfo.cpp
     cp make.inc-examples/make.inc.hip-gcc-mkl make.inc
     echo 'LIBDIR += -L$(MKLROOT)/lib' >> make.inc
     echo 'LIB += -Wl,--enable-new-dtags -Wl,--rpath,/opt/rocm/lib -Wl,--rpath,$(MKLROOT)/lib -Wl,--rpath,/opt/rocm/magma/lib' >> make.inc
@@ -15,7 +18,7 @@ install_magma() {
     sed -i 's/^FOPENMP/#FOPENMP/g' make.inc
     export PATH="${PATH}:/opt/rocm/bin"
     make -f make.gen.hipMAGMA -j $(nproc)
-    LANG=C.UTF-8 make lib/libmagma.so -j $(nproc) MKLROOT=/opt/conda
+    make lib/libmagma.so -j $(nproc) MKLROOT=/opt/conda
     make testing/testing_dgemm -j $(nproc) MKLROOT=/opt/conda
     popd
     mv magma /opt/rocm
