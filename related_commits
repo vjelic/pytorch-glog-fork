@@ -1,4 +1,4 @@
-ubuntu|pytorch|apex|v0.3.2_src|9005c884cf8487df638f43ccaf0f93bf1b118ed8
-centos|pytorch|apex|v0.3.2_src|9005c884cf8487df638f43ccaf0f93bf1b118ed8
+ubuntu|pytorch|apex|none|v0.3.2
+centos|pytorch|apex|none|v0.3.2
 ubuntu|pytorch|torchvision|release/0.8.0|2f40a483d73018ae6e1488a484c5927f2b309969
 centos|pytorch|torchvision|release/0.8.0|2f40a483d73018ae6e1488a484c5927f2b309969
