@@ -672,19 +672,19 @@ std::string generateKernel(
 #include <hip/hip_fp16.h>
 )";
     }
-    /* 
-    if (has_bfloat_tensor) {
-      RuntimeHeader += R"(
-#include <hip/hip_bfloat16.h>
-)";
-    }
-    */
     env.s("RuntimeHeader", RuntimeHeader);
   }
 #else
   // Still need the key defined, but empty.
   env.s("RuntimeHeader", R"()");
 #endif
+  if (has_bfloat_tensor) {
+    env.s("BFloat16Header", R"(
+#ifndef __align__
+#define __align__(x) __attribute__((aligned(x)))
+#endif
+)" + cuda::bfloat16_support_literal);
+  }
 #endif
   // clang-format on
 
