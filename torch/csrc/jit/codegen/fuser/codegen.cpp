@@ -66,7 +66,11 @@ static const char* scalarTypeName(const at::ScalarType type) {
     return "half";
   }
   if (type == at::ScalarType::BFloat16) {
+#ifdef __HIP_PLATFORM_HCC__
+    return "hip_bfloat16";
+#else
     return "__nv_bfloat16";
+#endif
   }
 
   switch (type) {
@@ -469,12 +473,21 @@ std::string generateKernel(
         has_half_tensor = true;
       } else if (is_bfloat) {
         AT_ASSERT(use_cuda);
+#ifdef __HIP_PLATFORM_HCC__
+        env.s(
+            "access",
+            format(
+                "float(t${formal}.data[t${formal}_offset])", env));
+        env.s(
+            "access_vec4", format("float(t${formal}_buf[i])", env));
+#else
         env.s(
             "access",
             format(
                 "__bfloat162float(t${formal}.data[t${formal}_offset])", env));
         env.s(
             "access_vec4", format("__bfloat162float(t${formal}_buf[i])", env));
+#endif
         has_bfloat_tensor = true;
       } else if (use_cuda) {
         // No __ldg overload for bool
@@ -598,8 +611,13 @@ std::string generateKernel(
       has_half_tensor = true;
     } else if (is_bfloat) {
       AT_ASSERT(use_cuda);
+#ifdef __HIP_PLATFORM_HCC__
+      body << format("${access} = hip_bfloat16(${node});\n", env);
+      body_vec4 << format("${access_vec4} = hip_bfloat16(${node});\n", env);
+#else
       body << format("${access} = __float2bfloat16(${node});\n", env);
       body_vec4 << format("${access_vec4} = __float2bfloat16(${node});\n", env);
+#endif
       has_bfloat_tensor = true;
     } else {
       body << format("${access} = ${node};\n", env);
