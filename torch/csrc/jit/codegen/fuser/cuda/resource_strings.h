@@ -286,7 +286,7 @@ struct __align__(2) __nv_bfloat16 {
   unsigned short __x;
 };
 
-#if defined(__CUDACC__)
+#if defined(__CUDACC__) || defined(__HIPCC__)
 __device__ unsigned short __internal_float2bfloat16(
     const float f,
     unsigned int& sign,
