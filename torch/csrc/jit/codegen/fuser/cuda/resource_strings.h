@@ -17,6 +17,7 @@ cases*/
 static auto type_declarations_template = CodeTemplate(R"(
 ${RuntimeHeader}
 ${HalfHeader}
+${BFloat16Header}
 ${RandHeader}
 
 #define NAN __int_as_float(0x7fffffff)
@@ -261,6 +262,11 @@ typedef __half half;
 )";
 #endif
 
+#ifdef __HIP_PLATFORM_HCC__
+constexpr auto bfloat16_support_literal =
+    R"(
+    )";
+#else
 constexpr auto bfloat16_support_literal =
     R"(
 #define __BFLOAT16_TO_US(var) *(reinterpret_cast<unsigned short*>(&(var)))
@@ -333,6 +339,7 @@ __device__ float __bfloat162float(const __nv_bfloat16 a) {
 #undef __BFLOAT16_TO_US
 #undef __BFLOAT16_TO_CUS
 )";
+#endif
 
 } // namespace cuda
 } // namespace fuser

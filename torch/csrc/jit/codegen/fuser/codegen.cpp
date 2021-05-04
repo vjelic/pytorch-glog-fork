@@ -681,15 +681,21 @@ std::string generateKernel(
   // clang-format off
 #ifdef __HIP_PLATFORM_HCC__
 #if ROCM_VERSION < 40200
-  if (use_cuda && has_half_tensor) {
-    env.s("RuntimeHeader", R"(
+  if (use_cuda) {
+    std::string RuntimeHeader = R"(
 #include <hip/hip_runtime.h>
+)";
+    if (has_half_tensor) {
+      RuntimeHeader += R"(
 #include <hip/hip_fp16.h>
-)");
-  } else if (use_cuda) {
-    env.s("RuntimeHeader", R"(
-#include <hip/hip_runtime.h>
-)");
+)";
+    }
+    if (has_bfloat_tensor) {
+      RuntimeHeader += R"(
+#include <hip/hip_bfloat16.h>
+)";
+    }
+    env.s("RuntimeHeader", RuntimeHeader);
   }
 #else
   // Still need the key defined, but empty.
