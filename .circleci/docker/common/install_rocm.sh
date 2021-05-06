@@ -24,6 +24,10 @@ install_magma() {
     mv magma /opt/rocm
 }
 
+ver() {
+    printf "%03d%03d%03d%03d" $(echo "$1" | tr '.' ' ');
+}
+
 install_ubuntu() {
     apt-get update
     if [[ $UBUNTU_VERSION == 18.04 ]]; then
@@ -37,26 +41,8 @@ install_ubuntu() {
     apt-get install -y libc++1
     apt-get install -y libc++abi1
 
-    # To make version comparison easier, create an integer representation.
-    save_IFS="$IFS"
-    IFS=. ROCM_VERSION_ARRAY=(${ROCM_VERSION})
-    IFS="$save_IFS"
-    if [[ ${#ROCM_VERSION_ARRAY[@]} == 2 ]]; then
-        ROCM_VERSION_MAJOR=${ROCM_VERSION_ARRAY[0]}
-        ROCM_VERSION_MINOR=${ROCM_VERSION_ARRAY[1]}
-        ROCM_VERSION_PATCH=0
-    elif [[ ${#ROCM_VERSION_ARRAY[@]} == 3 ]]; then
-        ROCM_VERSION_MAJOR=${ROCM_VERSION_ARRAY[0]}
-        ROCM_VERSION_MINOR=${ROCM_VERSION_ARRAY[1]}
-        ROCM_VERSION_PATCH=${ROCM_VERSION_ARRAY[2]}
-    else
-        echo "Unhandled ROCM_VERSION ${ROCM_VERSION}"
-        exit 1
-    fi
-    ROCM_INT=$(($ROCM_VERSION_MAJOR * 10000 + $ROCM_VERSION_MINOR * 100 + $ROCM_VERSION_PATCH))
-
     ROCM_REPO="ubuntu"
-    if [[ $ROCM_INT -lt 40200 ]]; then
+    if [[ $(ver $ROCM_VERSION) -lt $(ver 4.2) ]]; then
 		ROCM_REPO="xenial"
     fi
 
