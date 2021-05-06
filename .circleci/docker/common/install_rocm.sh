@@ -2,6 +2,10 @@
 
 set -ex
 
+ver() {
+    printf "%3d%03d%03d%03d" $(echo "$1" | tr '.' ' ');
+}
+
 install_ubuntu() {
     apt-get update
     if [[ $UBUNTU_VERSION == 18.04 ]]; then
@@ -16,10 +20,14 @@ install_ubuntu() {
     apt-get install -y libc++1
     apt-get install -y libc++abi1
 
-    DEB_ROCM_REPO=http://repo.radeon.com/rocm/apt/${ROCM_VERSION}
+    ROCM_REPO="ubuntu"
+    if [[ $(ver $ROCM_VERSION) -lt $(ver 4.2) ]]; then
+        ROCM_REPO="xenial"
+    fi
+
     # Add rocm repository
-    wget -qO - $DEB_ROCM_REPO/rocm.gpg.key | apt-key add -
-    echo "deb [arch=amd64] $DEB_ROCM_REPO xenial main" > /etc/apt/sources.list.d/rocm.list
+    wget -qO - http://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
+    echo "deb [arch=amd64] http://repo.radeon.com/rocm/apt/${ROCM_VERSION} ${ROCM_REPO} main" > /etc/apt/sources.list.d/rocm.list
     apt-get update --allow-insecure-repositories
 
     DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-unauthenticated \
