@@ -26,7 +26,9 @@
 namespace at {
 namespace native {
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 DEFINE_DISPATCH(addr_stub);
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 DEFINE_DISPATCH(linalg_vector_norm_stub);
 
 // Helper function for det methods.
@@ -90,6 +92,7 @@ Tensor logdet(const Tensor& self) {
   Tensor logdet_vals = diag_U.abs_().log_().sum(-1);
   if (self.dim() > 2) {
     auto indices = toListOfOptionalTensors((det_sign < 0).nonzero_numpy());
+    // NOLINTNEXTLINE(performance-move-const-arg)
     logdet_vals.index_put_(std::move(indices), at::full({}, NAN, self.options()));
   } else if (det_sign.item<double>() < 0) {
     logdet_vals.fill_(NAN);
@@ -1275,17 +1278,35 @@ Tensor& bmm_out_cpu(const Tensor& batch1, const Tensor& batch2, Tensor &result) 
   return result;
 }
 
-Tensor& dot_out(const Tensor& self, const Tensor& tensor, Tensor& result) {
+Tensor& dot_out(const Tensor& self, const Tensor& other, Tensor& result) {
+  auto output_device = result.device();
+  auto input1_device = self.device();
+  auto input2_device = other.device();
+  // check if the input & output tensors are on the same device.
+  TORCH_CHECK(
+    (output_device == input1_device) && (input1_device == input2_device),
+    "dot: Expected the output and input tensors to be on the "
+    "same device, but got the output tensor on ", output_device,
+    ", the 'input' tensor on ", input1_device, ", and the 'other' tensor on ", input2_device);
   at::native::resize_output(result, {});
   TORCH_CHECK(result.scalar_type() == self.scalar_type(),
-           "result dtype ", result.scalar_type(), " does not match self dtype ", self.scalar_type());
-  return result.fill_(self.dot(tensor));
+           "result dtype ", result.scalar_type(), " does not match input dtype ", self.scalar_type());
+  return result.fill_(self.dot(other));
 }
 
 Tensor& vdot_out(const Tensor& self, const Tensor& other, Tensor& result) {
+  auto output_device = result.device();
+  auto input1_device = self.device();
+  auto input2_device = other.device();
+  // check if the input & output tensors are on the same device.
+  TORCH_CHECK(
+    (output_device == input1_device) && (input1_device == input2_device),
+    "vdot: Expected the output and input tensors to be on the "
+    "same device, but got the output tensor on ", output_device,
+    ", the 'input' tensor on ", input1_device, ", and the 'other' tensor on ", input2_device);
   at::native::resize_output(result, {});
   TORCH_CHECK(result.scalar_type() == self.scalar_type(),
-           "result dtype ", result.scalar_type(), " does not match self dtype ", self.scalar_type());
+           "result dtype ", result.scalar_type(), " does not match input dtype ", self.scalar_type());
   return result.fill_(self.vdot(other));
 }
 
@@ -2191,7 +2212,8 @@ static Tensor& linalg_norm_out_impl(Tensor& result, const Tensor& self, const op
     // 'ord' is int or None
     std::vector<int64_t> dim_ = opt_dim.has_value() ? opt_dim.value().vec() : make_dim_list(ndim);
     if (!opt_num_ord.has_value() || dim_.size() == 1) {
-      Tensor result_ = at::linalg_vector_norm(self, opt_num_ord, opt_dim, keepdim, opt_dtype);
+      Tensor result_ = at::linalg_vector_norm(
+          self, opt_num_ord.value_or(2), opt_dim, keepdim, opt_dtype);
       // TODO: Resize and copy should be avoided with
       //       https://github.com/pytorch/pytorch/issues/52712
       at::native::resize_output(result, result_.sizes());
@@ -2206,11 +2228,11 @@ static Tensor& linalg_norm_out_impl(Tensor& result, const Tensor& self, const op
   return result;
 }
 
-static Tensor& linalg_vector_norm_impl(const Tensor& self, const optional<Scalar>& opt_ord, optional<IntArrayRef> opt_dim, bool keepdim, optional<ScalarType> opt_dtype, Tensor& result) {
+static Tensor& linalg_vector_norm_impl(const Tensor& self, const Scalar& scalar_ord, optional<IntArrayRef> opt_dim, bool keepdim, optional<ScalarType> opt_dtype, Tensor& result) {
   // Casting a large integer to a double will introduce some error, but for
   // practical purposes, it won't matter since a large order will usually
   // give an infinite result
-  auto ord = opt_ord.value_or(2).toDouble();
+  auto ord = scalar_ord.toDouble();
 
   TORCH_CHECK(self.device().type() == DeviceType::CPU || self.device().type() == DeviceType::CUDA,
               "linalg.vector_norm only supports CPU and CUDA device types, but got: ",
@@ -2281,14 +2303,78 @@ static Tensor& linalg_vector_norm_impl(const Tensor& self, const optional<Scalar
   return result;
 }
 
-Tensor linalg_vector_norm(const Tensor& self, const optional<Scalar>& opt_ord, optional<IntArrayRef> opt_dim, bool keepdim, optional<ScalarType> opt_dtype) {
+Tensor linalg_vector_norm(const Tensor& self, const Scalar& ord, optional<IntArrayRef> opt_dim, bool keepdim, optional<ScalarType> opt_dtype) {
   ScalarType out_dtype = opt_dtype.value_or(toValueType(self.scalar_type()));
   Tensor result = create_reduction_result(self, opt_dim.value_or(IntArrayRef{}), keepdim, out_dtype);
-  return at::native::linalg_vector_norm_impl(self, opt_ord, opt_dim, keepdim, opt_dtype, result);
+  return at::native::linalg_vector_norm_impl(self, ord, opt_dim, keepdim, opt_dtype, result);
 }
 
-Tensor& linalg_vector_norm_out(const Tensor& self, const optional<Scalar>& opt_ord, optional<IntArrayRef> opt_dim, bool keepdim, optional<ScalarType> opt_dtype, Tensor& result) {
-  return at::native::linalg_vector_norm_impl(self, opt_ord, opt_dim, keepdim, opt_dtype, result);
+Tensor& linalg_vector_norm_out(const Tensor& self, const Scalar& ord, optional<IntArrayRef> opt_dim, bool keepdim, optional<ScalarType> opt_dtype, Tensor& result) {
+  return at::native::linalg_vector_norm_impl(self, ord, opt_dim, keepdim, opt_dtype, result);
+}
+
+namespace {
+
+// Only performs checks not performed by linalg.norm
+void check_linalg_matrix_norm_args(
+    const Tensor& self,
+    IntArrayRef dim,
+    optional<ScalarType> dtype) {
+  TORCH_CHECK(
+      self.ndimension() >= 2,
+      "linalg.matrix_norm(): input tensor must be a matrix or batch of matrices");
+  ScalarType in_dtype = dtype.value_or(self.scalar_type());
+  TORCH_CHECK(
+      in_dtype == kFloat || in_dtype == kDouble || in_dtype == kComplexFloat ||
+          in_dtype == kComplexDouble,
+      "linalg.matrix_norm(): only supports the float, double, cfloat and cdouble dtypes, but got: ",
+      toString(in_dtype));
+  TORCH_CHECK(
+      dim.size() == 2, "linalg.matrix_norm(): dim must be a 2-tuple of ints");
+}
+
+} // namespace
+
+Tensor linalg_matrix_norm(
+    const Tensor& self,
+    const Scalar& ord,
+    IntArrayRef dim,
+    bool keepdim,
+    optional<ScalarType> dtype) {
+  check_linalg_matrix_norm_args(self, dim, dtype);
+  return at::native::linalg_norm(self, ord, dim, keepdim, dtype);
+}
+
+Tensor& linalg_matrix_norm_out(
+    const Tensor& self,
+    const Scalar& ord,
+    IntArrayRef dim,
+    bool keepdim,
+    optional<ScalarType> dtype,
+    Tensor& result) {
+  check_linalg_matrix_norm_args(self, dim, dtype);
+  return at::native::linalg_norm_out(self, ord, dim, keepdim, dtype, result);
+}
+
+Tensor linalg_matrix_norm(
+    const Tensor& self,
+    std::string ord,
+    IntArrayRef dim,
+    bool keepdim,
+    optional<ScalarType> dtype) {
+  check_linalg_matrix_norm_args(self, dim, dtype);
+  return at::native::linalg_norm(self, ord, dim, keepdim, dtype);
+}
+
+Tensor& linalg_matrix_norm_out(
+    const Tensor& self,
+    std::string ord,
+    IntArrayRef dim,
+    bool keepdim,
+    optional<ScalarType> dtype,
+    Tensor& result) {
+  check_linalg_matrix_norm_args(self, dim, dtype);
+  return at::native::linalg_norm_out(self, ord, dim, keepdim, dtype, result);
 }
 
 // Numerical or None norms
