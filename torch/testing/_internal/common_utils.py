@@ -856,8 +856,11 @@ slow_tests_dict: Optional[Dict[str, float]] = None
 def check_slow_test_from_stats(test):
     global slow_tests_dict
     if slow_tests_dict is None:
-        url = "https://raw.githubusercontent.com/pytorch/test-infra/master/stats/slow-tests.json"
-        slow_tests_dict = fetch_and_cache(".pytorch-slow-tests", url)
+        if not IS_SANDCASTLE and os.getenv("PYTORCH_RUN_DISABLED_TESTS", "0") != "1":
+            url = "https://raw.githubusercontent.com/pytorch/test-infra/master/stats/slow-tests.json"
+            slow_tests_dict = fetch_and_cache(".pytorch-slow-tests", url)
+        else:
+            slow_tests_dict = {}
     test_suite = str(test.__class__).split('\'')[1]
     test_name = f'{test._testMethodName} ({test_suite})'
 
@@ -1048,6 +1051,32 @@ class TestCase(expecttest.TestCase):
         check_disabled(str(self))
 
         set_rng_seed(SEED)
+
+    def genSparseCSRTensor(self, size, nnz, *, device, dtype, index_dtype):
+        sparse_dim = 2
+        assert all(size[d] > 0 for d in range(sparse_dim)) or nnz == 0, 'invalid arguments'
+        assert len(size) == sparse_dim
+
+        def random_sparse_csr(n_rows, n_cols, nnz):
+            nnz_per_row = nnz // n_rows
+            if nnz_per_row > 0:
+                crow_indices = torch.zeros(n_rows + 1, dtype=index_dtype)
+                crow_indices[1:] = nnz_per_row
+                crow_indices.cumsum_(dim=0)
+                col_indices = torch.randint(0, n_cols, size=[nnz_per_row * n_rows], dtype=index_dtype, device=device)
+            else:
+                crow_indices = torch.zeros(n_rows + 1, dtype=index_dtype)
+                crow_indices[1:nnz + 1] = 1
+                crow_indices.cumsum_(dim=0)
+                col_indices = torch.randint(0, n_cols, size=[nnz], dtype=index_dtype, device=device)
+            nnz = col_indices.shape[0]
+            values = make_tensor([nnz], device=device, dtype=dtype, low=-1, high=1)
+            return values, crow_indices, col_indices
+
+        values, crow_indices, col_indices = random_sparse_csr(size[0], size[1], nnz)
+        return torch.sparse_csr_tensor(crow_indices,
+                                       col_indices,
+                                       values, size=size, dtype=dtype, device=device)
 
     def genSparseTensor(self, size, sparse_dim, nnz, is_uncoalesced, device, dtype):
         # Assert not given impossible combination, where the sparse dims have
