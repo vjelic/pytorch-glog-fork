@@ -428,7 +428,16 @@ def expand_as(g, self, other):
     return g.op("Expand", self, shape)
 
 
+@parse_args('v', 'v', 'i', 'b', 'v')
 def embedding(g, weight, indices, padding_idx, scale_grad_by_freq, sparse):
+    if scale_grad_by_freq and sym_help._training_mode:
+        raise RuntimeError('Unsupported: ONNX export of embedding with scale_grad_by_freq=True '
+                           'for training mode. ONNX does not support scaling the gradients.')
+    if padding_idx >= 0 and sym_help._training_mode:
+        warnings.warn('Warning: ONNX export of embedding with padding_idx >= 0 '
+                      'for training mode. '
+                      'ONNX does not support not updating the embedding vector at padding_idx during training.')
+
     return g.op("Gather", weight, indices)
 
 
@@ -2273,6 +2282,14 @@ def nonzero_numpy(g, input, _outputs=None):
 def isnan(g, input):
     output = g.op('IsNaN', input)
     return output
+
+def _any(g, input):
+    input = _cast_Long(g, input, False)  # type: ignore
+    input_sum = sym_help._reducesum_helper(g, input, keepdims_i=0)
+    return gt(g, input_sum, g.op("Constant", value_t=torch.LongTensor([0])))
+
+def _all(g, input):
+    return g.op("Not", _any(g, g.op("Not", input)))
 
 
 @parse_args('v', 'i', 'i', 'i')
