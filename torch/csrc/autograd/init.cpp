@@ -216,8 +216,8 @@ PyObject* THPAutograd_initExtension(PyObject* _unused, PyObject *unused) {
     std::set<ActivityType> activities;
 #ifdef USE_KINETO
     activities.insert(ActivityType::CPU);
-#ifndef LIBKINETO_NOCUPTI
-    if (at::getNumGPUs() > 0 && !at::hasHIP()) {
+#if !defined(LIBKINETO_NOCUPTI) || !defined(LIBKINETO_NOROCTRACER)
+    if (at::getNumGPUs() > 0) {
       activities.insert(ActivityType::CUDA);
     }
 #endif
