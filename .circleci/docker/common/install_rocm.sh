@@ -4,16 +4,17 @@ set -ex
 
 install_magma() {
     # "install" hipMAGMA into /opt/rocm/magma by copying after build
-    git clone https://bitbucket.org/icl/magma.git
+    git clone https://bitbucket.org/pruthvistony/magma.git -b magma_ctrl_launch_bounds
     pushd magma
-    git checkout 878b1ce02e9cfe4a829be22c8f911e9c0b6bd88f
+    # The branch "magma_ctrl_launch_bounds" is having a fix over the below commit, so keeping the below comment for reference.
+    #git checkout 878b1ce02e9cfe4a829be22c8f911e9c0b6bd88f
     # Work around non-asii characters in certain magma sources; remove this after upstream magma fixes this.
     perl -i.bak -pe 's/[^[:ascii:]]//g' sparse/control/magma_zfree.cpp
     perl -i.bak -pe 's/[^[:ascii:]]//g' sparse/control/magma_zsolverinfo.cpp
     cp make.inc-examples/make.inc.hip-gcc-mkl make.inc
     echo 'LIBDIR += -L$(MKLROOT)/lib' >> make.inc
-    echo 'LIB += -Wl,--enable-new-dtags -Wl,--rpath,/opt/rocm/lib -Wl,--rpath,$(MKLROOT)/lib -Wl,--rpath,/opt/rocm/magma/lib' >> make.inc
-    echo 'DEVCCFLAGS += --amdgpu-target=gfx803 --amdgpu-target=gfx900 --amdgpu-target=gfx906 --amdgpu-target=gfx908' >> make.inc
+    echo 'LIB += -Wl,--enable-new-dtags -Wl,--rpath,/opt/rocm/lib -Wl,--rpath,$(MKLROOT)/lib -Wl,--rpath,/opt/rocm/magma/lib --gpu-max-threads-per-block=256' >> make.inc
+    echo 'DEVCCFLAGS += --amdgpu-target=gfx803 --amdgpu-target=gfx900 --amdgpu-target=gfx906 --amdgpu-target=gfx908 --amdgpu-target=gfx90a' >> make.inc
     # hipcc with openmp flag may cause isnan() on __device__ not to be found; depending on context, compiler may attempt to match with host definition
     sed -i 's/^FOPENMP/#FOPENMP/g' make.inc
     export PATH="${PATH}:/opt/rocm/bin"
