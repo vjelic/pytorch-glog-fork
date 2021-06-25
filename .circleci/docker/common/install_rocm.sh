@@ -4,7 +4,7 @@ set -ex
 
 install_magma() {
     # "install" hipMAGMA into /opt/rocm/magma by copying after build
-    git clone https://bitbucket.org/pruthvistony/magma.git -b magma_ctrl_launch_bounds
+    git clone https://bitbucket.org/icl/magma.git -b magma_ctrl_launch_bounds
     pushd magma
     # The branch "magma_ctrl_launch_bounds" is having a fix over the below commit, so keeping the below comment for reference.
     #git checkout 878b1ce02e9cfe4a829be22c8f911e9c0b6bd88f
