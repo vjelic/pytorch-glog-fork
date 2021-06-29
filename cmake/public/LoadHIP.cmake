@@ -130,12 +130,6 @@ else()
   set(MAGMA_HOME $ENV{MAGMA_HOME})
 endif()
 
-if(NOT DEFINED ENV{PYTORCH_ROCM_ARCH})
-  set(PYTORCH_ROCM_ARCH gfx900;gfx906;gfx908;gfx90a;gfx1030)
-else()
-  set(PYTORCH_ROCM_ARCH $ENV{PYTORCH_ROCM_ARCH})
-endif()
-
 # Add HIP to the CMAKE Module Path
 set(CMAKE_MODULE_PATH ${HIP_PATH}/cmake ${CMAKE_MODULE_PATH})
 
@@ -184,6 +178,16 @@ if(HIP_FOUND)
   set(CMAKE_HCC_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
   set(CMAKE_HCC_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
   ### Remove setting of Flags when FindHIP.CMake PR #558 is accepted.###
+
+  if(NOT DEFINED ENV{PYTORCH_ROCM_ARCH})
+    if(ROCM_VERSION_DEV VERSION_GREATER_EQUAL "4.3.0")
+      set(PYTORCH_ROCM_ARCH gfx900;gfx906;gfx908;gfx90a;gfx1030)
+    else()
+      set(PYTORCH_ROCM_ARCH gfx803;gfx900;gfx906;gfx908)
+    endif()
+  else()
+    set(PYTORCH_ROCM_ARCH $ENV{PYTORCH_ROCM_ARCH})
+  endif()
 
   set(hip_DIR ${HIP_PATH}/lib/cmake/hip)
   set(hsa-runtime64_DIR ${ROCM_PATH}/lib/cmake/hsa-runtime64)

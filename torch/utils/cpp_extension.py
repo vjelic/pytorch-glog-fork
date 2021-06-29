@@ -1592,7 +1592,12 @@ def _get_rocm_arch_flags(cflags: Optional[List[str]] = None) -> List[str]:
     # Use same defaults from file cmake/public/LoadHIP.cmake.
     # Must keep in sync if defaults change.
     # Allow env var to override, just like during initial cmake build.
-    archs = os.environ.get('PYTORCH_ROCM_ARCH', 'gfx900;gfx906;gfx908;gfx90a;gfx1030')
+    assert ROCM_VERSION is not None
+    if ROCM_VERSION >= (4, 3):
+        default = 'gfx900;gfx906;gfx908;gfx90a;gfx1030'
+    else:
+        default = 'gfx803;gfx900;gfx906;gfx908'
+    archs = os.environ.get('PYTORCH_ROCM_ARCH', default)
     flags = ['--amdgpu-target=%s' % arch for arch in archs.split(';')]
     flags += ['-fno-gpu-rdc']
     return flags
