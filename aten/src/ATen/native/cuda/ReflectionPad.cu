@@ -249,7 +249,7 @@ __global__ void reflection_pad3d_backward_out_kernel(
           int64_t input_x) {
         auto value_to_add = grad_output[batch][plane][output_z][output_y][output_x];
         auto target = &grad_input[batch][plane][input_z][input_y][input_x];
-        gpuAtomicAdd(target, value_to_add);
+        gpuAtomicAddNoReturn(target, value_to_add);
       });
 }
 
