@@ -4725,6 +4725,7 @@ class DistributedTest:
         @require_backend({"gloo", "nccl"})
         @require_backends_available({"gloo", "nccl"})
         @skip_if_lt_x_gpu(2)
+        @skip_if_rocm
         @unittest.skipIf(IS_FBCODE, "Kineto in fbcode code causes hang")
         @unittest.skipIf(
             IS_MACOS or IS_WINDOWS,
