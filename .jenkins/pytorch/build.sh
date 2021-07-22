@@ -152,6 +152,8 @@ if [[ "$BUILD_ENVIRONMENT" == *rocm* ]]; then
       # Set ROCM_ARCH to gfx900 and gfx906 for CI builds, if user doesn't override.
       echo "Limiting PYTORCH_ROCM_ARCH to gfx90[06] for CI builds"
       export PYTORCH_ROCM_ARCH="gfx900;gfx906"
+  else
+      export PYTORCH_ROCM_ARCH="gfx803;gfx900;gfx906;gfx908"
   fi
 
   python tools/amd_build/build_amd.py
