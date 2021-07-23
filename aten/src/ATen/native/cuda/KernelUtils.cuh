@@ -15,7 +15,7 @@ __device__ __forceinline__ void fastSpecializedAtomicAdd(
     const size_t numel,
     scalar_t value) {
 #if (                         \
-    (CUDA_VERSION < 10000) || \
+    (CUDA_VERSION < 10000 || defined(__HIP_PLATFORM_HCC__) ) || \
     (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 700)))
   gpuAtomicAddNoReturn(
       reinterpret_cast<at::Half*>(tensor) + index,
