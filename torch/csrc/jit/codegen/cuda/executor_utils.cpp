@@ -382,7 +382,7 @@ NvrtcFunction nvrtcCompile(
 
   {
     FUSER_PERF_SCOPE("get PTX");
-#if CUDA_VERSION >= 11010
+#if CUDA_VERSION >= 11010 && !defined(__HIP_PLATFORM_HCC__)
     // compile_to_sass determines whether we are generating SASS or PTX, hence
     // the different API.
     const auto getSize = compile_to_sass
