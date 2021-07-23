@@ -85,7 +85,7 @@ namespace caffe2 {
 class TensorCoreEngine {};
 #endif // __HIP_PLATFORM_HCC__
 
-#if CUDA_VERSION >= 10000
+#if CUDA_VERSION >= 10000 && !defined(__HIP_PLATFORM_HCC__)
 #define CAFFE2_CUDA_PTRATTR_MEMTYPE type
 #else
 #define CAFFE2_CUDA_PTRATTR_MEMTYPE memoryType
