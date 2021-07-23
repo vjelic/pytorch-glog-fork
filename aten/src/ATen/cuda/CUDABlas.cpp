@@ -325,7 +325,7 @@ void bgemm<at::BFloat16>(CUDABLAS_BGEMM_ARGTYPES(at::BFloat16)) {
   float fbeta = beta;
   _cublasAdjustLdLevel3(transa, transb, m, n, k, &lda, &ldb, &ldc);
 
-  #if defined(CUDA_VERSION) && CUDA_VERSION >= 11000
+  #if defined(CUDA_VERSION) && CUDA_VERSION >= 11000 && !defined(__HIP_PLATFORM_HCC__)
     cudaDeviceProp* prop = at::cuda::getCurrentDeviceProperties();
     TORCH_CUDABLAS_CHECK(cublasGemmStridedBatchedExFix(handle,
                                     opa, opb, (int)m, (int)n, (int)k,
