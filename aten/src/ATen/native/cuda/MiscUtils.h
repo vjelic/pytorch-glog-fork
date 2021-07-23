@@ -26,7 +26,7 @@ struct MAGMAQueue {
   explicit MAGMAQueue(int64_t device_id) {
     auto& context = at::globalContext();
     cublasHandle_t handle = at::cuda::getCurrentCUDABlasHandle();
-#if CUDA_VERSION >= 11000
+#if CUDA_VERSION >= 11000 && !defined(__HIP_PLATFORM_HCC__)
     // Magma operations is numerically sensitive, so TF32 should be off
     // regardless of the global flag.
     TORCH_CUDABLAS_CHECK(cublasGetMathMode(handle, &original_math_mode));
@@ -45,7 +45,7 @@ struct MAGMAQueue {
 
   // Destructor
   ~MAGMAQueue() {
-#if CUDA_VERSION >= 11000
+#if CUDA_VERSION >= 11000 && !defined(__HIP_PLATFORM_HCC__)
     // We've manually set the math mode to CUBLAS_DEFAULT_MATH, now we
     // should restore the original math mode back
     cublasHandle_t handle = magma_queue_get_cublas_handle(magma_queue_);
@@ -56,7 +56,7 @@ struct MAGMAQueue {
 
  private:
   magma_queue_t magma_queue_;
-#if CUDA_VERSION >= 11000
+#if CUDA_VERSION >= 11000 && !defined(__HIP_PLATFORM_HCC__)
   cublasMath_t original_math_mode;
 #endif
 };
