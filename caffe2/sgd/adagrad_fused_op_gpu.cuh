@@ -109,7 +109,7 @@ static inline __device__ void gpuAtomicAdd(float* address, float val) {
 
 static inline __device__ void gpuAtomicAdd(c10::Half* address, c10::Half val) {
 #if (                         \
-    (CUDA_VERSION < 10000) || \
+    (CUDA_VERSION < 10000 || defined(__HIP_PLATFORM_HCC__) ) || \
     (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 700)))
   unsigned int* address_as_ui =
       (unsigned int*)((char*)address - ((size_t)address & 2));
