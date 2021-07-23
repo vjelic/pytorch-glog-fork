@@ -26,7 +26,7 @@ struct TORCH_CUDA_CPP_API CUDAGraph {
   MempoolId_t pool();
 
   protected:
-#if CUDA_VERSION >= 11000
+#if CUDA_VERSION >= 11000 && !defined(__HIP_PLATFORM_HCC__)
   cudaGraph_t graph_ = NULL;
   cudaGraphExec_t graph_exec_ = NULL;
 #endif
