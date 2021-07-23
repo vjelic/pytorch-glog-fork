@@ -839,7 +839,7 @@ void dot<c10::complex<float>>(CUDABLAS_DOT_ARGTYPES(c10::complex<float>)) {
 
 template <>
 void dot<at::Half>(CUDABLAS_DOT_ARGTYPES(at::Half)) {
-#if CUDA_VERSION >= 8000
+#if CUDA_VERSION >= 8000 && !defined(__HIP_PLATFORM_HCC__)
   TORCH_CUDABLAS_CHECK(cublasDotEx(
       handle,
       n,
