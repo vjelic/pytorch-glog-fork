@@ -1263,7 +1263,7 @@ void CudaCodeGen::CompileToNVRTC(
   // NOLINTNEXTLINE(cppcoreguidelines-init-variables)
   size_t ptx_size;
   std::vector<char> ptx;
-#if CUDA_VERSION >= 11010
+#if CUDA_VERSION >= 11010 && !defined(__HIP_PLATFORM_HCC__)
   // compile_to_sass determines whether we are generating SASS or PTX, hence
   // the different API.
   const auto getSize = compile_to_sass
