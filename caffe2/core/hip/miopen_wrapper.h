@@ -57,9 +57,9 @@ class MIOPENState
     {
         HIPGuard g(gpu_id_);
         MIOPEN_ENFORCE(miopenCreate(&miopen_handle_));
-        HIP_ENFORCE(hipEventCreate(&before_));
-        HIP_ENFORCE(hipEventCreate(&after_));
-        HIP_ENFORCE(hipStreamCreate(&stream_));
+        CUDA_ENFORCE(hipEventCreate(&before_));
+        CUDA_ENFORCE(hipEventCreate(&after_));
+        CUDA_ENFORCE(hipStreamCreate(&stream_));
         MIOPEN_ENFORCE(miopenSetStream(miopen_handle_, stream_));
     }
 
@@ -79,11 +79,11 @@ class MIOPENState
     template <typename F>
     void execute(hipStream_t stream, F&& f)
     {
-        HIP_ENFORCE(hipEventRecord(before_, stream));
-        HIP_ENFORCE(hipStreamWaitEvent(stream_, before_, 0));
+        CUDA_ENFORCE(hipEventRecord(before_, stream));
+        CUDA_ENFORCE(hipStreamWaitEvent(stream_, before_, 0));
         f(this);
-        HIP_ENFORCE(hipEventRecord(after_, stream_));
-        HIP_ENFORCE(hipStreamWaitEvent(stream, after_, 0));
+        CUDA_ENFORCE(hipEventRecord(after_, stream_));
+        CUDA_ENFORCE(hipStreamWaitEvent(stream, after_, 0));
     }
 
     private:
