@@ -8094,6 +8094,7 @@ CAFFE2_SPECIFIC_MAPPINGS = collections.OrderedDict(
 #        ("CUDA", ("HIP", API_CAFFE2)),
         ("CUDAGuard", ("HIPGuard", API_CAFFE2)),
         ("C10_CUDA_API", ("C10_HIP_API", API_CAFFE2)),
+        ("C10_EXPORT_C10_OP_TO_CAFFE2_CUDA", ("C10_EXPORT_C10_OP_TO_CAFFE2_HIP", API_CAFFE2)),
         ("Cuda", ("Hip", API_CAFFE2)),
         ("cuda_", ("hip_", API_CAFFE2)),
         ("_cuda", ("_hip", API_CAFFE2)),
