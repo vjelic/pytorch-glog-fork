@@ -33,7 +33,7 @@ void addHIPGlobalMethods(py::module& m) {
   m.def("get_gpu_memory_info", [](int device_id) {
     HIPGuard guard(device_id);
     size_t device_free, device_total;
-    HIP_CHECK(hipMemGetInfo(&device_free, &device_total));
+    CUDA_CHECK(hipMemGetInfo(&device_free, &device_total));
     return std::pair<size_t, size_t>{device_free, device_total};
   });
   m.def("get_hip_peer_access_pattern", []() {

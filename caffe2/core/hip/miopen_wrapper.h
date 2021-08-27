@@ -67,9 +67,9 @@ class MIOPENState
     {
         HIPGuard g(gpu_id_);
         MIOPEN_CHECK(miopenDestroy(miopen_handle_));
-        HIP_CHECK(hipStreamDestroy(stream_));
-        HIP_CHECK(hipEventDestroy(after_));
-        HIP_CHECK(hipEventDestroy(before_));
+        CUDA_CHECK(hipStreamDestroy(stream_));
+        CUDA_CHECK(hipEventDestroy(after_));
+        CUDA_CHECK(hipEventDestroy(before_));
     }
 
     miopenHandle_t& miopen_handle() { return miopen_handle_; }

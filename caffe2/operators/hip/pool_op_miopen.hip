@@ -283,11 +283,11 @@ class MIOPENPoolGradientOp : public ConvPoolOpBase<HIPContext> {
 #endif
 
       if ((poolWsSize_ > 0) && (poolWs_ == nullptr)) {
-        HIP_CHECK(hipMalloc(&poolWs_, poolWsSize_));
+        CUDA_CHECK(hipMalloc(&poolWs_, poolWsSize_));
       }
 
       if (bwdPoolScratch_ == nullptr) {
-        HIP_CHECK(hipMalloc(&bwdPoolScratch_, Y.size() * sizeof(float)));
+        CUDA_CHECK(hipMalloc(&bwdPoolScratch_, Y.size() * sizeof(float)));
       }
 
       MIOPEN_ENFORCE(miopenPoolingForward(

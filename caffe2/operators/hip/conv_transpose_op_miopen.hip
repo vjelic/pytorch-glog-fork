@@ -231,7 +231,7 @@ bool MIOPENConvTransposeOp<T>::RunOnDevice() {
           top_desc_,
           &fwdConvWsSize_));
       if ((fwdConvWsSize_ > 0) && (fwdConvWs_ == nullptr)) {
-          HIP_CHECK(hipMalloc(&fwdConvWs_, fwdConvWsSize_));
+          CUDA_CHECK(hipMalloc(&fwdConvWs_, fwdConvWsSize_));
       }
 
       miopen_wrapper_.with_miopen_state(miopen_state_, [&](MIOPENState* state) {
@@ -379,7 +379,7 @@ bool MIOPENConvTransposeGradientOp<T>::RunOnDevice() {
           bottom_desc_,
           &bwdDataWsSize_));
       if ((bwdDataWsSize_ > 0) && (bwdDataWs_ == nullptr)) {
-          HIP_CHECK(hipMalloc(&bwdDataWs_, bwdDataWsSize_));
+          CUDA_CHECK(hipMalloc(&bwdDataWs_, bwdDataWsSize_));
       }
 
       miopen_wrapper_.with_miopen_state(miopen_state_, [&](MIOPENState* state) {
@@ -415,7 +415,7 @@ bool MIOPENConvTransposeGradientOp<T>::RunOnDevice() {
             weight_desc_,
             &bwdWeightWsSize_));
         if ((bwdWeightWsSize_ > 0) && (bwdWeightWs_ == nullptr)) {
-          HIP_CHECK(hipMalloc(&bwdWeightWs_, bwdWeightWsSize_));
+          CUDA_CHECK(hipMalloc(&bwdWeightWs_, bwdWeightWsSize_));
         }
 
         miopen_wrapper_.with_miopen_state(miopen_state_, [&](MIOPENState* state) {

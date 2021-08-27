@@ -188,12 +188,12 @@ bool MIOPENLRNGradientOp::DoRunWithType() {
   size_t ws_size = 0;
   MIOPEN_ENFORCE(miopenLRNGetWorkSpaceSize(data_desc_, &ws_size));
   if (bwdLRNWs_ == nullptr) {
-    HIP_CHECK(hipMalloc(&bwdLRNWs_, ws_size));
+    CUDA_CHECK(hipMalloc(&bwdLRNWs_, ws_size));
   }
 
   // Run fwd pass to populate workspace
   if (bwdLRNScratch_ == nullptr) {
-    HIP_CHECK(hipMalloc(&bwdLRNScratch_, X.size() * sizeof(float)));
+    CUDA_CHECK(hipMalloc(&bwdLRNScratch_, X.size() * sizeof(float)));
   }
   MIOPEN_ENFORCE(miopenLRNForward(
       miopen_wrapper_.inline_miopen_handle(),
