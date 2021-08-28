@@ -838,7 +838,7 @@ void dot<c10::complex<float>>(CUDABLAS_DOT_ARGTYPES(c10::complex<float>)) {
 
 template <>
 void dot<at::Half>(CUDABLAS_DOT_ARGTYPES(at::Half)) {
-#if CUDA_VERSION >= 8000
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 8000
   TORCH_CUDABLAS_CHECK(cublasDotEx(
       handle,
       n,
@@ -851,7 +851,7 @@ void dot<at::Half>(CUDABLAS_DOT_ARGTYPES(at::Half)) {
       result,
       CUDA_R_16F,
       CUDA_R_32F));
-#elif ROCM_VERSION >= 21000
+#elif defined(ROCM_VERSION) && ROCM_VERSION >= 21000
   TORCH_CUDABLAS_CHECK(rocblas_hdot(
       handle,
       n,
@@ -867,7 +867,7 @@ void dot<at::Half>(CUDABLAS_DOT_ARGTYPES(at::Half)) {
 
 template <>
 void dot<at::BFloat16>(CUDABLAS_DOT_ARGTYPES(at::BFloat16)) {
-#if CUDA_VERSION >= 11000
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 11000
   TORCH_CUDABLAS_CHECK(cublasDotEx(
       handle,
       n,
@@ -880,7 +880,7 @@ void dot<at::BFloat16>(CUDABLAS_DOT_ARGTYPES(at::BFloat16)) {
       result,
       CUDA_R_16BF,
       CUDA_R_32F));
-#elif ROCM_VERSION >= 21000
+#elif defined(ROCM_VERSION) && ROCM_VERSION >= 21000
   TORCH_CUDABLAS_CHECK(rocblas_bfdot(
       handle,
       n,
