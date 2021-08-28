@@ -99,8 +99,10 @@ class TensorCoreEngine {};
 inline int CudaVersion() {
 #if defined(USE_ROCM)
   return ROCM_VERSION;
-#else
+#elif defined(CUDA_VERSION)
   return CUDA_VERSION;
+#else
+  return -1;
 #endif
 }
 
