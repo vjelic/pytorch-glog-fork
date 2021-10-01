@@ -4,11 +4,17 @@ clear
 
 BUILD_DIR=/tmp/pytorch
 
-if [true]; then
+if false; then
+    rm -rf $BUILD_DIR
+    cp -rf /var/lib/jenkins/pytorch /tmp
+    chmod -R 777 $BUILD_DIR
+    ls $BUILD_DIR
+fi
+
+if true; then
     CUR_FILE=$1
     chmod -R 777 $CUR_FILE
     cp -rf --parents $CUR_FILE $BUILD_DIR
-
     cd $BUILD_DIR/build
     cmake --build . --target install --config Release -- -j 16
 else

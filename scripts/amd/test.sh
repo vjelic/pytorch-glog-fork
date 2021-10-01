@@ -17,8 +17,8 @@ export HIP_LAUNCH_BLOCKING=1
 # sh scripts/amd/check_warp.sh
 
 # PYTORCH_DIR="/var/lib/jenkins/pytorch"
-# PYTORCH_DIR="/tmp/pytorch"
-PYTORCH_DIR=$(pwd)
+PYTORCH_DIR="/tmp/pytorch"
+# PYTORCH_DIR=$(pwd)
 cd $PYTORCH_DIR/test
 
 # PYTORCH_TEST_WITH_ROCM=1 pytest --verbose
