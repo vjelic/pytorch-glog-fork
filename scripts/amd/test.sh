@@ -6,17 +6,19 @@ clear
 # export HIP_TRACE_API=1
 # export HIP_DB=api+mem+copy
 # export HIP_API_BLOCKING=1
-# export HIP_LAUNCH_BLOCKING_KERNELS kernel1,kernel2,... 
+# export HIP_LAUNCH_BLOCKING_KERNELS kernel1,kernel2,...
 # export HCC_DB 0x48a
 # export HCC_SERIALIZE_KERNEL=3
 # export HCC_SERIALIZE_COPY=3
+
 export AMD_LOG_LEVEL=3
 export HIP_LAUNCH_BLOCKING=1
 
+# sh scripts/amd/check_warp.sh
+
 # PYTORCH_DIR="/var/lib/jenkins/pytorch"
 # PYTORCH_DIR="/tmp/pytorch"
-PYTORCH_DIR=`pwd`
-
+PYTORCH_DIR=$(pwd)
 cd $PYTORCH_DIR/test
 
 # PYTORCH_TEST_WITH_ROCM=1 pytest --verbose
