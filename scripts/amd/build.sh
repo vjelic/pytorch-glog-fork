@@ -1,6 +1,7 @@
 #!/bin/bash
 set -ex
 clear
+export PYTORCH_ROCM_ARCH=gfx1030
 
 BUILD_DIR=/tmp/pytorch
 
@@ -11,16 +12,39 @@ if false; then
     ls $BUILD_DIR
 fi
 
-if true; then
-    CUR_FILE=$1
+cp_to_build_dir() {
+    local CUR_FILE=$1
     chmod -R 777 $CUR_FILE
     cp -rf --parents $CUR_FILE $BUILD_DIR
-    cd $BUILD_DIR/build
-    cmake --build . --target install --config Release -- -j 16
+}
+
+if true; then
+    # "c10/macros/Macros.h"
+    # "aten/src/ATen/native/sparse/cuda/SparseCUDAApplyUtils.cuh"
+    FILE_LIST=(
+        "aten/src/ATen/native/cuda/Loops.cuh"
+        "aten/src/ATen/native/cuda/ROCmLoops.cuh"
+        "aten/src/ATen/native/cuda/block_reduce.cuh"
+        "aten/src/ATen/native/cuda/RangeFactories.cu"
+        "aten/src/ATen/native/sparse/cuda/SparseCUDAApplyUtils.cuh"
+    )
+    for FILE in "${FILE_LIST[@]}"; do
+        cp_to_build_dir $FILE
+    done
+
+    
+    
+    # cd $BUILD_DIR/build
+    # cmake --build . --target install --config Release -- -j 16
+    
+    cd $BUILD_DIR
+    python tools/amd_build/build_amd.py
+    VERBOSE=1 USE_ROCM=1 python3 setup.py develop
 else
+    pip uninstall torch -y
+    
     cd $BUILD_DIR
     export MAX_JOBS=16
-    pip uninstall torch -y
     python tools/amd_build/build_amd.py
     VERBOSE=1 USE_ROCM=1 python3 setup.py develop | tee DEBUG_BUILD.log
 fi
