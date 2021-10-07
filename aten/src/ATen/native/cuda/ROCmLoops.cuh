@@ -234,7 +234,6 @@ __global__ void elementwise_kernel(int N, func_t f, array_t data) {
   // Assumption:
   // 1. all arguments of `f` have the same type, which could be different from the return type of `f`
   // 2. all tensors are contiguous, that is: stride == sizeof(type) for all tensors
-  // printf("%s:%d:elementwise_kernel \n", __FILE__, __LINE__);
   using traits = function_traits<func_t>;
   using return_t = typename traits::result_type;
   using arg_t = detail::arg_type::type<func_t>;
@@ -296,7 +295,6 @@ static void launch_kernel(int64_t N, const func_t& f, array_t data) {
   const int num_threads = at::cuda::warp_size() * 2;
   const int thread_work_size = 4;
   const int block_work_size = thread_work_size * num_threads;
-  // printf("%s:%d:launch_kernel \n", __FILE__, __LINE__);
   int64_t grid = (N + block_work_size - 1) / block_work_size;
   auto stream = at::cuda::getCurrentCUDAStream();
   elementwise_kernel<func_t, array_t><<<grid, num_threads, 0, stream>>>(N, f, data);
