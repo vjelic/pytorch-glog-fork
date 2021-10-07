@@ -18,33 +18,33 @@ cp_to_build_dir() {
     cp -rf --parents $CUR_FILE $BUILD_DIR
 }
 
+build_develop() {
+    pip uninstall torch -y
+
+    cd $BUILD_DIR
+    export MAX_JOBS=16
+    python tools/amd_build/build_amd.py
+    VERBOSE=1 USE_ROCM=1 python3 setup.py develop | tee BUILD_DEVELOP.log
+}
+
 if true; then
     # "c10/macros/Macros.h"
     # "aten/src/ATen/native/sparse/cuda/SparseCUDAApplyUtils.cuh"
+    # "aten/src/ATen/native/cuda/block_reduce.cuh"
+    # "aten/src/ATen/native/cuda/RangeFactories.cu"
+    # "aten/src/ATen/native/sparse/cuda/SparseCUDAApplyUtils.cuh"
+    # "aten/src/ATen/native/cuda/MemoryAccess.cuh"
     FILE_LIST=(
         "aten/src/ATen/native/cuda/Loops.cuh"
         "aten/src/ATen/native/cuda/ROCmLoops.cuh"
-        "aten/src/ATen/native/cuda/block_reduce.cuh"
-        "aten/src/ATen/native/cuda/RangeFactories.cu"
-        "aten/src/ATen/native/sparse/cuda/SparseCUDAApplyUtils.cuh"
     )
     for FILE in "${FILE_LIST[@]}"; do
         cp_to_build_dir $FILE
     done
 
-    
-    
     # cd $BUILD_DIR/build
     # cmake --build . --target install --config Release -- -j 16
-    
-    cd $BUILD_DIR
-    python tools/amd_build/build_amd.py
-    VERBOSE=1 USE_ROCM=1 python3 setup.py develop
+    build_develop
 else
-    pip uninstall torch -y
-    
-    cd $BUILD_DIR
-    export MAX_JOBS=16
-    python tools/amd_build/build_amd.py
-    VERBOSE=1 USE_ROCM=1 python3 setup.py develop | tee DEBUG_BUILD.log
+    build_develop
 fi

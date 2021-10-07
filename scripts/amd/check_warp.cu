@@ -15,6 +15,7 @@ int main() {
         return 1;
     } else {
         printf("The warp size is %d.\n", deviceProp.warpSize);
+        printf("The gcn arch is %s\n", deviceProp.gcnArchName);
         return 0;
     }
 

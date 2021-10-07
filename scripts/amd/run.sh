@@ -1,5 +1,5 @@
 set -e
 
 # build pytorch
-sh scripts/amd/build.sh
-sh scripts/amd/test.sh
+bash scripts/amd/build.sh
+bash scripts/amd/test.sh

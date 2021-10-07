@@ -90,7 +90,7 @@ do
    sanitized=`echo $test | tr / _`
    echo $test 
    echo $sanitized
-   pushd pytorch/test
+   pushd /tmp/pytorch/test
    python run_test.py --verbose -i $test |& tee ../../${sanitized}.log
    popd
 done
