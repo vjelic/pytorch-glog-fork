@@ -5,13 +5,6 @@ export PYTORCH_ROCM_ARCH=gfx1030
 
 BUILD_DIR=/tmp/pytorch
 
-if false; then
-    rm -rf $BUILD_DIR
-    cp -rf /var/lib/jenkins/pytorch /tmp
-    chmod -R 777 $BUILD_DIR
-    ls $BUILD_DIR
-fi
-
 cp_to_build_dir() {
     local CUR_FILE=$1
     chmod -R 777 $CUR_FILE
@@ -34,9 +27,10 @@ if true; then
     # "aten/src/ATen/native/cuda/RangeFactories.cu"
     # "aten/src/ATen/native/sparse/cuda/SparseCUDAApplyUtils.cuh"
     # "aten/src/ATen/native/cuda/MemoryAccess.cuh"
+    # "aten/src/ATen/native/cuda/Loops.cuh"
+    # "aten/src/ATen/native/cuda/ROCmLoops.cuh"
     FILE_LIST=(
-        "aten/src/ATen/native/cuda/Loops.cuh"
-        "aten/src/ATen/native/cuda/ROCmLoops.cuh"
+       "aten/src/ATen/native/cuda/Loops.cuh"
     )
     for FILE in "${FILE_LIST[@]}"; do
         cp_to_build_dir $FILE
