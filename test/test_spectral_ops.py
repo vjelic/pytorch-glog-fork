@@ -1196,6 +1196,7 @@ class TestFFT(TestCase):
 
     @onlyOnCPUAndCUDA
     @skipCPUIfNoFFT
+    @skipIfRocm
     @dtypes(torch.double)
     def test_istft_round_trip_with_padding(self, device, dtype):
         """long hop_length or not centered may cause length mismatch in the inversed signal"""
