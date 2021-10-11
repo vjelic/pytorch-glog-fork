@@ -31,6 +31,7 @@ if true; then
     # "aten/src/ATen/native/cuda/ROCmLoops.cuh"
     FILE_LIST=(
        "aten/src/ATen/native/cuda/Loops.cuh"
+       "aten/src/ATen/native/hip/Loops.cuh"
     )
     for FILE in "${FILE_LIST[@]}"; do
         cp_to_build_dir $FILE
