@@ -218,7 +218,6 @@ __global__ void unrolled_elementwise_kernel_for_multi_outputs(int N, func_t f, a
 template <int num_outputs, typename func_t, typename array_t, typename inp_calc_t, typename out_calc_t>
 static inline void launch_unrolled_kernel_for_multi_outputs(int64_t N, const func_t& f, array_t data, inp_calc_t ic, out_calc_t oc) {
   TORCH_INTERNAL_ASSERT(N > 0 && N <= std::numeric_limits<int32_t>::max());
-  printf("%s:%d:launch_unrolled_kernel_for_multi_outputs \n", __FILE__, __LINE__);
   const int num_threads = at::cuda::warp_size() * 2;
   const int thread_work_size = 4;
   const int block_work_size = thread_work_size * num_threads;
