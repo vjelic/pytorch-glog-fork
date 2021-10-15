@@ -1,6 +1,5 @@
 #!/bin/bash
 set -ex
-clear
 
 BUILD_DIR=/tmp/pytorch
 

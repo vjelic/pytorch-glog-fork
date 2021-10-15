@@ -1,6 +1,6 @@
 #!/bin/bash
 set -ex
-clear
+
 export PYTORCH_ROCM_ARCH=gfx1030
 
 BUILD_DIR=/tmp/pytorch
