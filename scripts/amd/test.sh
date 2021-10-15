@@ -84,10 +84,20 @@ export WORLD_SIZE="2"
 # PYTORCH_TEST_WITH_ROCM=1 python test_torch.py --verbose
 
 # hang
-PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_caching_pinned_memory |& tee /dockerx/pytorch_rocm/test_caching_pinned_memory.log
+PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_copy_streams |& tee /dockerx/pytorch_rocm/test_copy_streams.log
+# PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_to_non_blocking |& tee /dockerx/pytorch_rocm/test_to_non_blocking.log
+# PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_to_cpu_blocking_by_default |& tee /dockerx/pytorch_rocm/test_to_cpu_blocking_by_default.log
+# PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_streams_multi_gpu_query |& tee /dockerx/pytorch_rocm/test_streams_multi_gpu_query.log
+# PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_events |& tee /dockerx/pytorch_rocm/test_events.log
+# PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_events_multi_gpu_query |& tee /dockerx/pytorch_rocm/test_events_multi_gpu_query.log
+# PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_record_stream_on_shifted_view |& tee /dockerx/pytorch_rocm/test_record_stream_on_shifted_view.log
+# PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_caching_pinned_memory |& tee /dockerx/pytorch_rocm/test_caching_pinned_memory.log
 # PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_caching_pinned_memory_multi_gpu |& tee /dockerx/pytorch_rocm/test_caching_pinned_memory_multi_gpu.log
-# PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_copy_streams |& tee /dockerx/pytorch_rocm/test_copy_streams.log
-# PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_cusparse_multiple_threads_same_device
+# PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_streaming_backwards_sync |& tee /dockerx/pytorch_rocm/test_streaming_backwards_sync.log
+# PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_streaming_backwards_sync_graph_root |& tee /dockerx/pytorch_rocm/test_streaming_backwards_sync_graph_root.log
+# PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_streaming_backwards_callback |& tee /dockerx/pytorch_rocm/test_streaming_backwards_callback.log
+# PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_cusparse_multiple_threads_same_device |& tee /dockerx/pytorch_rocm/test_cusparse_multiple_threads_same_device.log
+
 # PYTORCH_TEST_WITH_ROCM=1 python test_nn.py --verbose TestNNDeviceTypeCUDA.test_embedding_bag_2D_padding_idx_cuda_bfloat16 |& tee /dockerx/pytorch_rocm/test_embedding_bag_2D_padding_idx_cuda_bfloat16.log
 
 
