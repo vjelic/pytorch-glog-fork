@@ -16,7 +16,9 @@ WORK_DIR="/dockerx/$(basename $(pwd))"
 # IMAGE_NAME=rocm/pytorch
 # IMAGE_NAME=compute-artifactory.amd.com:5000/rocm-plus-docker/framework/compute-rocm-dkms-no-npi-hipclang:8733_ubuntu18.04_py3.6_pytorch_rocm4.5_internal_testing_warpsize_a1f2f40
 # IMAGE_NAME=computecqe/pytorch:8863_warpsize32
-IMAGE_NAME=rocm/pytorch-private:SWDEV-navi 
+# IMAGE_NAME=rocm/pytorch-private:SWDEV-navi
+# IMAGE_NAME=computecqe/pytorch:rocm4.5_internal_testing_warpsize_mmelesse_pr_2
+IMAGE_NAME=rocm/pytorch-private:SWDEV-fixnosymbol
 CONTAINER_NAME=pytorch
 
 # start new container

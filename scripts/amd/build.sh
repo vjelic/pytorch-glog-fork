@@ -27,15 +27,18 @@ if true; then
     # "aten/src/ATen/native/cuda/RangeFactories.cu"
     # "aten/src/ATen/native/sparse/cuda/SparseCUDAApplyUtils.cuh"
     # "aten/src/ATen/native/cuda/MemoryAccess.cuh"
-    # "aten/src/ATen/native/cuda/Loops.cuh"
     # "aten/src/ATen/native/cuda/ROCmLoops.cuh"
-    FILE_LIST=(
-       "aten/src/ATen/native/cuda/Loops.cuh"
-       "aten/src/ATen/native/hip/Loops.cuh"
-    )
-    for FILE in "${FILE_LIST[@]}"; do
-        cp_to_build_dir $FILE
-    done
+    # "aten/src/ATen/native/cuda/Loops.cuh"
+    # "aten/src/ATen/native/hip/Loops.cuh"
+    # "aten/src/ATen/native/cuda/ScatterGatherKernel.cu"
+    # "aten/src/ATen/native/cuda/LinearAlgebra.cu"
+
+    # FILE_LIST=(
+    #    "test/test_cuda.py"
+    # )
+    # for FILE in "${FILE_LIST[@]}"; do
+    #     cp_to_build_dir $FILE
+    # done
 
     # cd $BUILD_DIR/build
     # cmake --build . --target install --config Release -- -j 16
