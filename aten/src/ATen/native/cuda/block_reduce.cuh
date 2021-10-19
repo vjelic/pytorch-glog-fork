@@ -14,7 +14,8 @@ constexpr int kCUDABlockReduceNumThreads = 512;
 // of which reduces C10_WARP_SIZE elements. So, at most
 // C10_WARP_SIZE**2 elements can be reduced at a time.
 // NOTE: This is >= the max block size on current hardware anyway (1024).
-constexpr int kCUDABlockReduceMaxThreads = C10_WARP_SIZE * C10_WARP_SIZE;
+// NOTE: Cannot be constexpr since warp size is queried at runtime.
+//constexpr int kCUDABlockReduceMaxThreads = C10_WARP_SIZE * C10_WARP_SIZE;
 
 // Sums `val` accross all threads in a warp.
 //

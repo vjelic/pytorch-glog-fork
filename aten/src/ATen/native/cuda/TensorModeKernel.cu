@@ -139,8 +139,10 @@ void handle_fused_mode(
     int64_t slice_size,
     int64_t slices) {
   constexpr int num_threads = size / 2;
-  TORCH_INTERNAL_ASSERT(num_threads % at::cuda::warp_size() == 0);
-  static_assert(num_threads <= cuda_utils::kCUDABlockReduceMaxThreads, "");
+  int warp_size = at::cuda::warp_size();
+  int max_threads = warp_size * warp_size;
+  TORCH_INTERNAL_ASSERT(
+      num_threads % warp_size == 0 && num_threads <= max_threads, "handle_fused_mode");
   const auto memsize =
       (sizeof(scalar_t) * size) + (2 * size * sizeof(unsigned int));
   compute_mode<scalar_t, size>

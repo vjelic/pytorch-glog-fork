@@ -27,7 +27,7 @@ namespace native {
 namespace {
 
 // launch bounds used for kernels utilizing TensorIterator
-const uint32_t block_size_bound = 256;
+const uint32_t block_size_bound = 256; // should may be 128 for navi
 const uint32_t grid_size_bound = 4;
 // number of randoms given by distributions like curand_uniform4, curand_uniform2_double
 // used in calculating philox offset.
@@ -254,6 +254,9 @@ void distribution_binary_kernel(TensorIterator &iter, PhiloxCudaState philox_arg
   const input_t_1 *input_data_1 = static_cast<const input_t_1 *>(iter.data_ptr(1));
   const input_t_2 *input_data_2 = static_cast<const input_t_2 *>(iter.data_ptr(2));
 
+  const int num_threads = at::cuda::warp_size() * 2;
+  const int thread_work_size = 4;
+  const int block_work_size = thread_work_size * num_threads;
   int64_t grid = (numel + block_work_size - 1) / block_work_size;
   auto stream = at::cuda::getCurrentCUDAStream();
 

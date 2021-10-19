@@ -36,7 +36,8 @@ void launch_cross_kernel(const TensorIteratorBase& iter, int64_t ostride,
   const auto N = iter.numel();
   auto offset_calculator = make_element_offset_calculator<3>(iter);
   TORCH_INTERNAL_ASSERT_DEBUG_ONLY(N > 0 && N <= std::numeric_limits<int32_t>::max());
-  int64_t grid = (N + NUM_THREADS - 1) / NUM_THREADS;
+  const int num_threads = at::cuda::warp_size() * 2;
+  int64_t grid = (N + num_threads - 1) / num_threads;
   auto stream = at::cuda::getCurrentCUDAStream();
 
   AT_DISPATCH_ALL_TYPES_AND_COMPLEX_AND(kHalf, iter.common_dtype(), "cross_cuda", [&] {
