@@ -84,7 +84,10 @@ export WORLD_SIZE="2"
 # PYTORCH_TEST_WITH_ROCM=1 python test_torch.py --verbose
 
 # hang
-PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_copy_streams |& tee /dockerx/pytorch_rocm/test_copy_streams.log
+clear
+PYTORCH_TEST_WITH_ROCM=1 python test_hang.py |& tee /dockerx/pytorch_rocm/test_hang.log
+
+# PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_copy_streams |& tee /dockerx/pytorch_rocm/test_copy_streams.log
 # PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_to_non_blocking |& tee /dockerx/pytorch_rocm/test_to_non_blocking.log
 # PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_to_cpu_blocking_by_default |& tee /dockerx/pytorch_rocm/test_to_cpu_blocking_by_default.log
 # PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_streams_multi_gpu_query |& tee /dockerx/pytorch_rocm/test_streams_multi_gpu_query.log

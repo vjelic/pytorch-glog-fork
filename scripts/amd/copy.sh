@@ -22,6 +22,7 @@ cp_to_build_dir() {
 # "aten/src/ATen/native/cuda/LinearAlgebra.cu"
 
 FILE_LIST=(
+    "test/test_hang.py"
     "test/test_cuda.py"
     "test/test_nn.py"
 )

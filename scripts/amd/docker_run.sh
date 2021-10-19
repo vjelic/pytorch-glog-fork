@@ -19,7 +19,9 @@ WORK_DIR="/dockerx/$(basename $(pwd))"
 # IMAGE_NAME=rocm/pytorch-private:SWDEV-navi
 # IMAGE_NAME=computecqe/pytorch:rocm4.5_internal_testing_warpsize_mmelesse_pr_2
 # IMAGE_NAME=rocm/pytorch-private:SWDEV-fixnosymbol
-IMAGE_NAME=rocm/pytorch-private:SWDEV-navihang
+# IMAGE_NAME=rocm/pytorch-private:SWDEV-navihang
+# IMAGE_NAME=rocm/pytorch-private:SWDEV-hangsols 
+IMAGE_NAME=rocm/pytorch-private:SWDEV-printsleepkernel
 CONTAINER_NAME=pytorch
 
 # start new container
