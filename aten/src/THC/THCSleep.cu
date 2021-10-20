@@ -4,18 +4,18 @@
 __global__ void spin_kernel(int64_t cycles)
 {
   printf("spin_kernel\n");
-  printf("cycles: %d\n", cycles);
+  printf("cycles: %ld\n", cycles);
   // see concurrentKernels CUDA sampl
   int64_t start_clock = clock64();
-  printf("start_clock: %d\n", start_clock);
+  printf("start_clock: %ld\n", start_clock);
   int64_t clock_offset = 0;
   int64_t end_clock = start_clock;
   while (clock_offset < cycles)
   {
     end_clock = clock64();
-    printf("end_clock: %d\n", end_clock);
+    printf("end_clock: %ld\n", end_clock);
     clock_offset = end_clock - start_clock;
-    printf("clock_offset: %d\n", clock_offset);
+    printf("clock_offset: %ld\n", clock_offset);
   }
 }
 
