@@ -1,11 +1,11 @@
 import torch
 
-FIFTY_MIL_CYCLES=500
+# FIFTY_MIL_CYCLES=500
 # FIFTY_MIL_CYCLES=5000
 # FIFTY_MIL_CYCLES=50000
 # FIFTY_MIL_CYCLES=500000
 # FIFTY_MIL_CYCLES=5000000
-# FIFTY_MIL_CYCLES=50000000 # this is the default value and should take about 50 ms
+FIFTY_MIL_CYCLES=50000000 # this is the default value and should take about 50 ms
 
 def _test_copy_sync_current_stream(x, y):
     x_plus_one = x + 1
