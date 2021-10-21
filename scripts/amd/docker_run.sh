@@ -21,7 +21,8 @@ WORK_DIR="/dockerx/$(basename $(pwd))"
 # IMAGE_NAME=rocm/pytorch-private:SWDEV-fixnosymbol
 # IMAGE_NAME=rocm/pytorch-private:SWDEV-navihang
 # IMAGE_NAME=rocm/pytorch-private:SWDEV-hangsols 
-IMAGE_NAME=rocm/pytorch-private:SWDEV-printsleepkernel
+# IMAGE_NAME=rocm/pytorch-private:SWDEV-printsleepkernel
+IMAGE_NAME=rocm/pytorch-private:SWDEV-printsleepkernel-rocm5.0
 CONTAINER_NAME=pytorch
 
 # start new container

@@ -31,7 +31,7 @@ cd $PYTORCH_DIR/test
 # bash scripts/amd/run_individually.sh
 
 export BACKEND="nccl"
-export WORLD_SIZE="2"
+export WORLD_SIZE="8"
 # PYTORCH_TEST_WITH_ROCM=1 python distributed/test_distributed_spawn.py  --verbose TestDistBackendWithSpawn.test_DistributedDataParallel_SyncBatchNorm_2D_Input
 # PYTORCH_TEST_WITH_ROCM=1 python distributed/test_distributed_spawn.py  --verbose TestDistBackendWithSpawn.test_DistributedDataParallel_SyncBatchNorm_No_Affine
 # PYTORCH_TEST_WITH_ROCM=1 python distributed/test_distributed_spawn.py  --verbose TestDistBackendWithSpawn.test_DistributedDataParallel_SyncBatchNorm_Single_Input_Per_Process
@@ -72,7 +72,7 @@ export WORLD_SIZE="2"
 # PYTORCH_TEST_WITH_ROCM=1 python test_ops.py --verbose TestCommonCUDA.test_variant_consistency_eager_unfold_cuda_complex64
 
 # PYTORCH_TEST_WITH_ROCM=1 python test_cpp_api_parity.py  --verbose
-# PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose
+# PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose |& tee /dockerx/pytorch_rocm/test_cuda.log
 # PYTORCH_TEST_WITH_ROCM=1 python test_indexing.py   --verbose
 # PYTORCH_TEST_WITH_ROCM=1 python test_jit.py   --verbose
 # PYTORCH_TEST_WITH_ROCM=1 python test_linalg.py   --verbose
@@ -85,7 +85,7 @@ export WORLD_SIZE="2"
 
 # hang
 clear
-PYTORCH_TEST_WITH_ROCM=1 python test_hang.py |& tee /dockerx/pytorch_rocm/test_hang.log
+# PYTORCH_TEST_WITH_ROCM=1 python test_hang.py |& tee /dockerx/pytorch_rocm/test_hang.log
 
 # PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_copy_streams |& tee /dockerx/pytorch_rocm/test_copy_streams.log
 # PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_to_non_blocking |& tee /dockerx/pytorch_rocm/test_to_non_blocking.log
@@ -101,8 +101,10 @@ PYTORCH_TEST_WITH_ROCM=1 python test_hang.py |& tee /dockerx/pytorch_rocm/test_h
 # PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_streaming_backwards_callback |& tee /dockerx/pytorch_rocm/test_streaming_backwards_callback.log
 # PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_cusparse_multiple_threads_same_device |& tee /dockerx/pytorch_rocm/test_cusparse_multiple_threads_same_device.log
 
-# PYTORCH_TEST_WITH_ROCM=1 python test_nn.py --verbose TestNNDeviceTypeCUDA.test_embedding_bag_2D_padding_idx_cuda_bfloat16 |& tee /dockerx/pytorch_rocm/test_embedding_bag_2D_padding_idx_cuda_bfloat16.log
+PYTORCH_TEST_WITH_ROCM=1 python test_nn.py --verbose TestNNDeviceTypeCUDA.test_embedding_bag_2D_padding_idx_cuda_bfloat16 |& tee /dockerx/pytorch_rocm/test_embedding_bag_2D_padding_idx_cuda_bfloat16.log
 
 
 # segfault
+
+# PYTORCH_TEST_WITH_ROCM=1 python distributed/test_distributed_spawn.py  --verbose TestDistBackendWithSpawn.test_DistributedDataParallel_SyncBatchNorm_2D_Input
 
