@@ -20,10 +20,10 @@ cp_to_build_dir() {
 # "aten/src/ATen/native/hip/Loops.cuh"
 # "aten/src/ATen/native/cuda/ScatterGatherKernel.cu"
 # "aten/src/ATen/native/cuda/LinearAlgebra.cu"
+# "test/test_hang.py"
+# "test/test_cuda.py"
 
 FILE_LIST=(
-    "test/test_hang.py"
-    "test/test_cuda.py"
     "test/test_nn.py"
 )
 for FILE in "${FILE_LIST[@]}"; do

@@ -1,5 +1,5 @@
 set -ex
-echo "testing"
+# clear
 
 # export HIP_VISIBLE_DEVICES=0
 # export HIP_HIDDEN_FREE_MEM 500
@@ -15,6 +15,8 @@ echo "testing"
 # export AMD_LOG_LEVEL=3
 # export HIP_LAUNCH_BLOCKING=1
 
+export PYTORCH_TEST_WITH_ROCM=1
+
 bash scripts/amd/copy.sh
 
 # sh scripts/amd/check_warp.sh
@@ -24,14 +26,16 @@ PYTORCH_DIR="/tmp/pytorch"
 # PYTORCH_DIR=$(pwd)
 cd $PYTORCH_DIR/test
 
+ls
+
 # PYTORCH_TEST_WITH_ROCM=1 pytest --verbose
 # PYTORCH_TEST_WITH_ROCM=1 python test_spectral_ops.py --verbose TestFFTCUDA.test_fft_type_promotion_cuda_float32
 # PYTORCH_TEST_WITH_ROCM=1 python distributed/algorithms/test_join.py --verbose TestJoin.test_join_kwargs
 # PYTORCH_TEST_WITH_ROCM=1 python test_ops.py   --verbose TestGradientsCUDA.test_forward_mode_AD_linalg_tensorinv_cuda_float64
 # bash scripts/amd/run_individually.sh
 
-export BACKEND="nccl"
-export WORLD_SIZE="8"
+# export BACKEND="nccl"
+# export WORLD_SIZE="8"
 # PYTORCH_TEST_WITH_ROCM=1 python distributed/test_distributed_spawn.py  --verbose TestDistBackendWithSpawn.test_DistributedDataParallel_SyncBatchNorm_2D_Input
 # PYTORCH_TEST_WITH_ROCM=1 python distributed/test_distributed_spawn.py  --verbose TestDistBackendWithSpawn.test_DistributedDataParallel_SyncBatchNorm_No_Affine
 # PYTORCH_TEST_WITH_ROCM=1 python distributed/test_distributed_spawn.py  --verbose TestDistBackendWithSpawn.test_DistributedDataParallel_SyncBatchNorm_Single_Input_Per_Process
@@ -82,10 +86,13 @@ export WORLD_SIZE="8"
 # PYTORCH_TEST_WITH_ROCM=1 python test_reductions.py   --verbose
 # PYTORCH_TEST_WITH_ROCM=1 python test_sort_and_select.py   --verbose
 # PYTORCH_TEST_WITH_ROCM=1 python test_torch.py --verbose
+# PYTORCH_TEST_WITH_ROCM=1 python distributed/test_distributed_spawn.py --verbose |& tee /dockerx/pytorch_rocm/test_distributed_spawn.log
+# PYTORCH_TEST_WITH_ROCM=1 python3.6 run_test.py -i distributed/test_distributed_fork.py -v |& tee /dockerx/pytorch_rocm/test_distributed_fork.log
+# PYTORCH_TEST_WITH_ROCM=1 python3.6 run_test.py -i distributed/test_distributed_spawn.py -v |& tee /dockerx/pytorch_rocm/test_distributed_spawn.log
 
 # hang
-clear
 # PYTORCH_TEST_WITH_ROCM=1 python test_hang.py |& tee /dockerx/pytorch_rocm/test_hang.log
+python test_nn.py --verbose |& tee /dockerx/pytorch_rocm/test_nn.log
 
 # PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_copy_streams |& tee /dockerx/pytorch_rocm/test_copy_streams.log
 # PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_to_non_blocking |& tee /dockerx/pytorch_rocm/test_to_non_blocking.log
@@ -101,10 +108,9 @@ clear
 # PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_streaming_backwards_callback |& tee /dockerx/pytorch_rocm/test_streaming_backwards_callback.log
 # PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_cusparse_multiple_threads_same_device |& tee /dockerx/pytorch_rocm/test_cusparse_multiple_threads_same_device.log
 
-PYTORCH_TEST_WITH_ROCM=1 python test_nn.py --verbose TestNNDeviceTypeCUDA.test_embedding_bag_2D_padding_idx_cuda_bfloat16 |& tee /dockerx/pytorch_rocm/test_embedding_bag_2D_padding_idx_cuda_bfloat16.log
-
+# PYTORCH_TEST_WITH_ROCM=1 python test_nn.py --verbose TestNNDeviceTypeCUDA.test_embedding_bag_2D_padding_idx_cuda_bfloat16 |& tee /dockerx/pytorch_rocm/test_embedding_bag_2D_padding_idx_cuda_bfloat16.log
+# PYTORCH_TEST_WITH_ROCM=1 python test_nn.py --verbose TestNNDeviceTypeCUDA.test_embedding_bag_device_cuda_int32_int32_float16 |& tee /dockerx/pytorch_rocm/test_embedding_bag_device_cuda_int32_int32_float16.log
 
 # segfault
 
 # PYTORCH_TEST_WITH_ROCM=1 python distributed/test_distributed_spawn.py  --verbose TestDistBackendWithSpawn.test_DistributedDataParallel_SyncBatchNorm_2D_Input
-
