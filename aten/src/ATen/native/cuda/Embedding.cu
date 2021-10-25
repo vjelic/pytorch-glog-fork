@@ -15,6 +15,12 @@ namespace at { namespace native {
 
 namespace {
 
+#ifdef __HIP_PLATFORM_HCC__
+static const int BLOCKDIMY = 16;
+#else
+static const int BLOCKDIMY = 32;
+#endif
+
 template
   <typename scalar_t,
    typename accscalar_t,
@@ -233,9 +239,8 @@ Tensor embedding_dense_backward_cuda(const Tensor & grad_, const Tensor & indice
     auto grad_weight = at::zeros({num_weights, grad_.size(-1)}, grad_.options());
     int64_t stride = grad_weight.stride(0);
     int warp_size = at::cuda::warp_size();
-    int block_dim_y = 1024 / warp_size;
     dim3 grid(THCCeilDiv(stride, (int64_t)warp_size));
-    dim3 block(warp_size, block_dim_y);
+    dim3 block(warp_size, BLOCKDIMY);
 
     AT_DISPATCH_FLOATING_TYPES_AND2(
       at::ScalarType::Half, at::ScalarType::BFloat16,
@@ -248,7 +253,7 @@ Tensor embedding_dense_backward_cuda(const Tensor & grad_, const Tensor & indice
           embedding_backward_feature_kernel<scalar_t, accscalar_t, index_t>
             <<<grid,
                 block,
-                sizeof(accscalar_t)*warp_size*block_dim_y + sizeof(int)*warp_size*block_dim_y,
+                sizeof(accscalar_t)*warp_size*BLOCKDIMY + sizeof(int)*warp_size*BLOCKDIMY,
                 stream>>>
             (indices_contig.data_ptr<index_t>(),
               grad.data_ptr<scalar_t>(),
