@@ -11,9 +11,9 @@ set -ex
 # export HCC_SERIALIZE_KERNEL=3
 # export HCC_SERIALIZE_COPY=3
 
-# export AMD_OCL_WAIT_COMMAND=1
-# export AMD_LOG_LEVEL=3
-# export HIP_LAUNCH_BLOCKING=1
+export AMD_OCL_WAIT_COMMAND=1
+export AMD_LOG_LEVEL=3
+export HIP_LAUNCH_BLOCKING=1
 
 export PYTORCH_TEST_WITH_ROCM=1
 
@@ -92,7 +92,8 @@ ls
 
 # hang
 # PYTORCH_TEST_WITH_ROCM=1 python test_hang.py |& tee /dockerx/pytorch_rocm/test_hang.log
-python test_nn.py --verbose |& tee /dockerx/pytorch_rocm/test_nn.log
+# python test_nn.py --verbose |& tee /dockerx/pytorch_rocm/test_nn.log
+python3.6 distributions/test_distributions.py TestDistributions.test_zero_excluded_binomial
 
 # PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_copy_streams |& tee /dockerx/pytorch_rocm/test_copy_streams.log
 # PYTORCH_TEST_WITH_ROCM=1 python test_cuda.py  --verbose TestCuda.test_to_non_blocking |& tee /dockerx/pytorch_rocm/test_to_non_blocking.log
