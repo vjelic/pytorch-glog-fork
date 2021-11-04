@@ -10,6 +10,7 @@ from typing import Dict, Optional, Tuple, Union
 
 import torch
 from torch._C._distributed_c10d import (
+    AllgatherOptions,
     AllreduceCoalescedOptions,
     AllreduceOptions,
     AllToAllOptions,
