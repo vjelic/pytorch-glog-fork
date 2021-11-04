@@ -1098,32 +1098,32 @@ std::vector<at::Tensor> flatten_for_scatter_gather(
       // no_copy operation requires all tensors in tensor_list are contiguous views
       // into a single flattened tensor
       for (auto j = size_t{}; j < tensor_lists[i].size(); ++j) {
-	auto t = tensor_lists[i][j];
-	if (!tensor_lists[i][j].storage().is_alias_of(tensor_lists[i][0].storage()) ||
-	    tensor_lists[i][j].storage_offset() != (tensor_lists[i][0].storage_offset() + j * tensor_lists[i][0].numel())) {
-	  no_copy = false;
-	  break;
-	}
+          auto t = tensor_lists[i][j];
+          if (!tensor_lists[i][j].storage().is_alias_of(tensor_lists[i][0].storage()) ||
+                  tensor_lists[i][j].storage_offset() != (tensor_lists[i][0].storage_offset() + j * tensor_lists[i][0].numel())) {
+              no_copy = false;
+              break;
+          }
       }
       // no_copy operation is allowed if other tensor does not share storage with tensors
       // in tensor_list or other tensor is properly aligned according to rank.
       if (other[i].storage().is_alias_of(tensor_lists[i][0].storage()) &&
-	other[i].storage_offset() != (tensor_lists[i][0].storage_offset() +
-	  rank * tensor_lists[i][0].numel())) {
+              other[i].storage_offset() != (tensor_lists[i][0].storage_offset() +
+                  rank * tensor_lists[i][0].numel())) {
         no_copy = false;
       }
     }
 
     if (no_copy) {
       flattened[i] = at::empty({0}, other[i].options()).set_(
-	tensor_lists[i][0].storage(),
-	tensor_lists[i][0].storage_offset(),
-	world_size * other[i].numel(), {});
+              tensor_lists[i][0].storage(),
+              tensor_lists[i][0].storage_offset(),
+              world_size * other[i].numel(), {});
     } else {
-    	// Flatten the tensors (from all ranks) into a single big tensor.
-    	flattened[i] = newLikeFlat(tensor_lists, i);
+        // Flatten the tensors (from all ranks) into a single big tensor.
+        flattened[i] = newLikeFlat(tensor_lists, i);
+    }
   }
- } 
   return flattened;
 }
 
