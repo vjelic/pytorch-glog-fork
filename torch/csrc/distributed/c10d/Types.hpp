@@ -40,8 +40,8 @@ struct ReduceOptions {
 };
 
 struct AllgatherOptions {
-  std::chrono::milliseconds timeout = kUnsetTimeout;
   bool noCopy = false;
+  std::chrono::milliseconds timeout = kUnsetTimeout;
 };
 
 struct GatherOptions {
@@ -55,9 +55,9 @@ struct ScatterOptions {
 };
 
 struct ReduceScatterOptions {
+  bool noCopy = false;
   ReduceOp reduceOp = ReduceOp::SUM;
   std::chrono::milliseconds timeout = kUnsetTimeout;
-  bool noCopy = false;
 };
 
 struct AllToAllOptions {
