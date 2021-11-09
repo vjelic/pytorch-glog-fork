@@ -152,6 +152,8 @@ struct TORCH_API Node : std::enable_shared_from_this<Node> {
     // operates on unnamed tensors. In the long term, autograd should
     // probably operate with names.
     at::NoNamesGuard no_names_guard;
+    // Keep track of backward pass for rocblas.
+    at::BackwardPassGuard in_backward;
     return apply(std::move(inputs));
   }
 

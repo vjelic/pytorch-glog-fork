@@ -9,6 +9,8 @@
 
 #ifdef __HIP_PLATFORM_HCC__
 #include <hip/hip_version.h>
+#define PYTORCH_ROCBLAS_VERSION_DECIMAL (ROCBLAS_VERSION_MAJOR * 100 + ROCBLAS_VERSION_MINOR)
+#define USE_GEMM_FLAGS_FP16_ALT_IMPL (PYTORCH_ROCBLAS_VERSION_DECIMAL >= 242)
 #endif
 
 /* Level 2 */
@@ -204,13 +206,17 @@ void THCudaBlas_HgemmStridedBatched(THCState *state, char transa, char transb, i
   float fAlpha = alpha;
   float fBeta = beta;
 #ifdef __HIP_PLATFORM_HCC__
+  int flag = 0;
+#if USE_GEMM_FLAGS_FP16_ALT_IMPL
+  flag = at::BackwardPassGuard::is_backward_pass() ? rocblas_gemm_flags_fp16_alt_impl : 0;
+#endif
   THCublasCheck(rocblas_gemm_strided_batched_ex(handle, opa, opb, (int)m, (int)n, (int)k,
                                    (void*)&fAlpha, a, rocblas_datatype_f16_r, (int)lda, strideA,
                                    b, rocblas_datatype_f16_r, (int)ldb, strideB,
                                    (void*)&fBeta, c, rocblas_datatype_f16_r, (int)ldc, strideC,
                                    c, rocblas_datatype_f16_r, (int)ldc, strideC,
                                    (int) batchCount, rocblas_datatype_f32_r, rocblas_gemm_algo_standard,
-                                   0, 0));
+                                   0, flag));
 #else
 #if defined(CUDA_VERSION) && CUDA_VERSION < 11000
   // On CUDA versions prior to 11, users are required to set the math mode to CUBLAS_TENSOR_OP_MATH
