@@ -30,6 +30,6 @@ git branch
 # python test_fx.py --verbose
 # python run_test.py -i distributed/optim/test_zero_redundancy_optimizer.py -v
 # python distributed/optim/test_zero_redundancy_optimizer.py TestZeroRedundancyOptimizerDistributed.test_zero_model_parallel_without_bucket_view -v
-python distributed/optim/test_zero_redundancy_optimizer_rocm4.5.py TestZeroRedundancyOptimizerDistributed.test_zero_model_parallel_with_bucket_view -v
+# python distributed/optim/test_zero_redundancy_optimizer_rocm4.5.py TestZeroRedundancyOptimizerDistributed.test_zero_model_parallel_with_bucket_view -v
 python distributed/optim/test_zero_redundancy_optimizer.py TestZeroRedundancyOptimizerDistributed.test_zero_model_parallel_with_bucket_view -v
-python distributed/optim/test_zero_redundancy_optimizer_upstream.py TestZeroRedundancyOptimizerDistributed.test_zero_model_parallel_with_bucket_view -v
+# python distributed/optim/test_zero_redundancy_optimizer_upstream.py TestZeroRedundancyOptimizerDistributed.test_zero_model_parallel_with_bucket_view -v
