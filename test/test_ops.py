@@ -6,6 +6,7 @@ import warnings
 import unittest
 
 import torch
+import subprocess
 
 from torch.testing import FileCheck, make_tensor
 from torch.testing._internal.common_dtype import floating_and_complex_types_and, get_all_dtypes
@@ -565,6 +566,22 @@ _gradcheck_ops = partial(ops, dtypes=OpDTypes.supported,
 
 class TestGradients(TestCase):
     exact_dtype = True
+
+    def setUp(self):
+        mem_used = torch.cuda.memory_allocated()
+        mem_res = torch.cuda.memory_reserved()
+        print("###### setUp memory reserved = {mem_res}, memory used = {mem_used} ####".format(mem_res=mem_res, mem_used=mem_used))
+
+    def tearDown(self):
+        #super().tearDown()
+        mem_used = torch.cuda.memory_allocated()
+        mem_res = torch.cuda.memory_reserved()
+        process = subprocess.Popen(['rocm-smi'],
+                     stdout=subprocess.PiIPE,
+                     stderr=subprocess.PIPE, universal_newlines=True)
+        out, err = process.communicate()
+        print("****** tearDown memory reserved = {mem_res}, memory used = {mem_used} ****".format(mem_res=mem_res, mem_used=mem_used))
+        print(out)
 
     # Copies inputs to inplace operations to avoid inplace modifications
     #   to leaves requiring gradient
