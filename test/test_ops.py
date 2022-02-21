@@ -577,11 +577,11 @@ class TestGradients(TestCase):
         mem_used = torch.cuda.memory_allocated()
         mem_res = torch.cuda.memory_reserved()
         process = subprocess.Popen(['rocm-smi'],
-                     stdout=subprocess.PiIPE,
+                     stdout=subprocess.PIPE,
                      stderr=subprocess.PIPE, universal_newlines=True)
         out, err = process.communicate()
         print("****** tearDown memory reserved = {mem_res}, memory used = {mem_used} ****".format(mem_res=mem_res, mem_used=mem_used))
-        print(out)
+        print(out, flush=True)
 
     # Copies inputs to inplace operations to avoid inplace modifications
     #   to leaves requiring gradient
