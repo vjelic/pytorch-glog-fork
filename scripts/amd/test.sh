@@ -37,12 +37,18 @@ PYTORCH_DIR="/tmp/pytorch"
 # PYTORCH_DIR=$(pwd)
 cd $PYTORCH_DIR/test
 
+# SWDEV-324539: binary ufunc navi21 failures
+# PYTORCH_TEST_WITH_ROCM=1 /opt/conda/bin/python3.7 test_binary_ufuncs.py -v | tee $LOG_DIR/test_binary_ufuncs.log
+PYTORCH_TEST_WITH_ROCM=1 /opt/conda/bin/python3.7 test_binary_ufuncs.py TestBinaryUfuncsCUDA.test_reference_numerics_sub_cuda_bfloat16 -v # single test passes
+
+
+
 # navi 21 failing tests
-python3 distributed/test_distributed_spawn.py --verbose 2>&1 | tee $LOG_DIR/test_distributed_spawn.log # segfault
+# python3 distributed/test_distributed_spawn.py --verbose 2>&1 | tee $LOG_DIR/test_distributed_spawn.log # segfault
 
-python3 test_jit_fuser_te.py --verbose 2>&1 | tee $LOG_DIR/test_jit_fuser_te.log #segfaults
+# python3 test_jit_fuser_te.py --verbose 2>&1 | tee $LOG_DIR/test_jit_fuser_te.log #segfaults
 
-python3 test_quantization.py --verbose 2>&1 | tee $LOG_DIR/test_quantization.log # segfaults
+# python3 test_quantization.py --verbose 2>&1 | tee $LOG_DIR/test_quantization.log # segfaults
 
 
 # passing tests

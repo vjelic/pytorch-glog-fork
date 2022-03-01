@@ -33,7 +33,8 @@ WORK_DIR="/dockerx/$(basename $(pwd))"
 # IMAGE_NAME=rocm/pytorch-private:const_num_threads_256
 # IMAGE_NAME=rocm/pytorch-private:fix_warpsize_issue_pt1_gfx908_gfx1030_256
 # IMAGE_NAME=rocm/pytorch-private:fix_warpsize_issue_pt1_gfx908_gfx1030_128
-IMAGE_NAME=rocm/pytorch-private:fix_warpsize_issue_pt1_gfx1030_test_issues # based on compute-artifactory.amd.com:5000/rocm-plus-docker/framework/compute-rocm-rel-5.0:19_ubuntu18.04_py3.7_pytorch_rocm5.0_internal_testing_6003aca
+# IMAGE_NAME=rocm/pytorch-private:fix_warpsize_issue_pt1_gfx1030_test_issues # based on compute-artifactory.amd.com:5000/rocm-plus-docker/framework/compute-rocm-rel-5.0:19_ubuntu18.04_py3.7_pytorch_rocm5.0_internal_testing_6003aca
+IMAGE_NAME=compute-artifactory.amd.com:5000/rocm-plus-docker/framework/compute-rocm-dkms-no-npi-hipclang:9655_centos7.5.1804_py3.7_pytorch_rocm5.1_internal_testing_b8d9ec6
 
 CONTAINER_NAME=pytorch
 
