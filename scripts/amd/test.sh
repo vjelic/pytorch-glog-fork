@@ -4,9 +4,9 @@
 ROOT_DIR=$(pwd)
 DEFAULT_LOG_DIR=$ROOT_DIR/$(git rev-parse --symbolic-full-name --abbrev-ref HEAD)
 LOG_DIR="${1:-$DEFAULT_LOG_DIR}"
-# rm -rf $LOG_DIR
-# mkdir -p $LOG_DIR
-# chmod -R 777 $LOG_DIR
+rm -rf $LOG_DIR
+mkdir -p $LOG_DIR
+chmod -R 777 $LOG_DIR
 
 export PYTORCH_TEST_WITH_ROCM=1
 
@@ -38,8 +38,8 @@ PYTORCH_DIR="/tmp/pytorch"
 cd $PYTORCH_DIR/test
 
 # SWDEV-324539: binary ufunc navi21 failures
-# PYTORCH_TEST_WITH_ROCM=1 /opt/conda/bin/python3.7 test_binary_ufuncs.py -v | tee $LOG_DIR/test_binary_ufuncs.log
-PYTORCH_TEST_WITH_ROCM=1 /opt/conda/bin/python3.7 test_binary_ufuncs.py TestBinaryUfuncsCUDA.test_reference_numerics_sub_cuda_bfloat16 -v # single test passes
+PYTORCH_TEST_WITH_ROCM=1 /opt/conda/bin/python3.7 test_binary_ufuncs.py -v 2>&1 | tee $LOG_DIR/test_binary_ufuncs.log
+# PYTORCH_TEST_WITH_ROCM=1 /opt/conda/bin/python3.7 test_binary_ufuncs.py TestBinaryUfuncsCUDA.test_reference_numerics_sub_cuda_bfloat16 -v # single test passes
 
 
 
