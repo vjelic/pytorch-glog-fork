@@ -346,6 +346,25 @@ class ProcessGroupNCCLTest(MultiProcessTestCase):
                 torch.tensor([ndev * (ndev + 1.) / (2. * ndev)]),
                 tensors[0],
             )
+        # Premul Sum
+        for dtype in torch.half, torch.float, torch.double:
+            for factor in (3.0,
+                           tuple(torch.tensor([5.0], device=i, dtype=dtype) for i in range(self.num_gpus))):
+                tensors = []
+                for i in range(self.num_gpus):
+                    tensors.append(torch.tensor([i + 1]).cuda(i).to(dtype=dtype))
+
+                allreduce(tensors, c10d.make_nccl_premul_sum(factor))
+
+                for i in range(self.num_gpus):
+                    f = factor if isinstance(factor, float) else factor[i]
+                    # TODO(#38095): Replace assertEqualIgnoreType. See issue #38095
+                    self.assertEqualIgnoreType(
+                        f * torch.tensor([float(self.num_gpus * (self.num_gpus + 1) / 2)], device=i),
+                        tensors[i],
+                    )
+
+
 
         # Product
         tensors = [torch.tensor([self.rank + 1]).cuda(local_device_id)]
