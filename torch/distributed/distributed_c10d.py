@@ -1236,7 +1236,7 @@ def all_reduce_multigpu(tensor_list, op=ReduceOp.SUM, group=None, async_op=False
     ]
 
     opts = AllreduceOptions()
-    opts.reduceOp = op
+    opts.reduceOp = op if isinstance(op, ReduceOp) else ReduceOp(op)
     if group is None:
         default_pg = _get_default_group()
         work = default_pg.allreduce(tensor_list, opts)
@@ -1307,7 +1307,7 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, async_op=False):
         tensor = torch.view_as_real(tensor)
 
     opts = AllreduceOptions()
-    opts.reduceOp = op
+    opts.reduceOp = op if isinstance(op, ReduceOp) else ReduceOp(op)
     if group is None:
         default_pg = _get_default_group()
         work = default_pg.allreduce([tensor], opts)
@@ -1364,7 +1364,7 @@ def all_reduce_coalesced(tensors, op=ReduceOp.SUM, group=None, async_op=False):
     tensors = [t if not t.is_complex() else torch.view_as_real(t) for t in tensors]
 
     opts = AllreduceCoalescedOptions()
-    opts.reduceOp = op
+    opts.reduceOp = op if isinstance(op, ReduceOp) else ReduceOp(op)
     if group is None:
         default_pg = _get_default_group()
         work = default_pg.allreduce_coalesced(tensors, opts)
@@ -1415,7 +1415,7 @@ def reduce_multigpu(
         return
 
     opts = ReduceOptions()
-    opts.reduceOp = op
+    opts.reduceOp = op if isinstance(op, ReduceOp) else ReduceOp(op)
     opts.rootRank = dst
     opts.rootTensor = dst_tensor
 
@@ -1461,7 +1461,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, async_op=False):
         return
 
     opts = ReduceOptions()
-    opts.reduceOp = op
+    opts.reduceOp = op if isinstance(op, ReduceOp) else ReduceOp(op)
     opts.rootRank = dst
 
     if group is None or group is GroupMember.WORLD:
@@ -2392,7 +2392,7 @@ def reduce_scatter_multigpu(
         return
 
     opts = ReduceScatterOptions()
-    opts.reduceOp = op
+    opts.reduceOp = op if isinstance(op, ReduceOp) else ReduceOp(op)
 
     if group is None:
         default_pg = _get_default_group()
@@ -2429,7 +2429,7 @@ def reduce_scatter(output, input_list, op=ReduceOp.SUM, group=None, async_op=Fal
         return
 
     opts = ReduceScatterOptions()
-    opts.reduceOp = op
+    opts.reduceOp = op if isinstance(op, ReduceOp) else ReduceOp(op)
 
     if group is None:
         default_pg = _get_default_group()
@@ -2467,7 +2467,7 @@ def _reduce_scatter_base(output, input, op=ReduceOp.SUM, group=None, async_op=Fa
         return
 
     opts = ReduceScatterOptions()
-    opts.reduceOp = op
+    opts.reduceOp = op if isinstance(op, ReduceOp) else ReduceOp(op)
 
     if group is None:
         default_pg = _get_default_group()
