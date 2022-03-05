@@ -135,7 +135,7 @@ ncclRedOpRAII unpackPreMulSum(const ReduceOp& reduceOp,
 }
 
 
-ncclRedOp_t getNcclReduceOp(const ReduceOp& reduceOp, at::Tensor& input,
+ncclRedOpRAII getNcclReduceOp(const ReduceOp& reduceOp, at::Tensor& input,
 		const ncclDataType_t& dataType,
 		const ncclComm_t& comm,
 		int dev_in_group) {
