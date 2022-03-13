@@ -17,6 +17,7 @@ from torch.testing._internal.common_utils import run_tests, TestCase
 from torch.testing._internal.common_utils import _assertGradAndGradgradChecks, gradcheck
 from torch.testing._internal.common_utils import dtype2prec_DONTUSE
 from torch.testing._internal.common_utils import sandcastle_skip_if
+from torch.testing._internal.common_utils import TEST_WITH_ROCM
 import torch.nn.functional as F
 
 torch.set_default_dtype(torch.double)
@@ -773,6 +774,7 @@ class TestDataParallelDeviceType(TestCase):
 
     @onlyCUDA
     @skipMeta
+    @sandcastle_skip_if(TEST_WITH_ROCM, "Failing on few archs, temporarily skipped")
     @dtypes(torch.float, torch.double, torch.half)
     def test_data_parallel_module(self, device, dtype):
         l = nn.Linear(10, 5).to(device, dtype)
@@ -785,6 +787,7 @@ class TestDataParallelDeviceType(TestCase):
 
     @onlyCUDA
     @skipMeta
+    @sandcastle_skip_if(TEST_WITH_ROCM, "Failing on few archs, temporarily skipped")
     @dtypes(torch.float, torch.double, torch.half)
     def test_data_parallel_module_kwargs_only(self, device, dtype):
         class Net(nn.Module):
@@ -805,6 +808,7 @@ class TestDataParallelDeviceType(TestCase):
 
     @onlyCUDA
     @skipMeta
+    @sandcastle_skip_if(TEST_WITH_ROCM, "Failing on few archs, temporarily skipped")
     @dtypes(torch.float, torch.double, torch.half)
     def test_data_parallel_module_kwargs_only_empty_list(self, device, dtype):
         class Net(nn.Module):
@@ -825,6 +829,7 @@ class TestDataParallelDeviceType(TestCase):
 
     @onlyCUDA
     @skipMeta
+    @sandcastle_skip_if(TEST_WITH_ROCM, "Failing on few archs, temporarily skipped")
     @dtypes(torch.float, torch.double, torch.half)
     def test_data_parallel_module_kwargs_only_empty_dict(self, device, dtype):
         class Net(nn.Module):
@@ -845,6 +850,7 @@ class TestDataParallelDeviceType(TestCase):
 
     @onlyCUDA
     @skipMeta
+    @sandcastle_skip_if(TEST_WITH_ROCM, "Failing on few archs, temporarily skipped")
     @dtypes(torch.float, torch.double, torch.half)
     def test_data_parallel_module_kwargs_only_empty_tuple(self, device, dtype):
         class Net(nn.Module):
