@@ -1,0 +1,4 @@
+ubuntu|pytorch|apex|none|
+centos|pytorch|apex|none|
+ubuntu|pytorch|torchvision|release/0.12|9b5a3fecc72434dbd65148723efe54b28b9728c9
+centos|pytorch|torchvision|release/0.12|9b5a3fecc72434dbd65148723efe54b28b9728c9
