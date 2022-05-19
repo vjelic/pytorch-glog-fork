@@ -19,7 +19,7 @@ from torch.optim.lr_scheduler import LambdaLR, MultiplicativeLR, SequentialLR, S
     EPOCH_DEPRECATION_WARNING
 from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
 from torch.testing._internal.common_utils import TestCase, run_tests, TEST_WITH_UBSAN, load_tests, \
-    parametrize, instantiate_parametrized_tests, gradcheck, skipIfRocm
+    parametrize, instantiate_parametrized_tests, gradcheck, skipIfRocm, TEST_WITH_ROCM
 # load_tests from common_utils is used to automatically filter tests for
 # sharding on sandcastle. This line silences flake warnings
 load_tests = load_tests
@@ -777,6 +777,8 @@ class TestOptim(TestCase):
             )
 
     def test_nadam(self):
+        if TEST_WITH_ROCM:
+            self.rel_tol = 1e-5
         self._test_basic_cases(
             lambda weight, bias, foreach: optim.NAdam([weight, bias], lr=1e-3, foreach=foreach),
             constructor_accepts_foreach=True,
