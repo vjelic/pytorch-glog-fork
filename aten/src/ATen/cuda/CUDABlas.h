@@ -230,6 +230,7 @@ void vdot<c10::complex<double>>(CUDABLAS_DOT_ARGTYPES(c10::complex<double>));
 // This guards blocks use of getrsBatched, geqrfBatched, getrfBatched, getriBatched on platforms other than cuda
 #ifdef CUDART_VERSION
 
+
 #define CUDABLAS_GETRS_ARGTYPES(Dtype)  \
   cublasHandle_t handle, cublasOperation_t trans, \
   int n, int nrhs, Dtype** dA_array, int lda, int* ipiv_array, \

@@ -4,7 +4,7 @@
 #include <c10/cuda/CUDACachingAllocator.h>
 #include <c10/macros/Export.h>
 
-#ifdef CUDART_VERSION
+#if defined(CUDART_VERSION) || defined(ROCM_VERSION) && ROCM_VERSION >= 50200
 
 namespace at {
 namespace cuda {
