@@ -8120,6 +8120,44 @@ CUDA_SOLVER_MAP = collections.OrderedDict(
         ('cusolverDnZungqr_bufferSize', ('hipsolverDnZungqr_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
         ('cusolverDnZunmqr', ('hipsolverDnZunmqr', CONV_MATH_FUNC, API_SOLVER)),
         ('cusolverDnZunmqr_bufferSize', ('hipsolverDnZunmqr_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+
+        # sytrf
+        ('cusolverDnDsytrf_bufferSize', ('hipsolverDnDsytrf_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSsytrf_bufferSize', ('hipsolverDnSsytrf_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZsytrf_bufferSize', ('hipsolverDnZsytrf_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCsytrf_bufferSize', ('hipsolverDnCsytrf_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDsytrf', ('hipsolverDnDsytrf', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSsytrf', ('hipsolverDnSsytrf', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZsytrf', ('hipsolverDnZsytrf', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCsytrf', ('hipsolverDnCsytrf', CONV_MATH_FUNC, API_SOLVER)),
+
+        # gesdva strided
+        ('cusolverDnSgesvdaStridedBatched_bufferSize', ('hipsolverDnSgesvdaStridedBatched_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDgesvdaStridedBatched_bufferSize', ('hipsolverDnDgesvdaStridedBatched_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCgesvdaStridedBatched_bufferSize', ('hipsolverDnCgesvdaStridedBatched_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZgesvdaStridedBatched_bufferSize', ('hipsolverDnZgesvdaStridedBatched_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSgesvdaStridedBatched', ('hipsolverDnSgesvdaStridedBatched', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDgesvdaStridedBatched', ('hipsolverDnDgesvdaStridedBatched', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCgesvdaStridedBatched', ('hipsolverDnCgesvdaStridedBatched', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZgesvdaStridedBatched', ('hipsolverDnZgesvdaStridedBatched', CONV_MATH_FUNC, API_SOLVER)),
+
+        # gesvdj SetXXX
+        ('cusolverDnXgesvdjSetTolerance', ('hipsolverDnXgesvdjSetTolerance', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXgesvdjSetMaxSweeps', ('hipsolverDnXgesvdjSetMaxSweeps', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXgesvdjSetTolerance', ('hipsolverDnXgesvdjSetTolerance', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXgesvdjSetMaxSweeps', ('hipsolverDnXgesvdjSetMaxSweeps', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXgesvdjSetTolerance', ('hipsolverDnXgesvdjSetTolerance', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXgesvdjSetMaxSweeps', ('hipsolverDnXgesvdjSetMaxSweeps', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXgesvdjSetTolerance', ('hipsolverDnXgesvdjSetTolerance', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXgesvdjSetMaxSweeps', ('hipsolverDnXgesvdjSetMaxSweeps', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXgesvdjSetTolerance', ('hipsolverDnXgesvdjSetTolerance', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXgesvdjSetMaxSweeps', ('hipsolverDnXgesvdjSetMaxSweeps', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXgesvdjSetTolerance', ('hipsolverDnXgesvdjSetTolerance', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXgesvdjSetMaxSweeps', ('hipsolverDnXgesvdjSetMaxSweeps', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXgesvdjSetTolerance', ('hipsolverDnXgesvdjSetTolerance', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXgesvdjSetMaxSweeps', ('hipsolverDnXgesvdjSetMaxSweeps', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXgesvdjSetTolerance', ('hipsolverDnXgesvdjSetTolerance', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXgesvdjSetMaxSweeps', ('hipsolverDnXgesvdjSetMaxSweeps', CONV_MATH_FUNC, API_SOLVER)),
     ]
 )
 
