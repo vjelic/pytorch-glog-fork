@@ -794,6 +794,9 @@ inline static void svd_cusolver_gesvdjBatched(const Tensor& A, const Tensor& U, 
 template<typename scalar_t>
 inline static void apply_svd_cusolver_gesvdaStridedBatched(const Tensor& A, const Tensor& U, const Tensor& S, const Tensor& V,
     const Tensor& infos, bool full_matrices, bool compute_uv) {
+#ifndef CUDART_VERSION
+  TORCH_CHECK(false, "gesvda: Batched version is supported only with cuBLAS backend.")
+#else
   using value_t = typename c10::scalar_value_type<scalar_t>::type;
   int m = cuda_int_cast(A.size(-2), "m");
   int n = cuda_int_cast(A.size(-1), "n");
@@ -842,6 +845,7 @@ inline static void apply_svd_cusolver_gesvdaStridedBatched(const Tensor& A, cons
     lwork, infos.data_ptr<int>(),
     nullptr,  // cuSOLVER h_RnrmF is not calculated: reinterpret_cast<double*>(residual_frobenius_norm.get()),
     batchsize);
+#endif
 }
 
 // We'll copy A inside svd_cusolver_gesvdaStridedBatched
