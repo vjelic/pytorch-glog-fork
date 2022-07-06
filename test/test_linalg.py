@@ -40,6 +40,38 @@ assert torch.get_default_dtype() is torch.float32
 if TEST_SCIPY:
     import scipy
 
+def np_tensor_qr(A, mode='reduced'):
+    shape = A.shape
+    if len(shape) == 2:
+        if mode == 'r':
+            q = np.linalg.qr(A, mode=mode)
+        else:
+            q, _ = np.linalg.qr(A, mode=mode)
+        return q
+    expected_arr = []
+    for a in A:
+        expected_arr.append(np_tensor_qr(a, mode=mode))
+    expected = np.array(expected_arr)
+    return expected
+
+def np_tensor_qr_both(A, mode='reduced'):
+    shape = A.shape
+    if len(shape) == 2:
+        if mode == 'r':
+            q = np.linalg.qr(A, mode=mode)
+            r = np.nan
+        else:
+            q, r = np.linalg.qr(A, mode=mode)
+        return q, r
+    q_arr = []
+    r_arr = []
+    for a in A:
+        q, r = np_tensor_qr_both(a, mode=mode)
+        q_arr.append(q)
+        r_arr.append(r)
+    return np.array(q_arr), np.array(r_arr)
+
+
 def setLinalgBackendsToDefaultFinally(fn):
     @wraps(fn)
     def _fn(*args, **kwargs):
@@ -2568,8 +2600,8 @@ class TestLinalg(TestCase):
             Q = torch.linalg.eigh(A).eigenvectors
             Q.sum().backward()
 
-    @skipCUDAIfNoCusolver  # MAGMA backend doesn't work in this case
-    @skipCUDAIfRocm
+    # @skipCUDAIfNoCusolver  # MAGMA backend doesn't work in this case
+    # @skipCUDAIfRocm
     @precisionOverride({torch.float: 1e-4, torch.cfloat: 1e-4})
     @skipCPUIfNoLapack
     @dtypes(*floating_and_complex_types())
@@ -3794,18 +3826,23 @@ class TestLinalg(TestCase):
             (5, 7),
             (5, 0),    # empty
             (0, 5),    # empty
+            # (2, 5, 5),
         ]
         for size in sizes_to_test:
             t = torch.randn(size, device=device, dtype=dtype)
             np_t = t.cpu().numpy()
             for mode in ['reduced', 'complete']:
                 exp_q, exp_r = np.linalg.qr(np_t, mode=mode)
+                # exp_q, exp_r = np_tensor_qr_both(np_t, mode=mode)
                 q, r = torch.linalg.qr(t, mode=mode)
                 self.assertEqual(q, exp_q)
                 self.assertEqual(r, exp_r)
             #
             # for mode='r' we need a special logic because numpy returns only r
+
             exp_r = np.linalg.qr(np_t, mode='r')
+            # exp_r = np_tensor_qr(np_t, mode='r')
+
             q, r = torch.linalg.qr(t, mode='r')
             # check that q is empty
             self.assertEqual(q.shape, (0,))
@@ -4764,7 +4801,7 @@ class TestLinalg(TestCase):
         self.assertEqual(m3.norm(2, 0), m2.norm(2, 0))
 
     @skipCPUIfNoLapack
-    @skipCUDAIfNoCusolver
+    # @skipCUDAIfNoCusolver
     @dtypes(*floating_and_complex_types())
     def test_ormqr(self, device, dtype):
 
@@ -4777,6 +4814,13 @@ class TestLinalg(TestCase):
 
             # Q is of size m x m
             Q, _ = torch.linalg.qr(A, mode='complete')
+
+            if False and A.numel() > 0:
+                Qcpu = np_tensor_qr(A.cpu().numpy(), mode='complete')
+                Qcpu_tensor = torch.tensor(Qcpu, dtype=dtype, device=device)
+                self.assertEqual(Qcpu_tensor, Q)
+                return
+
             C_right = make_tensor((*batch, m, n), dtype=dtype, device=device)
             C_left = make_tensor((*batch, n, m), dtype=dtype, device=device)
 
@@ -4808,7 +4852,7 @@ class TestLinalg(TestCase):
             run_test(batch, m, n, fortran_contiguous)
 
     @skipCPUIfNoLapack
-    @skipCUDAIfNoCusolver
+    # @skipCUDAIfNoCusolver
     @dtypes(*floating_and_complex_types())
     def test_ormqr_errors_and_warnings(self, device, dtype):
         test_cases = [
@@ -5029,7 +5073,7 @@ class TestLinalg(TestCase):
             self.assertEqual(res, expected, msg="renorm failed for {}-norm".format(p))
 
     @skipCPUIfNoLapack
-    @skipCUDAIfNoCusolver
+    # @skipCUDAIfNoCusolver
     @dtypes(*floating_and_complex_types())
     def test_householder_product(self, device, dtype):
         def generate_reflectors_and_tau(A):
@@ -5059,9 +5103,18 @@ class TestLinalg(TestCase):
             reflectors, tau = generate_reflectors_and_tau(A)
             expected, _ = torch.linalg.qr(A)
             actual = torch.linalg.householder_product(reflectors, tau)
+            # np.savetxt('hhi.txt', A.cpu().numpy()[1,...], delimiter=', ', header=f"##### {shape} input", footer=f'#### End of {shape} input')
+            # np.savetxt('hhe.txt', expected.cpu().numpy()[1,...], delimiter=', ', header=f"##### {shape} expected", footer=f'#### End of {shape} expected')
+            # np.savetxt('hha.txt', actual.cpu().numpy()[1,...], delimiter=', ', header=f"##### {shape} actual", footer=f'#### End of {shape} actual')
             # torch.linalg.qr does not work correctly for zero batch dimension tensors
             # see https://github.com/pytorch/pytorch/issues/50576
             if (A.numel() > 0):
+                cpu_torch_expected, _ = torch.linalg.qr(A.cpu())
+                self.assertEqual(cpu_torch_expected, expected)
+
+                cpu_expected = np_tensor_qr(A.cpu().numpy())
+                self.assertEqual(cpu_expected, expected)
+
                 self.assertEqual(expected, actual)
             else:
                 self.assertTrue(actual.shape == shape)
@@ -5085,11 +5138,14 @@ class TestLinalg(TestCase):
                   (0, 0, 0), (0, 5, 5), (0, 5, 3),  # Zero batch dimension tensors
                   (2, 5, 5), (2, 5, 3),  # 3-dim tensors
                   (2, 1, 5, 5), (2, 1, 5, 3)]  # 4-dim tensors
+        # run_test((2,5,5))
+        # return
         for shape in shapes:
+            # print(shape)
             run_test(shape)
 
     @skipCPUIfNoLapack
-    @skipCUDAIfNoCusolver
+    # @skipCUDAIfNoCusolver
     def test_householder_product_errors_and_warnings(self, device):
         test_cases = [
             # input1 size, input2 size, error regex
