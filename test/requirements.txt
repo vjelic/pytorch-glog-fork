@@ -1,0 +1,2 @@
+# Python dependencies required for testing
+hypothesis scipy pytest ninja dill pandas sympy matplotlib
