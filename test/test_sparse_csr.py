@@ -844,6 +844,10 @@ class TestSparseCSR(TestCase):
                   *[torch.half] if SM53OrLater else [],
                   *[torch.bfloat16] if SM80OrLater else []))
     def test_csr_matvec(self, device, dtype):
+
+        if TEST_WITH_ROCM and (dtype == torch.half or dtype == torch.bfloat16):
+            self.skipTest("ROCm doesn't work with half dtypes correctly.")
+
         side = 100
         for index_dtype in [torch.int32, torch.int64]:
             csr = self.genSparseCSRTensor((side, side), 1000, device=device, dtype=dtype, index_dtype=index_dtype)
@@ -860,7 +864,7 @@ class TestSparseCSR(TestCase):
                 csr.matmul(bad_vec)
 
     @onlyCUDA
-    @unittest.skipIf(not CUDA11OrLater, "Only CUDA 11+ is supported")
+    @unittest.skipIf(not (CUDA11OrLater or TEST_WITH_ROCM), "Only CUDA 11+ is supported")
     @dtypes(torch.float32, torch.float64, torch.complex64, torch.complex128)
     def test_baddbmm(self, device, dtype):
         def run_test(c, a, a_batched, b, op_b=False, op_out=False, *, dtype=None, device=None):
@@ -1462,9 +1466,6 @@ class TestSparseCSR(TestCase):
     def test_sparse_add(self, device, dtype):
         def run_test(m, n, index_dtype):
 
-            if TEST_WITH_ROCM and dtype.is_complex:
-                self.skipTest("ROCm doesn't work with complex dtype correctly.")
-
             alpha = random.random()
             nnz1 = random.randint(0, m * n)
             nnz2 = random.randint(0, m * n)
@@ -1668,10 +1669,9 @@ class TestSparseCSR(TestCase):
             b = make_tensor((k, n), dtype=dtype, device=device)
             run_test(c, a, b)
 
-    @skipCUDAIfRocm
     @onlyCUDA
     @skipCUDAIf(
-        not _check_cusparse_sddmm_available(),
+        not (TEST_WITH_ROCM or _check_cusparse_sddmm_available()),
         "cuSparse Generic API SDDMM is not available"
     )
     @dtypes(torch.float32, torch.float64, torch.complex64, torch.complex128)
