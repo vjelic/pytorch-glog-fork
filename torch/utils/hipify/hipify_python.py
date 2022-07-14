@@ -178,7 +178,7 @@ def preprocess_file_and_save_result(
 
     fin_path = os.path.abspath(os.path.join(output_directory, filepath))
     # Show what happened
-    if show_progress and "ignored" not in result["status"]:
+    if show_progress and "ignored" not in str(result["status"]):
         print(
             fin_path, "->",
             result["hipified_path"], result["status"], flush=True)
@@ -784,8 +784,10 @@ def preprocessor(
             if (
                 f.startswith("ATen/cuda")
                 or f.startswith("ATen/native/cuda")
+                or f.startswith("ATen/native/nested/cuda")
                 or f.startswith("ATen/native/quantized/cuda")
                 or f.startswith("ATen/native/sparse/cuda")
+                or f.startswith("ATen/native/transformers/cuda")
                 or f.startswith("THC/")
                 or (f.startswith("THC") and not f.startswith("THCP"))
             ):
@@ -819,7 +821,7 @@ def preprocessor(
                                                     all_files, header_include_dirs, stats, hip_clang_launch,
                                                     is_pytorch_extension, clean_ctx, show_progress)
                 hipified_header_filepath = HIPIFY_FINAL_RESULT[header_filepath]["hipified_path"]
-                return templ.format(os.path.relpath(hipified_header_filepath if hipified_header_filepath is not None 
+                return templ.format(os.path.relpath(hipified_header_filepath if hipified_header_filepath is not None
                                                     else header_filepath, header_dir))
 
             return m.group(0)

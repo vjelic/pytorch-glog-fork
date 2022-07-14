@@ -52,7 +52,6 @@ from torch.testing._internal.common_utils import (
     IS_FBCODE,
     IS_MACOS,
     IS_WINDOWS,
-    TEST_WITH_ROCM,
     find_library_location,
     run_tests,
 )
@@ -149,7 +148,7 @@ class TestFX(JitTestCase):
         self.orig_tracer_mutable_flag = torch.fx.proxy.TracerBase.check_mutable_operations
         torch.fx.proxy.TracerBase.check_mutable_operations = True
 
-        if not (TEST_WITH_ROCM or IS_FBCODE or IS_WINDOWS or IS_MACOS):
+        if not (IS_FBCODE or IS_WINDOWS or IS_MACOS):
             lib_file_path = find_library_location('libtorchbind_test.so')
             torch.ops.load_library(str(lib_file_path))
 
@@ -474,6 +473,42 @@ class TestFX(JitTestCase):
         x = torch.randn(5)
         torch.testing.assert_close(traced(x), f(x))
 
+    def test_trace_multiple_funcs(self):
+        class Foo(torch.nn.Module):
+            def forward(self, x, y):
+                return x + y
+
+            def minus_forward(self, x, y):
+                return x - y
+
+            def multiply_forward(self, x, y):
+                return x * y
+
+        f = Foo()
+        x, y = torch.randn(5), torch.randn(5)
+
+        print(torch.__version__)
+
+        tracer = Tracer()
+        torch.testing.assert_close(GraphModule(f, tracer.trace(f))(x, y), f(x, y))
+
+        tracer.traced_func_name = "minus_forward"
+        torch.testing.assert_close(
+            GraphModule(f, tracer.trace(f))(x, y),
+            f.minus_forward(x, y),
+        )
+
+        tracer.traced_func_name = "multiply_forward"
+        torch.testing.assert_close(
+            GraphModule(f, tracer.trace(f))(x, y),
+            f.multiply_forward(x, y),
+        )
+
+        tracer.traced_func_name = "add_forward"
+        with self.assertRaisesRegex(AssertionError, "doesn't exist in"):
+            tracer.trace(f)
+
+
     def test_graph_unique_names(self):
         class M(torch.nn.Module):
             def forward(self, a, b):
@@ -541,7 +576,7 @@ class TestFX(JitTestCase):
         self.checkGraphModule(m, (a, b))
 
     def test_native_callable(self):
-        if TEST_WITH_ROCM or IS_FBCODE or IS_WINDOWS or IS_MACOS:
+        if IS_FBCODE or IS_WINDOWS or IS_MACOS:
             raise unittest.SkipTest("non-portable load_library call used in test")
         # This test exercises the case where we use FX to translate from Python
         # code to some native callable object
@@ -2326,7 +2361,7 @@ class TestFX(JitTestCase):
             node.__update_args_kwargs((), {})
 
     def test_torchbind_class_attribute_in_fx(self):
-        if TEST_WITH_ROCM or IS_FBCODE or IS_WINDOWS or IS_MACOS:
+        if IS_FBCODE or IS_WINDOWS or IS_MACOS:
             self.skipTest("torch.classes._TorchScriptTesting._StackString is registered, skipping")
 
         class FooBar1234(torch.nn.Module):
@@ -2341,7 +2376,7 @@ class TestFX(JitTestCase):
         self.checkGraphModule(m, ())
 
     def test_torchbind_class_attribute_in_fx_tensor_arg(self):
-        if TEST_WITH_ROCM or IS_FBCODE or IS_WINDOWS or IS_MACOS:
+        if IS_FBCODE or IS_WINDOWS or IS_MACOS:
             self.skipTest("torch.classes._TorchScriptTesting._ReLUClass is registered, skipping")
 
         class FooBar2341(torch.nn.Module):
@@ -2715,7 +2750,7 @@ class TestFX(JitTestCase):
 
     def test_profiler_ranges_side_effect(self):
         g = torch.fx.Graph()
-        handle = g.call_function(torch.ops.profiler._record_function_enter_new, ('test_range',))
+        handle = g.call_function(torch.ops.profiler._record_function_enter, ('test_range',))
         g.call_function(torch.ops.profiler._record_function_exit, (handle,))
         g.output(None)
 
@@ -2725,7 +2760,7 @@ class TestFX(JitTestCase):
                 found_targets.setdefault(node.target)
         self.assertEqual(
             list(found_targets.keys()),
-            [torch.ops.profiler._record_function_enter_new, torch.ops.profiler._record_function_exit]
+            [torch.ops.profiler._record_function_enter, torch.ops.profiler._record_function_exit]
         )
 
         g.eliminate_dead_code()
@@ -2735,7 +2770,7 @@ class TestFX(JitTestCase):
                 found_targets.setdefault(node.target)
         self.assertEqual(
             list(found_targets.keys()),
-            [torch.ops.profiler._record_function_enter_new, torch.ops.profiler._record_function_exit]
+            [torch.ops.profiler._record_function_enter, torch.ops.profiler._record_function_exit]
         )
 
     def test_ast_rewriter_wrapped_via_decorator(self):
@@ -3810,6 +3845,7 @@ class TestFunctionalTracing(JitTestCase):
         "linear": BUILT_IN_FUNC,
         "logsigmoid": BUILT_IN_FUNC,
         "one_hot": BUILT_IN_FUNC,
+        "pad": BUILT_IN_FUNC,
         "pairwise_distance": BUILT_IN_FUNC,
         "pdist": BUILT_IN_FUNC,
         "pixel_shuffle": BUILT_IN_FUNC,
@@ -3827,7 +3863,6 @@ class TestFunctionalTracing(JitTestCase):
         "adaptive_max_pool2d_with_indices": LEN_ERROR,
         "adaptive_max_pool3d_with_indices": LEN_ERROR,
         "instance_norm": CONTROL_FLOW,
-        "pad": LEN_ERROR,
 
         "adaptive_max_pool1d": PROXY_ITERABLE,
         "adaptive_max_pool2d": PROXY_ITERABLE,
@@ -3908,8 +3943,6 @@ class TestFunctionalTracing(JitTestCase):
 
         "upsample_bilinear": INTERPOLATE_ARGS_CONFLICT,
         "upsample_nearest": INTERPOLATE_ARGS_CONFLICT,
-
-        "normalize" : MUTABLE,
     }
 
     # List of nn.functionals with Tensor inputs but not with type annotation
