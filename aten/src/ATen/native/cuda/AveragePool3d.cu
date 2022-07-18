@@ -519,7 +519,7 @@ TORCH_IMPL_FUNC(avg_pool3d_backward_out_cuda) (
 
 
   // Optimizing for stride 1 is probably only of limited value, but this
-  // specialization yields 3x speedup over the gpuAtomicAddNoReturn implementation.
+  // specialization yields 3x speedup over the gpuAtomicAdd implementation.
   // Padding must be 0, otherwise, pool size may change.
   if (dT == 1 && dH == 1 && dW == 1 && padT == 0 && padH == 0 && padW == 0) {
     AT_DISPATCH_FLOATING_TYPES_AND2(kHalf, kBFloat16, input.scalar_type(),
