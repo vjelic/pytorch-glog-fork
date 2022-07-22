@@ -34,13 +34,13 @@ target_include_directories(shm PUBLIC
   )
 
 add_executable(torch_shm_manager manager.cpp)
-target_link_libraries(torch_shm_manager shm)
+target_link_libraries(torch_shm_manager shm -ltinfo)
 set_target_properties(torch_shm_manager PROPERTIES INSTALL_RPATH "${_rpath_portable_origin}/../lib")
 ### Torch packages supposes libraries prefix is "lib"
 set_target_properties(shm PROPERTIES
   PREFIX "lib"
   IMPORT_PREFIX "lib")
-target_link_libraries(shm torch c10)
+target_link_libraries(shm torch c10 -ltinfo)
 
 if(UNIX AND NOT APPLE)
   include(CheckLibraryExists)

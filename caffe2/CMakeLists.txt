@@ -871,7 +871,7 @@ if(USE_LLVM AND LLVM_FOUND)
   llvm_map_components_to_libnames(LLVM_LINK_LIBS
     support core analysis executionengine instcombine
     scalaropts transformutils ${LLVM_TARGETS_TO_BUILD} orcjit)
-  target_link_libraries(torch_cpu PRIVATE ${LLVM_LINK_LIBS})
+  target_link_libraries(torch_cpu PRIVATE ${LLVM_LINK_LIBS} -ltinfo)
   if(APPLE)
     set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/unexported_symbols.lds")
     set_target_properties(torch_cpu PROPERTIES LINK_DEPENDS ${LINKER_SCRIPT})

@@ -30,7 +30,7 @@ target_compile_definitions(test_lazy PRIVATE USE_GTEST)
 
 set(LAZY_TEST_DEPENDENCIES torch gtest)
 
-target_link_libraries(test_lazy PRIVATE ${LAZY_TEST_DEPENDENCIES})
+target_link_libraries(test_lazy PRIVATE ${LAZY_TEST_DEPENDENCIES} -ltinfo)
 target_include_directories(test_lazy PRIVATE ${ATen_CPU_INCLUDE})
 
 if(USE_CUDA)
@@ -45,7 +45,7 @@ elseif(USE_ROCM)
   target_link_libraries(test_lazy PRIVATE
     ${ROCM_HIPRTC_LIB}
     ${PYTORCH_HIP_HCC_LIBRARIES}
-    ${TORCH_CUDA_LIBRARIES})
+    ${TORCH_CUDA_LIBRARIES} -ltinfo)
 
   target_compile_definitions(test_lazy PRIVATE USE_ROCM)
 endif()
