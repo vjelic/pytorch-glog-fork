@@ -155,7 +155,7 @@ elseif(USE_ROCM)
   target_link_libraries(test_jit PRIVATE
     ${ROCM_HIPRTC_LIB}
     ${PYTORCH_HIP_HCC_LIBRARIES}
-    ${TORCH_CUDA_LIBRARIES} -ltinfo)
+    ${TORCH_CUDA_LIBRARIES})
 
   target_compile_definitions(test_jit PRIVATE USE_ROCM)
 endif()
