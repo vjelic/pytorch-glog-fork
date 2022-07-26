@@ -1583,7 +1583,7 @@ if(USE_CUDA)
     target_link_libraries(torch_cuda PUBLIC torch_cuda_cu_library)
   endif()
 elseif(USE_ROCM)
-  target_link_libraries(torch PUBLIC torch_hip_library -ltinfo)
+  target_link_libraries(torch PUBLIC torch_hip_library)
 endif()
 
 if(PRINT_CMAKE_DEBUG_INFO)

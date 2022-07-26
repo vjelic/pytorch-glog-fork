@@ -1247,6 +1247,19 @@ endif()
 
 # ---[ HIP
 if(USE_ROCM)
+  # This prevents linking in the libtinfo from /opt/conda/lib which conflicts with ROCm libtinfo.
+  # Currently only active for Ubuntu 20.04.
+  if(UNIX)
+    execute_process(COMMAND bash -c "cat /etc/os-release | grep -o -m 1 focal" OUTPUT_VARIABLE OS_FOCAL)
+    if(OS_FOCAL)
+      find_library(LIBTINFO_LOC tinfo NO_CMAKE_PATH NO_CMAKE_ENVIRONMENT_PATH)
+      if(LIBTINFO_LOC)
+        get_filename_component(LIBTINFO_LOC_PARENT ${LIBTINFO_LOC} DIRECTORY)
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-rpath-link,${LIBTINFO_LOC_PARENT}")
+      endif()
+    endif()
+  endif()
+
   include(${CMAKE_CURRENT_LIST_DIR}/public/LoadHIP.cmake)
   if(PYTORCH_FOUND_HIP)
     message(INFO "Compiling with HIP for AMD.")
