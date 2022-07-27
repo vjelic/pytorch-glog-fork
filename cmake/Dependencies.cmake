@@ -1248,10 +1248,10 @@ endif()
 # ---[ HIP
 if(USE_ROCM)
   # This prevents linking in the libtinfo from /opt/conda/lib which conflicts with ROCm libtinfo.
-  # Currently only active for Ubuntu 20.04.
+  # Currently only active for Ubuntu 20.04 and greater versions.
   if(UNIX)
-    execute_process(COMMAND bash -c "cat /etc/os-release | grep -o -m 1 focal" OUTPUT_VARIABLE OS_FOCAL)
-    if(OS_FOCAL)
+    execute_process(COMMAND bash -c "cat /etc/os-release | grep VERSION_ID | awk -F\\\" '{print $2}'" OUTPUT_VARIABLE OS_VERSION)
+    if(OS_VERSION VERSION_GREATER_EQUAL "20.04")
       find_library(LIBTINFO_LOC tinfo NO_CMAKE_PATH NO_CMAKE_ENVIRONMENT_PATH)
       if(LIBTINFO_LOC)
         get_filename_component(LIBTINFO_LOC_PARENT ${LIBTINFO_LOC} DIRECTORY)
