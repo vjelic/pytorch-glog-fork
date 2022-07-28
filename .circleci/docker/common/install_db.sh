@@ -18,13 +18,13 @@ install_ubuntu() {
 install_centos() {
   # Need EPEL for many packages we depend on.
   # See http://fedoraproject.org/wiki/EPEL
-  yum --enablerepo=extras install -y epel-release
+  yum install -y epel-release
 
   yum install -y \
       hiredis-devel \
-      leveldb-devel \
-      lmdb-devel \
-      snappy-devel
+      leveldb-devel
+
+  dnf --enablerepo=crb -y install lmdb-devel snappy-devel
 
   # Cleanup
   yum clean all

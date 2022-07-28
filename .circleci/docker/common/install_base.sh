@@ -66,14 +66,14 @@ install_ubuntu() {
 install_centos() {
   # Need EPEL for many packages we depend on.
   # See http://fedoraproject.org/wiki/EPEL
-  yum --enablerepo=extras install -y epel-release
+  yum install -y epel-release
 
   ccache_deps="asciidoc docbook-dtds docbook-style-xsl libxslt"
   numpy_deps="gcc-gfortran"
   # Note: protobuf-c-{compiler,devel} on CentOS are too old to be used
   # for Caffe2. That said, we still install them to make sure the build
   # system opts to build/use protoc and libprotobuf from third-party.
-  yum install -y \
+  yum install -y --allowerasing \
     $ccache_deps \
     $numpy_deps \
     autoconf \
@@ -91,13 +91,11 @@ install_centos() {
     glog-devel \
     hiredis-devel \
     libstdc++-devel \
-    libsndfile-devel \
     make \
-    opencv-devel \
     sudo \
     wget \
     vim
-
+  dnf --enablerepo=crb -y install libsndfile-devel
   # Cleanup
   yum clean all
   rm -rf /var/cache/yum
