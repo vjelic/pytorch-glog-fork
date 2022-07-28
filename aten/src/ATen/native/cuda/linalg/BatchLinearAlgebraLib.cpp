@@ -939,8 +939,13 @@ void svd_cusolver(const Tensor& A,
 
   static const char* check_svd_doc = "Check doc at https://pytorch.org/docs/stable/generated/torch.linalg.svd.html";
 
+#ifdef ROCM_VERSION
+  // ROCM only has gesvd implemented
+  const auto driver_v = c10::string_view("gesvd");
+#else
   // The default heuristic is to use gesvdj driver
   const auto driver_v = driver.value_or("gesvdj");
+#endif
 
   if (driver_v == "gesvd") {
     svd_cusolver_gesvd(A, U, S, V, info, full_matrices, compute_uv);
