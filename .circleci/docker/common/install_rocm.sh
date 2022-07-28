@@ -101,14 +101,17 @@ install_centos() {
   yum update -y
   yum install -y kmod
   yum install -y wget
-  yum install -y openblas-devel
+  #yum install -y openblas-devel
+  dnf install -y openblas-serial
 
   yum install -y epel-release
-  yum install -y dkms kernel-headers-`uname -r` kernel-devel-`uname -r`
+  yum install -y dkms
+  dnf install -y kernel-headers kernel-devel
+
 
   if [[ $(ver $ROCM_VERSION) -ge $(ver 4.5) ]]; then
       # Add amdgpu repository
-      local amdgpu_baseurl="https://repo.radeon.com/amdgpu/${AMDGPU_VERSIONS[$ROCM_VERSION]}/rhel/7.9/main/x86_64"
+      local amdgpu_baseurl="https://repo.radeon.com/amdgpu/${AMDGPU_VERSIONS[$ROCM_VERSION]}/rhel/9.0/main/x86_64"
       echo "[AMDGPU]" > /etc/yum.repos.d/amdgpu.repo
       echo "name=AMDGPU" >> /etc/yum.repos.d/amdgpu.repo
       echo "baseurl=${amdgpu_baseurl}" >> /etc/yum.repos.d/amdgpu.repo
@@ -117,7 +120,7 @@ install_centos() {
       echo "gpgkey=http://repo.radeon.com/rocm/rocm.gpg.key" >> /etc/yum.repos.d/amdgpu.repo
   fi
 
-  local rocm_baseurl="http://repo.radeon.com/rocm/yum/${ROCM_VERSION}/main"
+  local rocm_baseurl="http://compute-artifactory.amd.com/artifactory/list/rocm-osdb-centos-9/compute-rocm-dkms-no-npi-hipclang-10378"
   echo "[ROCm]" > /etc/yum.repos.d/rocm.repo
   echo "name=ROCm" >> /etc/yum.repos.d/rocm.repo
   echo "baseurl=${rocm_baseurl}" >> /etc/yum.repos.d/rocm.repo
@@ -125,15 +128,17 @@ install_centos() {
   echo "gpgcheck=1" >> /etc/yum.repos.d/rocm.repo
   echo "gpgkey=http://repo.radeon.com/rocm/rocm.gpg.key" >> /etc/yum.repos.d/rocm.repo
 
-  yum update -y
+  yum update -y --nogpgcheck
 
-  yum install -y \
+  dnf --enablerepo=crb install -y perl-File-BaseDir
+
+  yum install -y --nogpgcheck \
                    rocm-dev \
                    rocm-utils \
-                   rocm-libs \
                    rccl \
                    rocprofiler-dev \
                    roctracer-dev
+  yum install -y hipblas hipblas-devel hipcub-devel hipfft hipfft-devel hipsolver hipsolver-devel hipsparse hipsparse-devel miopen-hip miopen-hip-devel rccl rccl-devel rocalution rocalution-devel rocblas rocblas-devel rocfft rocfft-devel rocprim-devel rocrand rocrand-devel rocsolver rocsolver-devel rocsparse rocsparse-devel rocthrust-devel --nogpgcheck
 
   # precompiled miopen kernels; search for all unversioned packages
   # if search fails it will abort this script; use true to avoid case where search fails

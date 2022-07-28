@@ -1,8 +1,7 @@
 ARG CENTOS_VERSION
 
-FROM centos:${CENTOS_VERSION}
+FROM quay.io/centos/centos:stream${CENTOS_VERSION}
 
-ARG CENTOS_VERSION
 
 # Set AMD gpu targets to build for
 ARG PYTORCH_ROCM_ARCH
@@ -15,12 +14,15 @@ ARG EC2
 ADD ./common/install_base.sh install_base.sh
 RUN bash ./install_base.sh && rm install_base.sh
 
+#Install langpack
+RUN yum install -y glibc-langpack-en
+
 # Update CentOS git version
 RUN yum -y remove git
 RUN yum -y remove git-*
-RUN yum -y install https://packages.endpoint.com/rhel/7/os/x86_64/endpoint-repo-1.9-1.x86_64.rpm || \
-    (yum -y install https://packages.endpointdev.com/rhel/7/os/x86_64/endpoint-repo-1.9-1.x86_64.rpm && \
-    sed -i "s/packages.endpoint/packages.endpointdev/" /etc/yum.repos.d/endpoint.repo)
+#RUN yum -y install https://packages.endpoint.com/rhel/7/os/x86_64/endpoint-repo-1.9-1.x86_64.rpm || \
+#    (yum -y install https://packages.endpointdev.com/rhel/7/os/x86_64/endpoint-repo-1.9-1.x86_64.rpm && \
+#    sed -i "s/packages.endpoint/packages.endpointdev/" /etc/yum.repos.d/endpoint.repo)
 RUN yum install -y git
 
 # Install devtoolset

@@ -16,11 +16,11 @@ install_ubuntu() {
 install_centos() {
   # Need EPEL for many packages we depend on.
   # See http://fedoraproject.org/wiki/EPEL
-  yum --enablerepo=extras install -y epel-release
+  yum install -y epel-release
 
-  yum install -y \
-      opencv-devel \
-      ffmpeg-devel
+  #yum install -y \
+  #    opencv-devel \
+  #    ffmpeg-devel
 
   # Cleanup
   yum clean all
