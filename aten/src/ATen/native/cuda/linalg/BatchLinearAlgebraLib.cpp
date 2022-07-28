@@ -646,14 +646,25 @@ inline static void svd_cusolver_gesvd(const Tensor& A, const Tensor& U, const Te
   // We need to pass a copy of A, as it will be overwritten
   // gesvd just knows how to handle m >= n, so in the other case we need to transpose A
   const auto not_A_H = A.size(-2) >= A.size(-1);
+  Tensor Vcopy = V; // Shallow copy
+#ifdef ROCM_VERSION
+  if (!not_A_H) {
+    Vcopy = copyBatchedColumnMajor(V);
+  }
+#endif
   AT_DISPATCH_FLOATING_AND_COMPLEX_TYPES(A.scalar_type(), "svd_cuda_gesvd", [&] {
     apply_svd_cusolver_gesvd<scalar_t>(cloneBatchedColumnMajor(not_A_H ? A : A.mH()),
-                                       not_A_H ? U : V,
+                                       not_A_H ? U : Vcopy,
                                        S,
-                                       not_A_H ? V : U,
+                                       not_A_H ? Vcopy : U,
                                        infos,
                                        full_matrices, compute_uv, calculate_all_batches, batches);
   });
+#ifdef ROCM_VERSION
+  if (!not_A_H) {
+    V.copy_(Vcopy);
+  }
+#endif
 }
 
 // call cusolver gesvdj function to calculate svd
