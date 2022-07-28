@@ -2570,7 +2570,7 @@ class TestLinalg(TestCase):
             Q = torch.linalg.eigh(A).eigenvectors
             Q.sum().backward()
 
-    @skipCUDAIfNoCusolver  # MAGMA backend doesn't work in this case
+    @skipCUDAIfNoCusolverAndNoHipsolver  # MAGMA backend doesn't work in this case
     @skipCUDAIfRocm
     @precisionOverride({torch.float: 1e-4, torch.cfloat: 1e-4})
     @skipCPUIfNoLapack
