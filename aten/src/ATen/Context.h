@@ -250,7 +250,11 @@ class TORCH_API Context {
   bool deterministic_cudnn = false;
   bool _deterministic_algorithms = false;
   bool _deterministic_algorithms_warn_only = false;
+#ifdef USE_ROCM
+  bool benchmark_cudnn = true;
+#else
   bool benchmark_cudnn = false;
+#endif
   Float32MatmulPrecision float32_matmul_precision =
       at::Float32MatmulPrecision::HIGHEST;
   bool allow_tf32_cudnn = true;
