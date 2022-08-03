@@ -39,14 +39,6 @@ struct TORCH_API HIPHooksInterface {
     return false;
   }
 
-  virtual bool hasHIPSOLVER() const {
-#if defined(ROCM_VERSION) && ROCM_VERSION >= 50300
-    return true;
-#else
-    return false;
-#endif
-  }
-
   virtual int64_t current_device() const {
     return -1;
   }
