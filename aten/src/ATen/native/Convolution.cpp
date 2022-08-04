@@ -230,6 +230,12 @@ auto ConvParams::use_mps( const at::Tensor& input, const at::Tensor& weight) con
 }
 
 auto ConvParams::use_miopen(const at::Tensor& input, const at::Tensor& weight, bool bias_defined) const -> bool {
+
+  if (input.suggest_memory_format() == MemoryFormat::ChannelsLast || input.suggest_memory_format() == MemoryFormat::ChannelsLast3d)
+  {
+    return false;
+  }
+  
   if (needs_64bit_indexing_no_split(input, weight)) {
     return false;
   }
