@@ -1,7 +1,7 @@
 clear 
 
 set -x
-set -e
+# set -e
 
 ROOT_DIR=$(pwd)
 LOG_DIR=$ROOT_DIR/log_$(git rev-parse --symbolic-full-name --abbrev-ref HEAD)
@@ -21,7 +21,7 @@ export PYTORCH_ROCM_ARCH="gfx908"
 # export PYTORCH_ROCM_ARCH="gfx1030"
 # export PYTORCH_ROCM_ARCH="gfx908;gfx1030"
 cd $TMP_DIR
-bash .jenkins/pytorch/build.sh | tee $LOG_DIR/build.log
+bash .jenkins/pytorch/build.sh 2>&1 | tee $LOG_DIR/build.log
 
 # bash scripts/amd/build.sh | tee $LOG_DIR/build.log
 # bash scripts/amd/build_torchvision.sh | tee $LOG_DIR/build_torchvision.log
