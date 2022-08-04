@@ -12,6 +12,14 @@
 
 namespace torch { namespace cuda { namespace shared {
 
+#ifdef USE_ROCM
+namespace {
+hipError_t hipReturnSuccess() {
+  return hipSuccess;
+}
+} // namespace
+#endif
+
 void initCudartBindings(PyObject* module) {
   auto m = py::handle(module).cast<py::module>();
 
@@ -30,8 +38,13 @@ void initCudartBindings(PyObject* module) {
       .value("success", cudaSuccess);
 
   cudart.def("cuda" "GetErrorString", cudaGetErrorString);
+#ifdef USE_ROCM
+  cudart.def("cuda" "ProfilerStart", hipReturnSuccess);
+  cudart.def("cuda" "ProfilerStop", hipReturnSuccess);
+#else
   cudart.def("cuda" "ProfilerStart", cudaProfilerStart);
   cudart.def("cuda" "ProfilerStop", cudaProfilerStop);
+#endif
   cudart.def("cuda" "HostRegister", [](uintptr_t ptr, size_t size, unsigned int flags) -> cudaError_t {
     return cudaHostRegister((void*)ptr, size, flags);
   });
