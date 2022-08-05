@@ -13,8 +13,10 @@ VOLUMES="-v $HOME/dockerx:/dockerx -v /data:/data"
 WORK_DIR="/dockerx/$(basename $(pwd))"
 
 # IMAGE_NAME=rocm/pytorch
-IMAGE_NAME=rocm/pytorch-nightly
+# IMAGE_NAME=rocm/pytorch-nightly
 # IMAGE_NAME=nvcr.io/nvidia/pytorch:21.08-py3
+IMAGE_NAME=compute-artifactory.amd.com:5000/rocm-plus-docker/framework/compute-rocm-dkms-no-npi-hipclang:10561_ubuntu20.04_py3.7_pytorch_sow_ms3_57f8a60
+
 CONTAINER_NAME=pytorch
 
 # start new container
