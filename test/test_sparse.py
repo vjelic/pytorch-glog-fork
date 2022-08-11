@@ -9,7 +9,7 @@ import unittest
 from torch.testing import make_tensor
 from torch.testing._internal.common_utils import TestCase, run_tests, skipIfRocm, do_test_dtypes, \
     do_test_empty_full, load_tests, TEST_NUMPY, TEST_SCIPY, IS_WINDOWS, gradcheck, coalescedonoff, \
-    DeterministicGuard, first_sample, TEST_WITH_CROSSREF, TEST_WITH_ROCM, skipIfTorchDynamo
+    DeterministicGuard, first_sample, TEST_WITH_CROSSREF, TEST_WITH_ROCM, skipIfTorchDynamo, skipIfRocmVersionLessThan
 from torch.testing._internal.common_cuda import TEST_CUDA, _get_torch_cuda_version
 from numbers import Number
 from typing import Dict, Any
@@ -3425,7 +3425,7 @@ class TestSparse(TestSparseBase):
         self.assertEqual(out.to_dense(), torch.zeros_like(t))
 
     # TODO: Check after why ROCm's cusparseXcsrgemm2Nnz function doesn't return the same nnz value as CUDA
-    @skipIfRocm
+    @skipIfRocmVersionLessThan((5, 3))
     @coalescedonoff
     @dtypes(*floating_and_complex_types())
     @dtypesIfCUDA(*floating_types_and(*[torch.half] if CUDA11OrLater and SM53OrLater else [],
