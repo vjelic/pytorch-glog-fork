@@ -661,7 +661,6 @@ class CudaDdpComparisonTest(CommonDdpComparisonTest):
     @skip_if_lt_x_gpu(NUM_TRAINERS)
     @requires_nccl()
     @dist_init
-    @skip_if_rocm
     def test_ddp_dist_autograd_local_vs_remote_gpu(self):
         # Each trainer uses a different random seed. Otherwise, they are going
         # to have exactly the same initial model parameters, input, and
