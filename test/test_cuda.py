@@ -1756,8 +1756,6 @@ except RuntimeError as e:
             self.assertEqual(x.grad, torch.ones_like(x) * 3)
             self.assertEqual(torch.cuda.current_stream(), bwd_ambient_stream)
 
-    # Skip the test for ROCm as per https://github.com/pytorch/pytorch/issues/53190
-    @skipIfRocm
     def test_streaming_backwards_multiple_streams(self):
         MultiplyInStream = self._make_multiply_in_stream()
 
