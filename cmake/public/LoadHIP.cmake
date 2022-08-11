@@ -286,6 +286,8 @@ if(HIP_FOUND)
   # Disable Asserts In Code (Can't use asserts on HIP stack.)
   add_definitions(-DNDEBUG)
 
+  enable_language(HIP)
+
   if(HIP_COMPILER STREQUAL clang)
     set(hip_library_name amdhip64)
   else()
