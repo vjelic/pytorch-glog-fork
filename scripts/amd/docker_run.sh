@@ -15,7 +15,9 @@ WORK_DIR="/dockerx/$(basename $(pwd))"
 # IMAGE_NAME=rocm/pytorch
 # IMAGE_NAME=rocm/pytorch-nightly
 # IMAGE_NAME=nvcr.io/nvidia/pytorch:21.08-py3
-IMAGE_NAME=compute-artifactory.amd.com:5000/rocm-plus-docker/framework/compute-rocm-dkms-no-npi-hipclang:10561_ubuntu20.04_py3.7_pytorch_sow_ms3_57f8a60
+IMAGE_NAME=compute-artifactory.amd.com:5000/rocm-plus-docker/framework/compute-rocm-dkms-no-npi-hipclang:10626_ubuntu20.04_py3.7_pytorch_sow_ms3_6afefce
+# IMAGE_NAME=compute-artifactory.amd.com:5000/rocm-plus-docker/framework/compute-rocm-dkms-no-npi-hipclang:10626_centos7.5.1804_py3.7_pytorch_sow_ms3_6afefce
+# IMAGE_NAME=rocm/pytorch-private:sow_ms3_conv_disable_miopen
 
 CONTAINER_NAME=pytorch
 
