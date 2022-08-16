@@ -68,36 +68,68 @@ install_ubuntu() {
 install_centos() {
   # Need EPEL for many packages we depend on.
   # See http://fedoraproject.org/wiki/EPEL
-  yum install -y epel-release
+  if [[ $OS_VERSION == 9 ]]; then
+      yum install -y epel-release
+  else
+      yum --enablerepo=extras install -y epel-release
+  fi
 
   ccache_deps="asciidoc docbook-dtds docbook-style-xsl libxslt"
   numpy_deps="gcc-gfortran"
   # Note: protobuf-c-{compiler,devel} on CentOS are too old to be used
   # for Caffe2. That said, we still install them to make sure the build
   # system opts to build/use protoc and libprotobuf from third-party.
-  yum install -y --allowerasing \
-    $ccache_deps \
-    $numpy_deps \
-    autoconf \
-    automake \
-    bzip2 \
-    cmake \
-    cmake3 \
-    curl \
-    gcc \
-    gcc-c++ \
-    gflags-devel \
-    git \
-    glibc-devel \
-    glibc-headers \
-    glog-devel \
-    hiredis-devel \
-    libstdc++-devel \
-    make \
-    sudo \
-    wget \
-    vim
-  dnf --enablerepo=crb -y install libsndfile-devel
+  if [[ $OS_VERSION == 9 ]]
+  then
+	  yum install -y --allowerasing \
+		  $ccache_deps \
+                  $numpy_deps \
+                  autoconf \
+                  automake \
+                  bzip2 \
+                  cmake \
+                  cmake3 \
+                  curl \
+                  gcc \
+                  gcc-c++ \
+                  gflags-devel \
+                  git \
+                  glibc-devel \
+                  glibc-headers \
+                  glog-devel \
+                  hiredis-devel \
+                  libstdc++-devel \
+                  make \
+                  sudo \
+                  wget \
+                  vim
+	  dnf --enablerepo=crb -y install libsndfile-devel
+  else
+	  yum install -y \
+		     $ccache_deps \
+                     $numpy_deps \
+                     autoconf \
+                     automake \
+                     bzip2 \
+                     cmake \
+                     cmake3 \
+                     curl \
+                     gcc \
+                     gcc-c++ \
+                     gflags-devel \
+                     git \
+                     glibc-devel \
+                     glibc-headers \
+                     glog-devel \
+                     hiredis-devel \
+                     libstdc++-devel \
+                     libsndfile-devel \
+                     make \
+                     opencv-devel \
+                     sudo \
+                     wget \
+                     vim
+  fi
   # Cleanup
   yum clean all
   rm -rf /var/cache/yum
@@ -105,8 +137,10 @@ install_centos() {
   rm -rf /var/lib/yum/history
 }
 
-# Install base packages depending on the base OS
 ID=$(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"')
+OS_VERSION=$(grep -oP '(?<=^VERSION_ID=).+' /etc/os-release | tr -d '"')
+
+# Install base packages depending on the base OS
 case "$ID" in
   ubuntu)
     install_ubuntu
@@ -121,7 +155,6 @@ case "$ID" in
 esac
 
 # Install Valgrind separately since the apt-get version is too old.
-OS_VERSION=$(grep -oP '(?<=^VERSION_ID=).+' /etc/os-release | tr -d '"')
 if [[ $ID == centos && $OS_VERSION == 7 ]]; then WGET_FLAG="--no-check-certificate" ; else WGET_FLAG=""; fi
 mkdir valgrind_build && cd valgrind_build
 VALGRIND_VERSION=3.16.1
