@@ -1,4 +1,4 @@
-clear 
+clear
 
 set -x
 # set -e
@@ -11,9 +11,26 @@ mkdir -p $LOG_DIR
 chmod -R 777 $LOG_DIR
 
 # copy cur dir to tmp dir
-TMP_DIR=/tmp/pytorch
-bash scripts/amd/create_temp_dir.sh $TMP_DIR | tee $LOG_DIR/create_temp_dir.log
+# TMP_DIR=/tmp/pytorch
+TMP_DIR=/var/lib/jenkins/pytorch
+# bash scripts/amd/create_temp_dir.sh $TMP_DIR | tee $LOG_DIR/create_temp_dir.log
 
+cp_to_temp() {
+	file_name=$1
+
+	TARGET_FILE=$TMP_DIR/$file_name
+	cp -rf $file_name $TARGET_FILE
+
+	if [ -f "$TARGET_FILE" ]; then
+		echo "Found $TARGET_FILE."
+	else
+		echo "Did not Find $TARGET_FILE."
+	fi
+}
+
+cp_to_temp aten/src/ATen/native/Convolution.cpp
+cp_to_temp aten/src/ATen/native/miopen/Conv_miopen.cpp
+cp_to_temp test/test_nn.py
 
 # build pytorch
 pip uninstall torch -y
