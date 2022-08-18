@@ -3430,8 +3430,8 @@ class TestSparse(TestSparseBase):
     @dtypes(*floating_and_complex_types())
     @dtypesIfCUDA(*floating_types_and(*[torch.half] if CUDA11OrLater and SM53OrLater else [],
                                       *[torch.bfloat16] if CUDA11OrLater and SM80OrLater else [],
-                                      *[torch.complex64] if CUDA11OrLater else [],
-                                      *[torch.complex128] if CUSPARSE_SPMM_COMPLEX128_SUPPORTED else []))
+                                      *[torch.complex64] if CUDA11OrLater or TEST_WITH_ROCM else [],
+                                      *[torch.complex128] if CUSPARSE_SPMM_COMPLEX128_SUPPORTED or TEST_WITH_ROCM else []))
     @unittest.skipIf(TEST_WITH_CROSSREF, "not working with fake tensor")
     @precisionOverride({torch.bfloat16: 1e-2, torch.float16: 1e-2, torch.complex64: 1e-2, torch.float32: 1e-2})
     def test_sparse_matmul(self, device, dtype, coalesced):
