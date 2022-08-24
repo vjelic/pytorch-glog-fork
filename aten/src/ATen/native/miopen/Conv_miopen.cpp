@@ -738,6 +738,7 @@ Tensor miopen_convolution_forward(
     IntArrayRef padding, IntArrayRef stride, IntArrayRef dilation, int64_t groups,
     bool benchmark, bool deterministic)
 {
+  std::cout << "miopen_convolution_forward" << std::endl;
   checkAllSameType(c, {input, weight});
   checkAllSameGPU(c, {input, weight});
 
@@ -847,6 +848,7 @@ Tensor miopen_depthwise_convolution_forward(
     IntArrayRef padding, IntArrayRef stride, IntArrayRef dilation, int64_t groups,
     bool benchmark, bool deterministic)
 {
+  std::cout << "miopen_depthwise_convolution_forward" << std::endl;
   checkAllSameType(c, {input, weight});
   checkAllSameGPU(c, {input, weight});
 
@@ -1047,6 +1049,7 @@ Tensor miopen_depthwise_convolution_backward_weight(
     bool benchmark, bool deterministic)
 {
 
+  std::cout << "miopen_depthwise_convolution_backward_weight" << std::endl;
   checkAllSameType(c, {grad_output, input});
   checkAllSameGPU(c, {grad_output, input});
 
@@ -1100,6 +1103,7 @@ Tensor miopen_convolution_backward_weight(
     bool benchmark, bool deterministic)
 {
 
+  std::cout << "miopen_convolution_backward_weight" << std::endl;
   checkAllSameType(c, {grad_output, input});
   checkAllSameGPU(c, {grad_output, input});
 
@@ -1253,6 +1257,7 @@ Tensor miopen_convolution_backward_input(
     IntArrayRef padding, IntArrayRef stride, IntArrayRef dilation, int64_t groups,
     bool benchmark, bool deterministic)
 {
+  std::cout << "miopen_convolution_backward_input" << std::endl;
   checkAllSameType(c, {grad_output, weight});
   checkAllSameGPU(c, {grad_output, weight});
 
@@ -1360,6 +1365,7 @@ Tensor miopen_depthwise_convolution_backward_input(
     IntArrayRef padding, IntArrayRef stride, IntArrayRef dilation, int64_t groups,
     bool benchmark, bool deterministic)
 {
+  std::cout << "miopen_depthwise_convolution_backward_input" << std::endl;
   checkAllSameType(c, {grad_output, weight});
   checkAllSameGPU(c, {grad_output, weight});
 

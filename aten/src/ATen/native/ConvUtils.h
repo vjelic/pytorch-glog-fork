@@ -6,6 +6,8 @@
 #include <c10/util/env.h>
 #include <c10/util/irange.h>
 
+#include <iostream>
+
 namespace at { namespace native {
 
 using conv_depthwise2d_backward_fn = std::tuple<at::Tensor,at::Tensor>(*)(
@@ -332,7 +334,7 @@ static inline at::MemoryFormat cudnn_conv_suggest_memory_format(const at::Tensor
 }
 
 static inline bool miopen_conv_use_channels_last(const at::Tensor& input, const at::Tensor& weight) {
-
+  std::cout << " miopen_conv_use_channels_last" << std::endl;
   // disable NHWC for float64 input.
   if (!at::detail::getCUDAHooks().compiledWithMIOpen() ||
       input.scalar_type() == at::kDouble ||

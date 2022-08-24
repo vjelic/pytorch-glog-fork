@@ -231,24 +231,29 @@ auto ConvParams::use_mps( const at::Tensor& input, const at::Tensor& weight) con
 }
 
 auto ConvParams::use_miopen(const at::Tensor& input, const at::Tensor& weight, bool bias_defined) const -> bool {
+  std::cout << " ConvParams::use_miopen" << std::endl;
+  std::cout << " input.suggest_memory_format(): " << input.suggest_memory_format()
+            << std::endl;
+  std::cout << " weight.suggest_memory_format(): " << weight.suggest_memory_format()
+            << std::endl;
 
-  return false;
+  // return false;
   // if (input.suggest_memory_format() == MemoryFormat::ChannelsLast || input.suggest_memory_format() == MemoryFormat::ChannelsLast3d)
   // {
   //   return false;
   // }
   
-  // if (needs_64bit_indexing_no_split(input, weight)) {
-  //   return false;
-  // }
-  // return ((input.scalar_type() == at::kFloat) || (input.scalar_type() == at::kHalf) || (input.scalar_type() == at::kBFloat16))
-  //        && detail::getCUDAHooks().compiledWithMIOpen()
-  //        && input.is_cuda()
-  //        && input.dim() <= MIOPEN_DIM_MAX
-  //        && !(groups > 1 && is_dilated()) // MIOpen currently does not support dilation with groups of size > 1
-  //        && !(input.scalar_type() == at::kBFloat16 && bias_defined) // MIOpen currently doesn't support bias with bfloat16
-  //        && cudnn_enabled
-  //        ;
+  if (needs_64bit_indexing_no_split(input, weight)) {
+    return false;
+  }
+  return ((input.scalar_type() == at::kFloat) || (input.scalar_type() == at::kHalf) || (input.scalar_type() == at::kBFloat16))
+         && detail::getCUDAHooks().compiledWithMIOpen()
+         && input.is_cuda()
+         && input.dim() <= MIOPEN_DIM_MAX
+         && !(groups > 1 && is_dilated()) // MIOpen currently does not support dilation with groups of size > 1
+         && !(input.scalar_type() == at::kBFloat16 && bias_defined) // MIOpen currently doesn't support bias with bfloat16
+         && cudnn_enabled
+         ;
 }
 
 auto ConvParams::use_mkldnn(const at::Tensor& input, const at::Tensor& weight) const -> bool {
@@ -1247,6 +1252,7 @@ static inline at::MemoryFormat determine_backend_memory_format(
     const Tensor& input,
     const Tensor& weight,
     const ConvBackend backend) {
+  std::cout << "determine_backend_memory_format" << std::endl;
   at::MemoryFormat backend_memory_format = at::MemoryFormat::Contiguous;
   auto k = weight.ndimension();
 #if !defined(C10_MOBILE)
@@ -1259,12 +1265,18 @@ static inline at::MemoryFormat determine_backend_memory_format(
       }
       break;
     case ConvBackend::Miopen:
+      std::cout << " ConvBackend::Miopen" << std::endl;
+      break;
     case ConvBackend::MiopenDepthwise:
+      std::cout << "ConvBackend::MiopenDepthwise" << std::endl;
+      break;
     case ConvBackend::MiopenTranspose:
+      std::cout << "ConvBackend::MiopenTranspose" << std::endl;
       if (detail::getCUDAHooks().compiledWithMIOpen() && miopen_conv_use_channels_last(input, weight)) {
         TORCH_INTERNAL_ASSERT((k == 4 || k == 5),
             "Expected 4D or 5D input for miopen memory format selection in determine_backend_memory_format()");
         backend_memory_format = (k == 5) ? at::MemoryFormat::Contiguous /*at::MemoryFormat::ChannelsLast3d*/ : at::MemoryFormat::ChannelsLast;
+        // backend_memory_format = (k == 5) ? at::MemoryFormat::ChannelsLast3d : at::MemoryFormat::ChannelsLast;
       }
       break;
     case ConvBackend::Mkldnn:
@@ -1332,8 +1344,35 @@ at::Tensor _convolution(
   auto bias_sizes_opt = bias.defined() ? c10::optional<IntArrayRef>(bias.sizes()) : c10::nullopt;
   bool need_backward = GradMode::is_enabled() &&
       (input.requires_grad() || weight.requires_grad() || (bias.defined() && bias.requires_grad()));
+
+    char* backend_strs[] = {
+      "CudaDepthwise2d",
+      "CudaDepthwise3d",
+      "Cudnn",
+      "CudnnTranspose",
+      "Empty",
+      "Miopen",
+      "MiopenDepthwise",
+      "MiopenTranspose",
+      "Mkldnn",
+      "MkldnnEmpty",
+      "NnpackSpatial",
+      "Overrideable",
+      "Slow2d",
+      "Slow3d",
+      "SlowDilated2d",
+      "SlowDilated3d",
+      "SlowTranspose2d",
+      "SlowTranspose3d",
+      "Winograd3x3Depthwise",
+      "Xnnpack2d",
+      "Mps",
+      "MpsTranspose"};
   ConvBackend backend = select_conv_backend(input, weight, bias_sizes_opt, need_backward, params);
+  // ConvBackend backend = ConvBackend::Empty;
+  // std::cout << "backend: " << backend_strs[backend] << std::endl;
   at::MemoryFormat backend_memory_format = determine_backend_memory_format(input, weight, backend);
+  std::cout << "backend_memory_format:" << backend_memory_format << std::endl;
 
   // Call the backend.
   Tensor output;
@@ -1376,17 +1415,20 @@ at::Tensor _convolution(
       break;
     }
     case ConvBackend::Miopen:
+      std::cout << "ConvBackend::Miopen" << std::endl;
       check_input_same_type_as_parameters(input, weight, bias);
       output = at::miopen_convolution(
           input.contiguous(backend_memory_format), weight, bias, params.padding, params.stride,
           params.dilation, params.groups, params.benchmark, params.deterministic);
       break;
     case ConvBackend::MiopenDepthwise:
+      std::cout << "ConvBackend::MiopenDepthwise" << std::endl;
       output = at::miopen_depthwise_convolution(
           input.contiguous(backend_memory_format), weight, bias, params.padding, params.stride,
           params.dilation, params.groups, params.benchmark, params.deterministic);
       break;
     case ConvBackend::MiopenTranspose:
+      std::cout << "ConvBackend::MiopenTranspose" << std::endl;
       check_input_same_type_as_parameters(input, weight, bias);
       output = at::miopen_convolution_transpose(
           input.contiguous(backend_memory_format), weight, bias, params.padding, params.output_padding,
@@ -1788,6 +1830,7 @@ std::tuple<Tensor, Tensor, Tensor> convolution_backward(
     const at::OptionalIntArrayRef bias_sizes_opt,
     IntArrayRef stride, IntArrayRef padding, IntArrayRef dilation, bool transposed, IntArrayRef output_padding,
     int64_t groups, std::array<bool, 3> output_mask) {
+  std::cout << "convolution_backward" << std::endl;
   auto grad_output = grad_output_;
   auto input = input_;
   auto weight = weight_;
