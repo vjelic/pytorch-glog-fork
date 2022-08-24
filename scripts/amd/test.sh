@@ -36,9 +36,14 @@ cd $PYTORCH_DIR/test
 pwd
 
 # tests
-python test_nn.py --verbose  TestNNDeviceTypeCUDA.test_conv_cudnn_ndhwc_cuda_float16
-python test_nn.py --verbose  TestNNDeviceTypeCUDA.test_conv_cudnn_ndhwc_cuda_float32
-python test_nn.py --verbose  TestNNDeviceTypeCUDA.test_convert_conv2d_weight_memory_format_cuda
+python test_nn.py --verbose \
+	TestNNDeviceTypeCUDA.test_conv_cudnn_ndhwc_cuda_float16 \
+	TestNNDeviceTypeCUDA.test_conv_cudnn_ndhwc_cuda_float32 \
+	TestNNDeviceTypeCUDA.test_convert_conv2d_weight_memory_format_cuda
+
+# python test_nn.py --verbose  TestNNDeviceTypeCUDA.test_conv_cudnn_ndhwc_cuda_float16
+# python test_nn.py --verbose  TestNNDeviceTypeCUDA.test_conv_cudnn_ndhwc_cuda_float32
+# python test_nn.py --verbose  TestNNDeviceTypeCUDA.test_convert_conv2d_weight_memory_format_cuda
 
 # python test_ops.py --verbose | tee $LOG_DIR/test_ops.log
 

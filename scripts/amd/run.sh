@@ -29,6 +29,7 @@ cp_to_temp() {
 }
 
 cp_to_temp aten/src/ATen/native/Convolution.cpp
+cp_to_temp aten/src/ATen/native/ConvUtils.h
 cp_to_temp aten/src/ATen/native/miopen/Conv_miopen.cpp
 cp_to_temp test/test_nn.py
 
@@ -39,6 +40,16 @@ pip uninstall torch -y
 export PYTORCH_ROCM_ARCH="gfx908"
 cd $TMP_DIR
 bash .jenkins/pytorch/build.sh 2>&1 | tee $LOG_DIR/build.log
+
+# test
+# python test/test_nn.py --verbose \
+# 	TestNNDeviceTypeCUDA.test_conv_cudnn_ndhwc_cuda_float16 \
+# 	TestNNDeviceTypeCUDA.test_conv_cudnn_ndhwc_cuda_float32 \
+# 	TestNNDeviceTypeCUDA.test_convert_conv2d_weight_memory_format_cuda
+
+# python test/test_nn.py --verbose  TestNNDeviceTypeCUDA.test_conv_cudnn_ndhwc_cuda_float16
+python test/test_nn.py --verbose  TestNNDeviceTypeCUDA.test_conv_cudnn_ndhwc_cuda_float32
+# python test/test_nn.py --verbose  TestNNDeviceTypeCUDA.test_convert_conv2d_weight_memory_format_cuda
 
 # bash scripts/amd/build.sh | tee $LOG_DIR/build.log
 # bash scripts/amd/build_torchvision.sh | tee $LOG_DIR/build_torchvision.log
