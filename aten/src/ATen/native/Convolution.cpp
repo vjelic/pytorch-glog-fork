@@ -1294,6 +1294,8 @@ static inline at::MemoryFormat determine_backend_memory_format(
       backend_memory_format = at::MemoryFormat::Contiguous;
   }
 #endif
+  std::cout << "determine_backend_memory_format: " << backend_memory_format
+            << std::endl;
   return backend_memory_format;
 }
 
