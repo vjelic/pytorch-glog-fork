@@ -128,7 +128,7 @@ install_centos() {
   fi
 
   if [[ $OS_VERSION == 9 ]]; then
-      local rocm_baseurl="http://compute-artifactory.amd.com/artifactory/list/rocm-osdb-centos-9/compute-rocm-dkms-no-npi-hipclang-10378"
+      local rocm_baseurl="invalid-url"
   else
       local rocm_baseurl="http://repo.radeon.com/rocm/yum/${ROCM_VERSION}/main"
   fi
