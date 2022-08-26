@@ -122,6 +122,10 @@ class TORCH_API Context {
   void setUserEnabledCuDNN(bool e);
   bool userEnabledMkldnn() const;
   void setUserEnabledMkldnn(bool e);
+  bool userEnabledUVM() const;
+  void setUserEnabledUVM(bool e);
+  bool userEnabledMove() const;
+  void setUserEnabledMove(bool e);
   bool benchmarkCuDNN() const;
   void setBenchmarkCuDNN(bool);
   bool deterministicCuDNN() const;
@@ -255,6 +259,8 @@ class TORCH_API Context {
   bool allow_fp16_reduction_cublas = true;
   bool enabled_mkldnn = true;
   at::LinalgBackend linalg_preferred_backend = at::LinalgBackend::Default;
+  bool enabled_uvm = false;
+  bool enabled_move = false;
   #ifdef C10_MOBILE
   bool release_original_weights = true;
   #else

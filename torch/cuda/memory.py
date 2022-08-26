@@ -14,6 +14,13 @@ __all__ = ["caching_allocator_alloc", "caching_allocator_delete", "set_per_proce
            "memory_cached", "max_memory_cached", "memory_snapshot", "memory_summary", "list_gpu_processes",
            "mem_get_info"]
 
+from os import environ
+if 'PYTORCH_UVM_ENABLE' in environ:
+    torch._C._cuda_setEnabledUVM(True)
+
+if 'PYTORCH_MOVE_ENABLE' in environ:
+    torch._C._cuda_setEnabledMove(True)
+
 def _host_allocator():
     _lazy_init()
     return torch._C._cuda_cudaHostAllocator()
@@ -590,3 +597,29 @@ def mem_get_info(device: Union[Device, int] = None) -> int:
         device = torch.cuda.current_device()
     device = _get_device_index(device)
     return torch.cuda.cudart().cudaMemGetInfo(device)
+
+
+def set_enabled_uvm(enable):
+    r"""Enable/disable Unified Virtual Memory.
+    Arguments:
+        enable (bool): desired UVM setting.
+    """
+    torch._C._cuda_setEnabledUVM(enable)
+
+
+def get_enabled_uvm():
+    r"""Returns a bool indicating if Unified Virtual Memory is currently enabled."""
+    return torch._C._cuda_getEnabledUVM()
+
+
+def set_enabled_move(enable):
+    r"""Enable/disable Unified Virtual Memory.
+    Arguments:
+        enable (bool): desired UVM setting.
+    """
+    torch._C._cuda_setEnabledMove(enable)
+
+
+def get_enabled_move():
+    r"""Returns a bool indicating if Unified Virtual Memory is currently enabled."""
+    return torch._C._cuda_getEnabledMove()
