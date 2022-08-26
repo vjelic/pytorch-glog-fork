@@ -142,13 +142,7 @@ install_centos() {
   if [[ $OS_VERSION == 9 ]]; then
       yum update -y --nogpgcheck
       dnf --enablerepo=crb install -y perl-File-BaseDir
-      yum install -y --nogpgcheck \
-                   rocm-dev \
-                   rocm-utils \
-                   rccl \
-                   rocprofiler-dev \
-                   roctracer-dev
-      yum install -y hipblas hipblas-devel hipcub-devel hipfft hipfft-devel hipsolver hipsolver-devel hipsparse hipsparse-devel miopen-hip miopen-hip-devel rccl rccl-devel rocalution rocalution-devel rocblas rocblas-devel rocfft rocfft-devel rocprim-devel rocrand rocrand-devel rocsolver rocsolver-devel rocsparse rocsparse-devel rocthrust-devel --nogpgcheck
+      yum install -y --nogpgcheck rocm-ml-sdk rocm-developer-tools
   else
       yum update -y
       yum install -y \

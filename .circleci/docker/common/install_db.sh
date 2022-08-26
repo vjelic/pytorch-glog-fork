@@ -24,15 +24,14 @@ install_centos() {
       yum --enablerepo=extras install -y epel-release
   fi
 
+  yum install -y \
+      hiredis-devel \
+      leveldb-devel
+
   if [[ $OS_VERSION == 9 ]]; then
-      yum install -y \
-          hiredis-devel \
-          leveldb-devel
       dnf --enablerepo=crb -y install lmdb-devel snappy-devel
   else
       yum install -y \
-          hiredis-devel \
-          leveldb-devel \
           lmdb-devel \
           snappy-devel
   fi

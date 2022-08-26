@@ -20,6 +20,12 @@ install_ubuntu() {
     maybe_libiomp_dev="libiomp-dev"
   fi
 
+  if [[ $OS_VERSION == 9 ]]; then
+    ALLOW_ERASE = "--allowerasing"
+  else
+    ALLOW_ERASE = ""
+  fi
+
   # TODO: Remove this once nvidia package repos are back online
   # Comment out nvidia repositories to prevent them from getting apt-get updated, see https://github.com/pytorch/pytorch/issues/74968
   # shellcheck disable=SC2046
@@ -77,57 +83,37 @@ install_centos() {
   # Note: protobuf-c-{compiler,devel} on CentOS are too old to be used
   # for Caffe2. That said, we still install them to make sure the build
   # system opts to build/use protoc and libprotobuf from third-party.
+  yum install -y $ALLOW_ERASE \
+    $ccache_deps \
+    $numpy_deps \
+    autoconf \
+    automake \
+    bzip2 \
+    cmake \
+    cmake3 \
+    curl \
+    gcc \
+    gcc-c++ \
+    gflags-devel \
+    git \
+    glibc-devel \
+    glibc-headers \
+    glog-devel \
+    hiredis-devel \
+    libstdc++-devel \
+    make \
+    opencv-devel \
+    sudo \
+    wget \
+    vim
+
   if [[ $OS_VERSION == 9 ]]
   then
-	  yum install -y --allowerasing \
-		  $ccache_deps \
-                  $numpy_deps \
-                  autoconf \
-                  automake \
-                  bzip2 \
-                  cmake \
-                  cmake3 \
-                  curl \
-                  gcc \
-                  gcc-c++ \
-                  gflags-devel \
-                  git \
-                  glibc-devel \
-                  glibc-headers \
-                  glog-devel \
-                  hiredis-devel \
-                  libstdc++-devel \
-                  make \
-                  sudo \
-                  wget \
-                  vim
 	  dnf --enablerepo=crb -y install libsndfile-devel
   else
-	  yum install -y \
-		     $ccache_deps \
-                     $numpy_deps \
-                     autoconf \
-                     automake \
-                     bzip2 \
-                     cmake \
-                     cmake3 \
-                     curl \
-                     gcc \
-                     gcc-c++ \
-                     gflags-devel \
-                     git \
-                     glibc-devel \
-                     glibc-headers \
-                     glog-devel \
-                     hiredis-devel \
-                     libstdc++-devel \
-                     libsndfile-devel \
-                     make \
-                     opencv-devel \
-                     sudo \
-                     wget \
-                     vim
+	  yum install -y libsndfile-devel
   fi
+
   # Cleanup
   yum clean all
   rm -rf /var/cache/yum
