@@ -20,12 +20,6 @@ install_ubuntu() {
     maybe_libiomp_dev="libiomp-dev"
   fi
 
-  if [[ $OS_VERSION == 9 ]]; then
-    ALLOW_ERASE = "--allowerasing"
-  else
-    ALLOW_ERASE = ""
-  fi
-
   # TODO: Remove this once nvidia package repos are back online
   # Comment out nvidia repositories to prevent them from getting apt-get updated, see https://github.com/pytorch/pytorch/issues/74968
   # shellcheck disable=SC2046
@@ -78,6 +72,12 @@ install_centos() {
       yum --enablerepo=extras install -y epel-release
   fi
 
+  if [[ $OS_VERSION == 9 ]]; then
+    ALLOW_ERASE="--allowerasing"
+  else
+    ALLOW_ERASE=""
+  fi
+
   ccache_deps="asciidoc docbook-dtds docbook-style-xsl libxslt"
   numpy_deps="gcc-gfortran"
   # Note: protobuf-c-{compiler,devel} on CentOS are too old to be used
@@ -102,7 +102,6 @@ install_centos() {
     hiredis-devel \
     libstdc++-devel \
     make \
-    opencv-devel \
     sudo \
     wget \
     vim
@@ -111,7 +110,9 @@ install_centos() {
   then
 	  dnf --enablerepo=crb -y install libsndfile-devel
   else
-	  yum install -y libsndfile-devel
+	  yum install -y \
+            opencv-devel \
+	    libsndfile-devel
   fi
 
   # Cleanup
