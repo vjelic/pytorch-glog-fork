@@ -219,6 +219,22 @@ PyObject * THCPModule_cudaCachingAllocator_raw_alloc(PyObject *_unused, PyObject
   END_HANDLE_TH_ERRORS
 }
 
+PyObject * THCPModule_cudaUnifiedDeviceAllocator(PyObject *_unused, PyObject *noargs)
+{
+  HANDLE_TH_ERRORS
+  c10::Allocator* allocator = at::cuda::getUnifiedDeviceAllocator();
+  return PyLong_FromVoidPtr(allocator);
+  END_HANDLE_TH_ERRORS
+}
+
+PyObject * THCPModule_cudaUnifiedDeviceAllocatorCpu(PyObject *_unused, PyObject *noargs)
+{
+  HANDLE_TH_ERRORS
+  c10::Allocator* allocator = at::cuda::getUnifiedDeviceAllocatorCpu();
+  return PyLong_FromVoidPtr(allocator);
+  END_HANDLE_TH_ERRORS
+}
+
 // Unpack a PyObject to at::Scalar, throw an exception if it fails
 at::Scalar as_scalar(PyObject* arg) {
   // Zero-dim tensors are converted to Scalars as-is. Note this doesn't currently
