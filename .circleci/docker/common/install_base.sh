@@ -66,6 +66,7 @@ install_ubuntu() {
 install_centos() {
   # Need EPEL for many packages we depend on.
   # See http://fedoraproject.org/wiki/EPEL
+  # extras repo is not there for CentOS 9 and epel-release is already part of repo list
   if [[ $OS_VERSION == 9 ]]; then
       yum install -y epel-release
   else
