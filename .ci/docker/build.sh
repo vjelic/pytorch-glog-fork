@@ -348,6 +348,12 @@ if [[ "$image" == *cuda*  && ${OS} == "ubuntu" ]]; then
   fi
 fi
 
+if [[ "$image" == *centos9* ]]; then
+ DOCKERFILE_NAME="Dockerfile.centos.stream"
+else
+ DOCKERFILE_NAME="Dockerfile"
+fi
+
 # Build image
 docker build \
        --no-cache \
@@ -387,7 +393,7 @@ docker build \
        --build-arg "INDUCTOR_BENCHMARKS=${INDUCTOR_BENCHMARKS}" \
        --build-arg "EXECUTORCH=${EXECUTORCH}" \
        --build-arg "BASEKIT_VERSION=${BASEKIT_VERSION}" \
-       -f $(dirname ${DOCKERFILE})/Dockerfile \
+       -f $(dirname ${DOCKERFILE})/${DOCKERFILE_NAME} \
        -t "$tmp_tag" \
        "$@" \
        .
