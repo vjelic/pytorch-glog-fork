@@ -35,7 +35,7 @@ ver() {
 }
 
 # Map ROCm version to AMDGPU version
-declare -A AMDGPU_VERSIONS=( ["4.5.2"]="21.40.2" ["5.0"]="21.50" ["5.1.1"]="22.10.1" )
+declare -A AMDGPU_VERSIONS=( ["4.5.2"]="21.40.2" ["5.0"]="21.50" ["5.1.1"]="22.10.1" ["5.2"]="22.20" )
 
 install_ubuntu() {
     apt-get update
@@ -128,7 +128,7 @@ install_centos() {
   fi
 
   if [[ $OS_VERSION == 9 ]]; then
-      local rocm_baseurl="http://compute-artifactory.amd.com/artifactory/list/rocm-osdb-centos-9/compute-rocm-dkms-no-npi-hipclang-10378"
+      local rocm_baseurl="invalid-url"
   else
       local rocm_baseurl="http://repo.radeon.com/rocm/yum/${ROCM_VERSION}/main"
   fi
