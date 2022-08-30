@@ -115,8 +115,11 @@ ignores = [
     "aten/src/ATen/core/*",
     "torch/csrc/jit/codegen/cuda/codegen.cpp",
     "torch/csrc/jit/codegen/cuda/runtime/block_reduction.cu",
+    "torch/csrc/jit/codegen/cuda/runtime/block_sync_atomic.cu",
+    "torch/csrc/jit/codegen/cuda/runtime/block_sync_default_rocm.cu",
     "torch/csrc/jit/codegen/cuda/runtime/broadcast.cu",
     "torch/csrc/jit/codegen/cuda/runtime/grid_reduction.cu",
+    "torch/csrc/jit/codegen/cuda/runtime/helpers.cu",
     "torch/csrc/jit/codegen/fuser/cuda/resource_strings.h",
     "torch/csrc/jit/tensorexpr/ir_printer.cpp",
     # generated files we shouldn't frob

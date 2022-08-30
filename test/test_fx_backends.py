@@ -12,7 +12,6 @@ from torch.fx.passes.backends.nvfuser import NvFuserBackend
 from torch.testing._internal.common_utils import run_tests, TEST_CUDA, TestCase
 from torch.testing._internal.common_device_type import (
     instantiate_device_type_tests,
-    skipCUDAIfRocm,
     dtypes,
 )
 
@@ -129,7 +128,6 @@ class TestFxNvFuserBackend(TestCase):
         return inputs
 
 
-    @skipCUDAIfRocm
     @dtypes(torch.float32)
     def test_nvfuser_backend(self, device, dtype):
         m = HF_T5_Partial()

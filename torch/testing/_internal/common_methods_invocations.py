@@ -16722,9 +16722,9 @@ op_db: List[OpInfo] = [
                # lambda impl
                DecorateInfo(unittest.expectedFailure, "TestNormalizeOperators", "test_normalize_operator_exhaustive"),
                DecorateInfo(unittest.expectedFailure, 'TestJit', 'test_variant_consistency_jit'),
-               # 76571
+               # 76571 - CUDA gets expectedFailure, but this test passes for ROCm
                DecorateInfo(unittest.expectedFailure, 'TestCudaFuserOpInfo', 'test_nvfuser_extremal_values',
-                            dtypes=(torch.float16, torch.float32, torch.float64)),
+                            dtypes=(torch.float16, torch.float32, torch.float64), active_if=not TEST_WITH_ROCM),
                DecorateInfo(unittest.skip("memory access error on some platforms"),
                             'TestCommon', 'test_non_standard_bool_values', device_type='cuda'),
            )),
@@ -16738,9 +16738,9 @@ op_db: List[OpInfo] = [
                # lambda impl
                DecorateInfo(unittest.expectedFailure, "TestNormalizeOperators", "test_normalize_operator_exhaustive"),
                DecorateInfo(unittest.expectedFailure, 'TestJit', 'test_variant_consistency_jit'),
-               # 76571
+               # 76571 - CUDA gets expectedFailure, but this test passes for ROCm
                DecorateInfo(unittest.expectedFailure, 'TestCudaFuserOpInfo', 'test_nvfuser_extremal_values',
-                            dtypes=(torch.float16, torch.float32, torch.float64)),
+                            dtypes=(torch.float16, torch.float32, torch.float64), active_if=not TEST_WITH_ROCM),
                DecorateInfo(unittest.expectedFailure, 'TestCommon', 'test_non_standard_bool_values',
                             device_type='cuda'),
                DecorateInfo(unittest.skip("memory access error on ROCm"), 'TestCommon',
