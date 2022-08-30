@@ -69,14 +69,10 @@ install_centos() {
   # extras repo is not there for CentOS 9 and epel-release is already part of repo list
   if [[ $OS_VERSION == 9 ]]; then
       yum install -y epel-release
+      ALLOW_ERASE="--allowerasing"
   else
       yum --enablerepo=extras install -y epel-release
-  fi
-
-  if [[ $OS_VERSION == 9 ]]; then
-    ALLOW_ERASE="--allowerasing"
-  else
-    ALLOW_ERASE=""
+      ALLOW_ERASE=""
   fi
 
   ccache_deps="asciidoc docbook-dtds docbook-style-xsl libxslt"
