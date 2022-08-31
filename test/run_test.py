@@ -1035,9 +1035,7 @@ def main():
             selected_tests, ENABLE_PR_HISTORY_REORDERING
         )
         # downloading test cases configuration to local environment
-        # TODO: Commenting out because causing timeouts in internal CI: https://github.com/ROCmSoftwarePlatform/pytorch/pull/1040#issuecomment-1206609026
-        # Issue: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/2369
-        # get_test_case_configs(dirpath=test_directory)
+        get_test_case_configs(dirpath=test_directory)
 
     has_failed = False
     failure_messages = []
