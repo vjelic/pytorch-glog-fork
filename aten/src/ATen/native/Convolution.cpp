@@ -1252,7 +1252,7 @@ static inline at::MemoryFormat determine_backend_memory_format(
     const Tensor& input,
     const Tensor& weight,
     const ConvBackend backend) {
-  std::cout << "determine_backend_memory_format" << std::endl;
+  std::cout << "determine_backend_memory_format(const Tensor& input, const Tensor& weight, const ConvBackend backend)" << std::endl;
   at::MemoryFormat backend_memory_format = at::MemoryFormat::Contiguous;
   auto k = weight.ndimension();
 #if !defined(C10_MOBILE)
@@ -1265,7 +1265,14 @@ static inline at::MemoryFormat determine_backend_memory_format(
       }
       break;
     case ConvBackend::Miopen:
-      std::cout << " ConvBackend::Miopen" << std::endl;
+      std::cout << "ConvBackend::Miopen" << std::endl;
+      // if (detail::getCUDAHooks().compiledWithMIOpen() && miopen_conv_use_channels_last(input, weight)) {
+        // std::cout << "ConvBackend::Miopen: pass check" << std::endl;
+        // TORCH_INTERNAL_ASSERT((k == 4 || k == 5),
+        //     "Expected 4D or 5D input for miopen memory format selection in determine_backend_memory_format()");
+        // backend_memory_format = (k == 5) ? at::MemoryFormat::Contiguous /*at::MemoryFormat::ChannelsLast3d*/ : at::MemoryFormat::ChannelsLast;
+      // backend_memory_format = (k == 5) ? at::MemoryFormat::ChannelsLast3d : at::MemoryFormat::ChannelsLast;
+      // }
       break;
     case ConvBackend::MiopenDepthwise:
       std::cout << "ConvBackend::MiopenDepthwise" << std::endl;
@@ -1294,8 +1301,10 @@ static inline at::MemoryFormat determine_backend_memory_format(
       backend_memory_format = at::MemoryFormat::Contiguous;
   }
 #endif
-  std::cout << "determine_backend_memory_format: " << backend_memory_format
-            << std::endl;
+
+  // force data format
+  // backend_memory_format = at::MemoryFormat::ChannelsLast3d;
+  // backend_memory_format = at::MemoryFormat::Contiguous;
   return backend_memory_format;
 }
 
@@ -1305,6 +1314,11 @@ at::Tensor _convolution(
     bool transposed_, IntArrayRef output_padding_, int64_t groups_,
     bool benchmark, bool deterministic, bool cudnn_enabled, bool allow_tf32) {
   std::cout << "_convolution" << std::endl;
+  std::cout << "input_r.suggest_memory_format(): " << input_r.suggest_memory_format()
+            << std::endl;
+  std::cout << "weight_r.suggest_memory_format(): " << weight_r.suggest_memory_format()
+            << std::endl;
+  
   // See [Note: hacky wrapper removal for optional tensor]
   c10::MaybeOwned<Tensor> bias_r_maybe_owned = at::borrow_from_optional_tensor(bias_r_opt);
   const Tensor& bias_r = *bias_r_maybe_owned;
@@ -1374,7 +1388,7 @@ at::Tensor _convolution(
   // ConvBackend backend = ConvBackend::Empty;
   // std::cout << "backend: " << backend_strs[backend] << std::endl;
   at::MemoryFormat backend_memory_format = determine_backend_memory_format(input, weight, backend);
-  std::cout << "backend_memory_format:" << backend_memory_format << std::endl;
+  std::cout << "_convolution: backend_memory_format:" << backend_memory_format << std::endl;
 
   // Call the backend.
   Tensor output;
@@ -1539,7 +1553,23 @@ at::Tensor _convolution(
     output = view3d(output);
   }
 
-  return output;
+  std::cout << "_convolution: output.suggest_memory_format(): "
+            << output.suggest_memory_format() << std::endl;
+  auto ret = output;
+  if (input_r.suggest_memory_format() == at::MemoryFormat::ChannelsLast3d) {
+    ret = output.contiguous(at::MemoryFormat::ChannelsLast3d);
+  }
+  else if (input_r.suggest_memory_format() == at::MemoryFormat::ChannelsLast) {
+    ret = output.contiguous(at::MemoryFormat::ChannelsLast);
+  } 
+  else if (input_r.suggest_memory_format() == at::MemoryFormat::Contiguous) {
+    ret = output.contiguous(at::MemoryFormat::Contiguous);
+  }
+  
+  std::cout << "_convolution: ret.suggest_memory_format(): "
+            << ret.suggest_memory_format() << std::endl;
+
+  return ret;
 }
 
 at::Tensor _convolution(
@@ -1833,6 +1863,12 @@ std::tuple<Tensor, Tensor, Tensor> convolution_backward(
     IntArrayRef stride, IntArrayRef padding, IntArrayRef dilation, bool transposed, IntArrayRef output_padding,
     int64_t groups, std::array<bool, 3> output_mask) {
   std::cout << "convolution_backward" << std::endl;
+  std::cout << "grad_output_.suggest_memory_format(): "
+            << grad_output_.suggest_memory_format() << std::endl;
+  std::cout << "input_.suggest_memory_format(): "
+            << input_.suggest_memory_format() << std::endl;
+  std::cout << "weight_.suggest_memory_format(): "
+            << weight_.suggest_memory_format() << std::endl;
   auto grad_output = grad_output_;
   auto input = input_;
   auto weight = weight_;
@@ -1883,6 +1919,8 @@ std::tuple<Tensor, Tensor, Tensor> convolution_backward(
   // Select appropriate backend to use.
   ConvBackend backend = select_conv_backend(input, weight, bias_sizes_opt, /*need_backward=*/ true, params);
   at::MemoryFormat backend_memory_format = determine_backend_memory_format(input, weight, backend);
+  std::cout << "convolution_backward: backend_memory_format: " << backend_memory_format
+            << std::endl;
 
   // Call the backend.
   Tensor backend_grad_input, backend_grad_weight, backend_grad_bias;
