@@ -24,11 +24,11 @@ LOG_DIR="${1:-$LOG_DIR}"
 
 # bash scripts/amd/copy.sh
 
-# export PYTORCH_TEST_WITH_ROCM=1
+export PYTORCH_TEST_WITH_ROCM=1
 
 # PYTORCH_DIR="/var/lib/jenkins/pytorch"
 # PYTORCH_DIR="/tmp/pytorch"
-PYTORCH_DIR="/dockerx/pytorch"
+PYTORCH_DIR="/dockerx/pytorch_rocm"
 # PYTORCH_DIR=$(pwd)
 
 cd $PYTORCH_DIR/test
@@ -36,10 +36,12 @@ cd $PYTORCH_DIR/test
 pwd
 
 # tests
-python test_nn.py --verbose \
-	TestNNDeviceTypeCUDA.test_conv_cudnn_ndhwc_cuda_float16 \
-	TestNNDeviceTypeCUDA.test_conv_cudnn_ndhwc_cuda_float32 \
-	TestNNDeviceTypeCUDA.test_convert_conv2d_weight_memory_format_cuda
+# python test_nn.py --verbose \
+# 	TestNNDeviceTypeCUDA.test_conv_cudnn_ndhwc_cuda_float16 \
+# 	TestNNDeviceTypeCUDA.test_conv_cudnn_ndhwc_cuda_float32 \
+# 	TestNNDeviceTypeCUDA.test_convert_conv2d_weight_memory_format_cuda
+
+python test_nn.py --verbose
 
 # python test_nn.py --verbose  TestNNDeviceTypeCUDA.test_conv_cudnn_ndhwc_cuda_float16
 # python test_nn.py --verbose  TestNNDeviceTypeCUDA.test_conv_cudnn_ndhwc_cuda_float32
