@@ -1553,23 +1553,23 @@ at::Tensor _convolution(
     output = view3d(output);
   }
 
-  std::cout << "_convolution: output.suggest_memory_format(): "
-            << output.suggest_memory_format() << std::endl;
-  auto ret = output;
-  if (input_r.suggest_memory_format() == at::MemoryFormat::ChannelsLast3d) {
-    ret = output.contiguous(at::MemoryFormat::ChannelsLast3d);
+#ifdef USE_ROCM
+  if (backend == ConvBackend::Miopen ||
+      backend == ConvBackend::MiopenDepthwise ||
+      backend == ConvBackend::MiopenTranspose) {
+    if (input_r.suggest_memory_format() == at::MemoryFormat::ChannelsLast3d) {
+      output = output.contiguous(at::MemoryFormat::ChannelsLast3d);
+    } else if (
+        input_r.suggest_memory_format() == at::MemoryFormat::ChannelsLast) {
+      output = output.contiguous(at::MemoryFormat::ChannelsLast);
+    } else if (
+        input_r.suggest_memory_format() == at::MemoryFormat::Contiguous) {
+      output = output.contiguous(at::MemoryFormat::Contiguous);
+    }
   }
-  else if (input_r.suggest_memory_format() == at::MemoryFormat::ChannelsLast) {
-    ret = output.contiguous(at::MemoryFormat::ChannelsLast);
-  } 
-  else if (input_r.suggest_memory_format() == at::MemoryFormat::Contiguous) {
-    ret = output.contiguous(at::MemoryFormat::Contiguous);
-  }
-  
-  std::cout << "_convolution: ret.suggest_memory_format(): "
-            << ret.suggest_memory_format() << std::endl;
+#endif
 
-  return ret;
+  return output;
 }
 
 at::Tensor _convolution(
