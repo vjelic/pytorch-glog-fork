@@ -8,3 +8,8 @@
           This tag indicates operators that are *_copy* variants
           of view/aliasing operators. If an operator has a view_copy tag,
           then it should have the name {op}_copy, where {op} is a view operator.
+- tag: view_move
+  desc: |
+          This tag indicates operators that are *_move* variants
+          of view/aliasing operators. If an operator has a view_move tag,
+          then it should have the name {op}_move, where {op} is a view operator.

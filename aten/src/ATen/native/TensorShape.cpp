@@ -3559,6 +3559,13 @@ at::Tensor& view_copy_out(const at::Tensor & self, at::IntArrayRef size, at::Ten
 }
 
 
+at::Tensor& view_move_out(const at::Tensor & self, at::IntArrayRef size, at::Tensor & out) {
+  auto tmp = self.view(size);
+  out.copy_(tmp);
+  return out;
+}
+
+
 at::Tensor& view_copy_dtype_out(const at::Tensor & self, at::ScalarType dtype, at::Tensor & out) {
   auto tmp = self.view(dtype);
   out.copy_(tmp);
