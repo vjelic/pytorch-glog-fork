@@ -31,6 +31,7 @@ from torch.testing._internal.common_utils import (
     first_sample,
     parametrize,
     setLinalgBackendsToDefaultFinally,
+    TEST_WITH_ROCM,
 )
 from torch.testing._internal.common_methods_invocations import (
     op_db,
@@ -625,7 +626,9 @@ class TestCommon(TestCase):
     @ops(_ops_and_refs, dtypes=OpDTypes.none)
     @setLinalgBackendsToDefaultFinally
     def test_out_warning(self, device, op):
-        torch.backends.cuda.preferred_linalg_library('magma')
+        # temporarily change to magma backend for linalg.svdvals operator
+        if op.name == "linalg.svdvals":
+            torch.backends.cuda.preferred_linalg_library('magma')
         # Prefers running in float32 but has a fallback for the first listed supported dtype
         supported_dtypes = op.supported_dtypes(self.device_type)
         if len(supported_dtypes) == 0:
@@ -751,7 +754,9 @@ class TestCommon(TestCase):
     @ops(_ops_and_refs, dtypes=OpDTypes.any_one)
     @setLinalgBackendsToDefaultFinally
     def test_out(self, device, dtype, op):
-        torch.backends.cuda.preferred_linalg_library('magma')
+        # temporarily change to magma backend for linalg.svdvals operator
+        if op.name == "linalg.svdvals":
+            torch.backends.cuda.preferred_linalg_library('magma')
         # Prefers running in float32 but has a fallback for the first listed supported dtype
         samples = op.sample_inputs(device, dtype)
         for sample in samples:
@@ -813,7 +818,11 @@ class TestCommon(TestCase):
                 op_out(out=out)
                 final_strides = _extract_strides(out)
                 final_ptrs = _extract_data_ptrs(out)
-                self.assertEqual(expected, out)
+                # Need to increase the tolerance for ROCm
+                if all([TEST_WITH_ROCM, op.name == "addbmm", out.dtype == torch.float32]):
+                    self.assertEqual(expected, out, atol=5e-6, rtol=5e-6)
+                else:
+                    self.assertEqual(expected, out)
 
                 if compare_strides_and_data_ptrs:
                     stride_msg = "Strides are not the same! Original strides were {0} and strides are now {1}".format(
