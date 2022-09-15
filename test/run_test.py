@@ -1004,6 +1004,10 @@ def main():
     if options.coverage and not PYTORCH_COLLECT_COVERAGE:
         shell(["coverage", "erase"])
 
+    # Similar to test.sh logic, keep only GPU test cases when executing on ROCm
+    if "rocm" in os.environ.get("BUILD_ENVIRONMENT"):
+        os.environ["PYTORCH_TESTING_DEVICE_ONLY_FOR"]="cuda"
+
     # NS: Disable target determination until it can be made more reliable
     # if options.determine_from is not None and os.path.exists(options.determine_from):
     #     slow_tests = get_slow_tests_based_on_S3(
