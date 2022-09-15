@@ -1266,6 +1266,7 @@ static inline at::MemoryFormat determine_backend_memory_format(
       break;
     case ConvBackend::Miopen:
       std::cout << "ConvBackend::Miopen" << std::endl;
+      backend_memory_format = weight.suggest_memory_format();
       // if (detail::getCUDAHooks().compiledWithMIOpen() && miopen_conv_use_channels_last(input, weight)) {
         // std::cout << "ConvBackend::Miopen: pass check" << std::endl;
         // TORCH_INTERNAL_ASSERT((k == 4 || k == 5),
@@ -1276,15 +1277,17 @@ static inline at::MemoryFormat determine_backend_memory_format(
       break;
     case ConvBackend::MiopenDepthwise:
       std::cout << "ConvBackend::MiopenDepthwise" << std::endl;
+      backend_memory_format = weight.suggest_memory_format();
       break;
     case ConvBackend::MiopenTranspose:
       std::cout << "ConvBackend::MiopenTranspose" << std::endl;
-      if (detail::getCUDAHooks().compiledWithMIOpen() && miopen_conv_use_channels_last(input, weight)) {
-        TORCH_INTERNAL_ASSERT((k == 4 || k == 5),
-            "Expected 4D or 5D input for miopen memory format selection in determine_backend_memory_format()");
-        backend_memory_format = (k == 5) ? at::MemoryFormat::Contiguous /*at::MemoryFormat::ChannelsLast3d*/ : at::MemoryFormat::ChannelsLast;
-        // backend_memory_format = (k == 5) ? at::MemoryFormat::ChannelsLast3d : at::MemoryFormat::ChannelsLast;
-      }
+      // if (detail::getCUDAHooks().compiledWithMIOpen() && miopen_conv_use_channels_last(input, weight)) {
+      //   TORCH_INTERNAL_ASSERT((k == 4 || k == 5),
+      //       "Expected 4D or 5D input for miopen memory format selection in determine_backend_memory_format()");
+      //   backend_memory_format = (k == 5) ? at::MemoryFormat::Contiguous /*at::MemoryFormat::ChannelsLast3d*/ : at::MemoryFormat::ChannelsLast;
+      //   // backend_memory_format = (k == 5) ? at::MemoryFormat::ChannelsLast3d : at::MemoryFormat::ChannelsLast;
+      // }
+      backend_memory_format = weight.suggest_memory_format();
       break;
     case ConvBackend::Mkldnn:
       if (mkldnn_conv_use_channels_last(input, weight)) {
@@ -1388,6 +1391,7 @@ at::Tensor _convolution(
   // ConvBackend backend = ConvBackend::Empty;
   // std::cout << "backend: " << backend_strs[backend] << std::endl;
   at::MemoryFormat backend_memory_format = determine_backend_memory_format(input, weight, backend);
+  // at::MemoryFormat backend_memory_format = weight_r.suggest_memory_format();
   std::cout << "_convolution: backend_memory_format:" << backend_memory_format << std::endl;
 
   // Call the backend.
@@ -1553,23 +1557,27 @@ at::Tensor _convolution(
     output = view3d(output);
   }
 
-#ifdef USE_ROCM
-  if (backend == ConvBackend::Miopen ||
-      backend == ConvBackend::MiopenDepthwise ||
-      backend == ConvBackend::MiopenTranspose) {
-    if (input_r.suggest_memory_format() == at::MemoryFormat::ChannelsLast3d) {
-      output = output.contiguous(at::MemoryFormat::ChannelsLast3d);
-    } else if (
-        input_r.suggest_memory_format() == at::MemoryFormat::ChannelsLast) {
-      output = output.contiguous(at::MemoryFormat::ChannelsLast);
-    } else if (
-        input_r.suggest_memory_format() == at::MemoryFormat::Contiguous) {
-      output = output.contiguous(at::MemoryFormat::Contiguous);
-    }
-  }
-#endif
+// #ifdef USE_ROCM
+//   if (backend == ConvBackend::Miopen ||
+//       backend == ConvBackend::MiopenDepthwise ||
+//       backend == ConvBackend::MiopenTranspose) {
+//     if (input_r.suggest_memory_format() == at::MemoryFormat::ChannelsLast3d) {
+//       output = output.contiguous(at::MemoryFormat::ChannelsLast3d);
+//     } else if (
+//         input_r.suggest_memory_format() == at::MemoryFormat::ChannelsLast) {
+//       output = output.contiguous(at::MemoryFormat::ChannelsLast);
+//     } else if (
+//         input_r.suggest_memory_format() == at::MemoryFormat::Contiguous) {
+//       output = output.contiguous(at::MemoryFormat::Contiguous);
+//     }
+//   }
+// #endif
 
+#ifdef USE_ROCM
+  return output.contiguous(backend_memory_format);
+#else 
   return output;
+#endif
 }
 
 at::Tensor _convolution(
