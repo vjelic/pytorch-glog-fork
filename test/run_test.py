@@ -1067,6 +1067,10 @@ def main():
     if options.coverage and not PYTORCH_COLLECT_COVERAGE:
         shell(["coverage", "erase"])
 
+    # Similar to test.sh logic, keep only GPU test cases when executing on ROCm
+    if "rocm" in os.environ.get("BUILD_ENVIRONMENT"):
+        os.environ["PYTORCH_TESTING_DEVICE_ONLY_FOR"]="cuda"
+
     if IS_CI:
         selected_tests = get_reordered_tests(selected_tests)
         # downloading test cases configuration to local environment
