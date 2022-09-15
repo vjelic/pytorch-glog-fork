@@ -45,7 +45,7 @@ python test_nn.py --verbose \
 	TestNNDeviceTypeCUDA.test_convert_conv2d_weight_memory_format_cuda 2>&1 |
 	tee $LOG_DIR/test_convert_conv2d_weight_memory_format.log
 
-python test_nn.py --verbose 2>&1 | tee $LOG_DIR/test_nn.log
+# python test_nn.py --verbose 2>&1 | tee $LOG_DIR/test_nn.log
 
 # python test_nn.py --verbose  TestNNDeviceTypeCUDA.test_conv_cudnn_ndhwc_cuda_float16
 # python test_nn.py --verbose  TestNNDeviceTypeCUDA.test_conv_cudnn_ndhwc_cuda_float32
