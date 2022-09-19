@@ -1183,6 +1183,14 @@ std::vector<at::Tensor> FusionExecutor::runFusion(
       FUSER_PERF_SCOPE("ExecutorRunFusion::cuLaunchCooperativeKernel");
       AT_CUDA_DRIVER_CHECK(
           at::globalContext().getNVRTC().cuLaunchCooperativeKernel(
+#ifdef USE_ROCM
+              compiled_kernel_.function,
+              dim3(launch_params_.gdimx(), launch_params_.gdimy(), launch_params_.gdimz()),
+              dim3(launch_params_.bdimx(), launch_params_.bdimy(), launch_params_.bdimz()),
+              args.getBuffer(),
+              launch_params_.smem(),
+              stream
+#else
               compiled_kernel_.function,
               launch_params_.gdimx(),
               launch_params_.gdimy(),
@@ -1192,7 +1200,9 @@ std::vector<at::Tensor> FusionExecutor::runFusion(
               launch_params_.bdimz(),
               launch_params_.smem(),
               stream,
-              args.getBuffer()));
+              args.getBuffer()
+#endif
+              ));
     }
   }
 
