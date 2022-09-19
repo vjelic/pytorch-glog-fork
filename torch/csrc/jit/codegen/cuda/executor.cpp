@@ -1180,7 +1180,6 @@ std::vector<at::Tensor> FusionExecutor::runFusion(
           args.getBuffer(),
           nullptr));
     } else {
-#ifndef USE_ROCM
       FUSER_PERF_SCOPE("ExecutorRunFusion::cuLaunchCooperativeKernel");
       AT_CUDA_DRIVER_CHECK(
           at::globalContext().getNVRTC().cuLaunchCooperativeKernel(
@@ -1194,10 +1193,6 @@ std::vector<at::Tensor> FusionExecutor::runFusion(
               launch_params_.smem(),
               stream,
               args.getBuffer()));
-#else
-      TORCH_INTERNAL_ASSERT(
-          false, "Cross grid communication not supported with HIP.");
-#endif
     }
   }
 
