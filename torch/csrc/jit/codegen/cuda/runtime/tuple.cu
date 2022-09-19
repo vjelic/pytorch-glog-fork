@@ -438,7 +438,7 @@ struct TupleCopy {
         "Invalid value types");
     TupleCopy<DstType, SrcType, num_vals - 1>::copy(
         dst, dst_offset, src, src_offset);
-    dst.val<num_vals - 1>(dst_offset) = src.val<num_vals - 1>(src_offset);
+    dst.template val<num_vals - 1>(dst_offset) = src.template val<num_vals - 1>(src_offset);
   }
 };
 
@@ -484,7 +484,7 @@ struct TupleSet {
             typename DstType::template ValType<0>>::value,
         "Invalid value types");
     TupleSet<DstType, num_vals - 1>::set(dst, dst_offset, src);
-    dst.val<num_vals - 1>(dst_offset) = src;
+    dst.template val<num_vals - 1>(dst_offset) = src;
   }
 };
 
@@ -525,8 +525,8 @@ struct PredicatedTupleCopy {
         "Invalid predicate type");
     PredicatedTupleCopy<DstType, SrcType, PredType, num_vals - 1>::copy(
         dst, dst_offset, src, src_offset, pred);
-    if (pred.val<num_vals - 1>(0)) {
-      dst.val<num_vals - 1>(dst_offset) = src.val<num_vals - 1>(src_offset);
+    if (pred.template val<num_vals - 1>(0)) {
+      dst.template val<num_vals - 1>(dst_offset) = src.template val<num_vals - 1>(src_offset);
     }
   }
 };
@@ -790,7 +790,7 @@ struct TupleBinaryOp {
       LocalTuple<DataTypes...>& result) {
     TupleBinaryOp<idx - 1, BinaryFunc, DataTypes...>::apply(
         func, lhs, rhs, result);
-    result.val<idx - 1>(0) = func(lhs.val<idx - 1>(0), rhs.val<idx - 1>(0));
+    result.template val<idx - 1>(0) = func(lhs.template val<idx - 1>(0), rhs.template val<idx - 1>(0));
   }
 };
 

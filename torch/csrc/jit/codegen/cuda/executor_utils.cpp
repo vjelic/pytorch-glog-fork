@@ -44,6 +44,7 @@
 #include <nvfuser_resources/array_rocm.h>
 #include <nvfuser_resources/bf16_support_rocm.h>
 #include <nvfuser_resources/block_sync_default_rocm.h>
+#include <nvfuser_resources/memory_rocm.h>
 #include <nvfuser_resources/warp_rocm.h>
 #endif
 
@@ -123,6 +124,7 @@ std::string kernelPreamble() {
   ss << nvfuser_resources::memory_cu;
 #else
   ss << nvfuser_resources::warp_rocm_cu;
+  ss << nvfuser_resources::memory_rocm_cu;
 #endif
   ss << nvfuser_resources::fused_welford_helper_cu;
   ss << nvfuser_resources::fused_reduction_cu;
@@ -1016,6 +1018,35 @@ std::pair<NvrtcFunction, std::string> nvrtcCompile(
 
 #ifdef USE_ROCM
   std::vector<const char*> args = {"--std=c++14"};
+  const char* comgr_debug = getenv("PYTORCH_COMGR_DEBUG");
+  const char* comgr_opt = getenv("PYTORCH_COMGR_OPT");
+  if (comgr_debug) {
+    args.push_back("-g");
+    args.push_back("-O0");
+  }
+  if (comgr_opt) {
+    int val = atoi(comgr_opt);
+    if (val <= 3 && val >= 0) {
+        if (val == 0) {
+          args.push_back("-O0");
+        }
+        if (val == 1) {
+          args.push_back("-O1");
+        }
+        if (val == 2) {
+          args.push_back("-O2");
+        }
+        if (val == 3) {
+          args.push_back("-O3");
+        }
+    }
+    else {
+      TORCH_WARN_ONCE(
+          "acceptable range for PYTORCH_COMGR_OPT is between 0 and 3, but received ",
+          val,
+          ", ignoring the option");
+    }
+  }
 #if ROCM_VERSION >= 40200
   args.push_back("-hip-pch");
 #endif

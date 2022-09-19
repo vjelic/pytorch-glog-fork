@@ -544,14 +544,25 @@ class CudaKernelGenerator : private OptOutConstDispatch {
 
   // Utility function to emit a cp.async intrinsic
   void genCpAsync(const LoadStoreOp* ldst, int vec_size) {
+#ifdef USE_ROCM
+    auto dtype = ldst->in()->getDataType().value();
+
+    indent() << "rocm::cpSync("
+             << genVectorPointer(ldst->out(), dtype, vec_size) << ","
+             << genVectorPointer(ldst->in(), dtype, vec_size) << ");\n";
+#else
     auto dtype = ldst->in()->getDataType().value();
 
     indent() << "Ampere::cpAsync("
              << genVectorPointer(ldst->out(), dtype, vec_size) << ","
              << genVectorPointer(ldst->in(), dtype, vec_size) << ");\n";
+#endif
   }
 
   void genLdMatrix(const LoadStoreOp* ldst, int vector_word_size) {
+#ifdef USE_ROCM
+    TORCH_INTERNAL_ASSERT(false, "genLdMatrix not supported on ROCm");
+#else
     auto dtype = ldst->in()->getDataType().value();
     indent() << "Turing::ldMatrix";
     if (ldst->opType() == LoadStoreOpType::LdMatrixTranspose) {
@@ -561,6 +572,7 @@ class CudaKernelGenerator : private OptOutConstDispatch {
     code_ << "*" << genVectorPointer(ldst->out(), dtype, vector_word_size)
           << ","
           << "&" << gen(ldst->in()) << ");\n";
+#endif
   }
 
   void handle(const ARangeOp* aop) final {
@@ -676,17 +688,22 @@ class CudaKernelGenerator : private OptOutConstDispatch {
               in_tv->getMemoryType() == MemoryType::Global &&
               kernel_->summary().sync_map.needsRawSync(in_tv).hasBID();
 
+#ifdef USE_ROCM
+          const char *maybe_call = ">::call(";
+#else
+          const char *maybe_call = ">(";
+#endif
           if (localToGlobal) {
             indent() << "loadLocalToGlobal<" << uop->out()->dtype() << ", "
                      << vector_word_size << ", "
-                     << (is_volatile_to ? "true" : "false") << ">(";
-            code_ << " &" << gen(uop->out()) << ", &" << gen(uop->in())
-                  << ");\n";
+                     << (is_volatile_to ? "true" : "false") << maybe_call;
+            code_ << " &" << gen(uop->out()) << ", ";
+            code_ << " &" << gen(uop->in()) << ");\n";
           } else if (globalToLocal) {
             indent() << "loadGlobalToLocal<" << uop->out()->dtype() << ", "
                      << vector_word_size << ", "
-                     << (is_volatile_from ? "true" : "false") << ">(&"
-                     << gen(uop->out()) << ", ";
+                     << (is_volatile_from ? "true" : "false") << maybe_call;
+            code_ << " &" << gen(uop->out()) << ", ";
             code_ << " &" << gen(uop->in()) << ");\n";
           } else if (globalToGlobal) {
             indent() << "loadGlobalToGlobal<" << uop->out()->dtype() << ", "
@@ -2536,15 +2553,20 @@ class CudaKernelGenerator : private OptOutConstDispatch {
   }
 
   void handle(const kir::BlockSync* sync) final {
+#ifdef USE_ROCM
+    indent() << "block_sync::sync();\n";
+#else
     // Use a custom synchronization method if enabled
     if (std::getenv("PYTORCH_NVFUSER_USE_BLOCK_SYNC_ATOMIC")) {
       indent() << "block_sync::sync();\n";
     } else {
       indent() << "__barrier_sync(0);\n";
     }
+#endif
   }
 
   void handle(const kir::CpAsyncWait* cpasync_wait) final {
+#ifndef USE_ROCM
     if (cpasync_wait->keepStages() > 0) {
       // Perform partial sync, see comment on kir::CpAsyncWait.
       indent() << "Ampere::cpAsyncPartialBarrier<" << cpasync_wait->keepStages()
@@ -2553,11 +2575,16 @@ class CudaKernelGenerator : private OptOutConstDispatch {
       // Perform sync all, see comment on kir::CpAsyncWait.
       indent() << "Ampere::cpAsyncBarrier();\n";
     }
+#else
+    indent() << "block_sync::sync();\n";
+#endif
   }
 
   void handle(const kir::CpAsyncCommit* cpasync_wait) final {
+#ifndef USE_ROCM
     // Commit inflight cp.async transfers. See comment on kir::CpAsyncCommit.
     indent() << "Ampere::cpAsyncCommit();\n";
+#endif
   }
 
   void handle(const kir::GridSync* sync) final {

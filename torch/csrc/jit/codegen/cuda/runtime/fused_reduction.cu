@@ -51,7 +51,7 @@ struct FuncForEach {
         val0, offset0, val1, offset1, funcs...);
     // Call the i+1-th function
     FuncSelector<i, typename TupleType0::template ValType<i>, Funcs...>::call(
-        val0.val<i>(offset0), val1.val<i>(offset1), funcs...);
+        val0.template val<i>(offset0), val1.template val<i>(offset1), funcs...);
   }
 };
 
@@ -91,8 +91,8 @@ __inline__ __device__ static void reduceVal(
       typename TupleType0::template ValType<val_idx>,
       Funcs...>::
       call(
-          val0.val<val_idx>(offset0),
-          val1.val<val_idx>(offset1),
+          val0.template val<val_idx>(offset0),
+          val1.template val<val_idx>(offset1),
           reduction_ops...);
 }
 
@@ -222,7 +222,7 @@ struct BlockReduceEach {
 
     if (num_elements_per_reduction == 1) {
       if (has_block_result) {
-        block_result.val<idx>(0) = partial_result.val<idx>(0);
+        block_result.template val<idx>(0) = partial_result.template val<idx>(0);
       }
       return;
     }
@@ -231,7 +231,7 @@ struct BlockReduceEach {
 
     PtrTuple<DataType> shared_buf(static_cast<DataType*>(shared_mem));
 
-    LocalTuple<DataType> block_result_i(partial_result.val<idx>(0));
+    LocalTuple<DataType> block_result_i(partial_result.template val<idx>(0));
 
     const auto smem_offset =
         reduction_idx * num_threads_per_reduction + tid_in_reduction;
@@ -299,7 +299,7 @@ struct BlockReduceEach {
           reduction_idx * num_threads_per_reduction);
     }
 
-    block_result.val<idx>(0) = block_result_i.val<0>(0);
+    block_result.template val<idx>(0) = block_result_i.template val<0>(0);
 
     if (FORWARD_PROTECT_SMEM) {
       block_sync::sync();

@@ -100,103 +100,160 @@ __device__ void loadGenericVolatile(
   }
 }
 
+// template function specialization is not allowed, so we use a struct.
+// loadLocalToGlobal and loadGlobalToLocal are structs with static call functions.
+// array.cu does not need this, but hip-clang complains about discarding volatile if we don't.
+// hip-clang doesn't optimize away if(is_volatile) when is_volatile is false.
+
 template <typename scalar_t, int vec_size, bool is_volatile>
-__device__ void loadLocalToGlobal(
-    typename MaybeVolatile<scalar_t, is_volatile>::type* to,
+struct loadLocalToGlobal;
+
+template <typename scalar_t, int vec_size>
+struct loadLocalToGlobal<scalar_t, vec_size, true> {
+static __device__ void call(
+    typename MaybeVolatile<scalar_t, true>::type* to,
     scalar_t* from) {
   switch (sizeof(scalar_t) * vec_size) {
     case 1:
     case 2:
     case 4:
-      loadGenericVolatile<scalar_t, vec_size, is_volatile, false>(to, from);
+      loadGenericVolatile<scalar_t, vec_size, true, false>(to, from);
       break;
     case 8: {
-      if (is_volatile) {
         uint2 const& _from = *reinterpret_cast<uint2*>(from);
-        uint2 & _to = *reinterpret_cast<uint2*>(to);
-        _to = _from;
-      } else {
-        uint2 const& _from = *reinterpret_cast<uint2*>(from);
-        uint2 & _to = *reinterpret_cast<uint2*>(to);
-        _to = _from;
-      }
+        volatile uint2 * _to = reinterpret_cast<volatile uint2*>(to);
+        uint2 & __to = *const_cast<uint2*>(_to);
+        __to = _from;
+        // TODO memfence
       break;
     }
     case 12: {
-      if (is_volatile) {
         uint3 const& _from = *reinterpret_cast<uint3*>(from);
-        uint3 & _to = *reinterpret_cast<uint3*>(to);
-        _to = _from;
-      } else {
-        uint3 const& _from = *reinterpret_cast<uint3*>(from);
-        uint3 & _to = *reinterpret_cast<uint3*>(to);
-        _to = _from;
-      }
+        volatile uint3 * _to = reinterpret_cast<volatile uint3*>(to);
+        uint3 & __to = *const_cast<uint3*>(_to);
+        __to = _from;
+        // TODO memfence
       break;
     }
     case 16: {
-      if (is_volatile) {
         uint4 const& _from = *reinterpret_cast<uint4*>(from);
-        uint4 & _to = *reinterpret_cast<uint4*>(to);
-        _to = _from;
-      } else {
-        uint4 const& _from = *reinterpret_cast<uint4*>(from);
-        uint4 & _to = *reinterpret_cast<uint4*>(to);
-        _to = _from;
-      }
+        volatile uint4 * _to = reinterpret_cast<volatile uint4*>(to);
+        uint4 & __to = *const_cast<uint4*>(_to);
+        __to = _from;
+        // TODO memfence
       break;
     }
   }
 }
+};
 
-template <typename scalar_t, int vec_size, bool is_volatile>
-__device__ void loadGlobalToLocal(
-    scalar_t* to,
-    typename MaybeVolatile<scalar_t, is_volatile>::type* from) {
+template <typename scalar_t, int vec_size>
+struct loadLocalToGlobal<scalar_t, vec_size, false> {
+static __device__ void call(
+    typename MaybeVolatile<scalar_t, false>::type* to,
+    scalar_t* from) {
   switch (sizeof(scalar_t) * vec_size) {
     case 1:
     case 2:
     case 4:
-      loadGenericVolatile<scalar_t, vec_size, false, is_volatile>(to, from);
+      loadGenericVolatile<scalar_t, vec_size, false, false>(to, from);
       break;
     case 8: {
-      if (is_volatile) {
-        uint2& _to = *reinterpret_cast<uint2*>(to);
-        uint2& _from = *reinterpret_cast<uint2*>(from);
-        _to = _from;
-      } else {
-        uint2& _to = *reinterpret_cast<uint2*>(to);
-        uint2& _from = *reinterpret_cast<uint2*>(from);
-        _to = _from;
-      }
+      uint2 const& _from = *reinterpret_cast<uint2*>(from);
+      uint2 & _to = *reinterpret_cast<uint2*>(to);
+      _to = _from;
       break;
     }
     case 12: {
-      if (is_volatile) {
-        uint3& _to = *reinterpret_cast<uint3*>(to);
-        uint3& _from = *reinterpret_cast<uint3*>(from);
-        _to = _from;
-      } else {
-        uint3& _to = *reinterpret_cast<uint3*>(to);
-        uint3& _from = *reinterpret_cast<uint3*>(from);
-        _to = _from;
-      }
+      uint3 const& _from = *reinterpret_cast<uint3*>(from);
+      uint3 & _to = *reinterpret_cast<uint3*>(to);
+      _to = _from;
       break;
     }
     case 16: {
-      if (is_volatile) {
-        uint4& _to = *reinterpret_cast<uint4*>(to);
-        uint4& _from = *reinterpret_cast<uint4*>(from);
-        _to = _from;
-      } else {
-        uint4& _to = *reinterpret_cast<uint4*>(to);
-        uint4& _from = *reinterpret_cast<uint4*>(from);
-        _to = _from;
-      }
+      uint4 const& _from = *reinterpret_cast<uint4*>(from);
+      uint4 & _to = *reinterpret_cast<uint4*>(to);
+      _to = _from;
       break;
     }
   }
 }
+};
+
+template <typename scalar_t, int vec_size, bool is_volatile>
+struct loadGlobalToLocal;
+
+template <typename scalar_t, int vec_size>
+struct loadGlobalToLocal<scalar_t, vec_size, true> {
+static __device__ void call(
+    scalar_t* to,
+    typename MaybeVolatile<scalar_t, true>::type* from) {
+  switch (sizeof(scalar_t) * vec_size) {
+    case 1:
+    case 2:
+    case 4:
+      loadGenericVolatile<scalar_t, vec_size, false, true>(to, from);
+      break;
+    case 8: {
+      uint2& _to = *reinterpret_cast<uint2*>(to);
+      volatile uint2* _from = reinterpret_cast<volatile uint2*>(from);
+      uint2& __from = *const_cast<uint2*>(_from);
+      _to = __from;
+      // TODO memfence
+      break;
+    }
+    case 12: {
+      uint3& _to = *reinterpret_cast<uint3*>(to);
+      volatile uint3* _from = reinterpret_cast<volatile uint3*>(from);
+      uint3& __from = *const_cast<uint3*>(_from);
+      _to = __from;
+      // TODO memfence
+      break;
+    }
+    case 16: {
+      uint4& _to = *reinterpret_cast<uint4*>(to);
+      volatile uint4* _from = reinterpret_cast<volatile uint4*>(from);
+      uint4& __from = *const_cast<uint4*>(_from);
+      _to = __from;
+      // TODO memfence
+      break;
+    }
+  }
+}
+};
+
+template <typename scalar_t, int vec_size>
+struct loadGlobalToLocal<scalar_t, vec_size, false> {
+static __device__ void call(
+    scalar_t* to,
+    typename MaybeVolatile<scalar_t, false>::type* from) {
+  switch (sizeof(scalar_t) * vec_size) {
+    case 1:
+    case 2:
+    case 4:
+      loadGenericVolatile<scalar_t, vec_size, false, false>(to, from);
+      break;
+    case 8: {
+      uint2& _to = *reinterpret_cast<uint2*>(to);
+      uint2& _from = *reinterpret_cast<uint2*>(from);
+      _to = _from;
+      break;
+    }
+    case 12: {
+      uint3& _to = *reinterpret_cast<uint3*>(to);
+      uint3& _from = *reinterpret_cast<uint3*>(from);
+      _to = _from;
+      break;
+    }
+    case 16: {
+      uint4& _to = *reinterpret_cast<uint4*>(to);
+      uint4& _from = *reinterpret_cast<uint4*>(from);
+      _to = _from;
+      break;
+    }
+  }
+}
+};
 
 template <
     typename scalar_t,
@@ -218,17 +275,17 @@ __device__ void loadGlobalToGlobal(
       break;
     case 12: {
       uint3 local_intermediate;
-      loadGlobalToLocal<scalar_t, vec_size, is_volatile_from>(
+      loadGlobalToLocal<scalar_t, vec_size, is_volatile_from>::call(
           reinterpret_cast<scalar_t*>(&local_intermediate), from);
-      loadLocalToGlobal<scalar_t, vec_size, is_volatile_to>(
+      loadLocalToGlobal<scalar_t, vec_size, is_volatile_to>::call(
           to, reinterpret_cast<scalar_t*>(&local_intermediate));
       break;
     }
     case 16: {
       uint4 local_intermediate;
-      loadGlobalToLocal<scalar_t, vec_size, is_volatile_from>(
+      loadGlobalToLocal<scalar_t, vec_size, is_volatile_from>::call(
           reinterpret_cast<scalar_t*>(&local_intermediate), from);
-      loadLocalToGlobal<scalar_t, vec_size, is_volatile_to>(
+      loadLocalToGlobal<scalar_t, vec_size, is_volatile_to>::call(
           to, reinterpret_cast<scalar_t*>(&local_intermediate));
       break;
     }

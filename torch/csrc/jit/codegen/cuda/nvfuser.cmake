@@ -41,6 +41,7 @@ list(APPEND NVFUSER_RUNTIME_FILES
   ${TORCH_SRC_DIR}/csrc/jit/codegen/cuda/runtime/array_rocm.cu
   ${TORCH_SRC_DIR}/csrc/jit/codegen/cuda/runtime/bf16_support_rocm.cu
   ${TORCH_SRC_DIR}/csrc/jit/codegen/cuda/runtime/block_sync_default_rocm.cu
+  ${TORCH_SRC_DIR}/csrc/jit/codegen/cuda/runtime/memory_rocm.cu
   ${TORCH_SRC_DIR}/csrc/jit/codegen/cuda/runtime/warp_rocm.cu
 )
 endif()
