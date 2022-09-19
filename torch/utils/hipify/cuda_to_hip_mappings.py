@@ -2910,6 +2910,7 @@ CUDA_IDENTIFIER_MAP = collections.OrderedDict(
             ("hipFuncSetSharedMemConfig", CONV_MODULE, API_DRIVER, HIP_UNSUPPORTED),
         ),
         ("cuLaunchKernel", ("hipModuleLaunchKernel", CONV_MODULE, API_DRIVER)),
+        ("cuLaunchCooperativeKernel", ("hipLaunchCooperativeKernel", CONV_MODULE, API_DRIVER)),
         (
             "cuFuncSetBlockShape",
             ("hipFuncSetBlockShape", CONV_MODULE, API_DRIVER, HIP_UNSUPPORTED),
@@ -3161,6 +3162,14 @@ CUDA_IDENTIFIER_MAP = collections.OrderedDict(
         (
             "cuPointerGetAttribute",
             ("hipPointerGetAttribute", CONV_MEM, API_DRIVER, HIP_UNSUPPORTED),
+        ),
+        (
+            "cuFuncGetAttributes",
+            ("hipFuncGetAttributes", CONV_MEM, API_DRIVER, HIP_UNSUPPORTED),
+        ),
+        (
+            "cuFuncSetAttribute",
+            ("hipFuncSetAttribute", CONV_MEM, API_DRIVER, HIP_UNSUPPORTED),
         ),
         (
             "cuPointerGetAttributes",

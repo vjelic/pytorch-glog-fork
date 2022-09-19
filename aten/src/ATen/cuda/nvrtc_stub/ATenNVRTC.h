@@ -82,7 +82,10 @@ namespace at { namespace cuda {
 // list above.
 //
 // HIP doesn't have
-//   cuGetErrorString  (maps to non-functional hipGetErrorString___)
+//   cuGetErrorString
+//   cuLinkCreate
+//   cuLinkAddData
+//   cuLinkComplete
 //
 // HIP from ROCm 3.5 on renamed hipOccupancyMaxActiveBlocksPerMultiprocessor
 // to hipModuleOccupancyMaxActiveBlocksPerMultiprocessor.
@@ -94,23 +97,27 @@ namespace at { namespace cuda {
 
 #define AT_FORALL_NVRTC(_)                        \
   _(nvrtcVersion)                                 \
-  _(nvrtcCreateProgram)                           \
   _(nvrtcAddNameExpression)                       \
+  _(nvrtcCreateProgram)                           \
   _(nvrtcDestroyProgram)                          \
   _(nvrtcGetPTXSize)                              \
   _(nvrtcGetPTX)                                  \
-  _(cuModuleLoadData)                             \
-  _(cuModuleGetFunction)                          \
-  _(HIPOCCUPANCYMAXACTIVEBLOCKSPERMULTIPROCESSOR) \
+  _(nvrtcCompileProgram)                          \
   _(nvrtcGetErrorString)                          \
   _(nvrtcGetProgramLogSize)                       \
   _(nvrtcGetProgramLog)                           \
-  _(cuLaunchKernel)                               \
-  _(nvrtcCompileProgram)                          \
-  _(cuCtxGetCurrent)                              \
   _(nvrtcGetLoweredName)                          \
+  _(cuModuleLoadData)                             \
+  _(cuModuleLoadDataEx)                           \
+  _(cuModuleGetFunction)                          \
+  _(HIPOCCUPANCYMAXACTIVEBLOCKSPERMULTIPROCESSOR) \
+  _(cuLaunchKernel)                               \
+  _(cuLaunchCooperativeKernel)                    \
+  _(cuCtxGetCurrent)                              \
   _(cuModuleUnload)                               \
-  _(cuDevicePrimaryCtxGetState)
+  _(cuDevicePrimaryCtxGetState)                   \
+  _(cuFuncSetAttribute)                           \
+  _(cuFuncGetAttribute)
 
 #endif
 
