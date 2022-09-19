@@ -10,10 +10,14 @@ namespace detail {
 namespace _stubs {
 
 at::DynamicLibrary& getCUDALibrary() {
+#ifdef USE_ROCM
+  static at::DynamicLibrary lib("libamdhip64.so");
+#else
 #if defined(_WIN32)
   static at::DynamicLibrary lib("nvcuda.dll");
 #else
   static at::DynamicLibrary lib("libcuda.so.1");
+#endif
 #endif
   return lib;
 }

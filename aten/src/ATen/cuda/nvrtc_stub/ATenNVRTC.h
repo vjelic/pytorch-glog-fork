@@ -87,6 +87,9 @@ namespace at { namespace cuda {
 //   cuLinkAddData
 //   cuLinkComplete
 //
+// HIP error: decltype cannot resolve address of overloaded function (so must be added manually)
+//   cuLaunchCooperativeKernel
+//
 // HIP from ROCm 3.5 on renamed hipOccupancyMaxActiveBlocksPerMultiprocessor
 // to hipModuleOccupancyMaxActiveBlocksPerMultiprocessor.
 #if TORCH_HIP_VERSION < 305
@@ -112,7 +115,6 @@ namespace at { namespace cuda {
   _(cuModuleGetFunction)                          \
   _(HIPOCCUPANCYMAXACTIVEBLOCKSPERMULTIPROCESSOR) \
   _(cuLaunchKernel)                               \
-  _(cuLaunchCooperativeKernel)                    \
   _(cuCtxGetCurrent)                              \
   _(cuModuleUnload)                               \
   _(cuDevicePrimaryCtxGetState)                   \
@@ -125,6 +127,9 @@ extern "C" typedef struct NVRTC {
 #define CREATE_MEMBER(name) decltype(&name) name;
   AT_FORALL_NVRTC(CREATE_MEMBER)
 #undef CREATE_MEMBER
+#ifdef USE_ROCM
+  hipError_t (*hipLaunchCooperativeKernel)(const void* f, dim3 gridDim, dim3 blockDimX, void** kernelParams, unsigned int sharedMemBytes, hipStream_t stream);
+#endif
 } NVRTC;
 
 extern "C" TORCH_CUDA_CPP_API NVRTC* load_nvrtc();
