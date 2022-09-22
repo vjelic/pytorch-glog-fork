@@ -41,7 +41,7 @@
 #include <c10/core/ScalarType.h>
 #include <c10/util/TypeCast.h>
 #include <c10/util/C++17.h>
-
+#include <c10/util/env.h>
 
 #ifdef __NVCC__
 #define ASSERT_HOST_DEVICE_LAMBDA(type) \
@@ -93,7 +93,8 @@ static inline void launch_vectorized_kernel(int64_t N, const func_t& f, array_t 
   auto stream = at::cuda::getCurrentCUDAStream();
   int vec_size = memory::can_vectorize_up_to<func_t>(data);
   
-  std::cout << "  launch_vectorized_kernel: " << "grid=" << grid << ", num_thread()=" << num_threads() << ", vec_size=" << vec_size << std::endl;
+  if( c10::utils::check_env("TORCH_CUDALOOPS_DEBUG") )
+      std::cout << "  launch_vectorized_kernel: " << "grid=" << grid << ", num_thread()=" << num_threads() << ", vec_size=" << vec_size << std::endl;
 
   switch (vec_size) {
   case 4:
@@ -213,10 +214,12 @@ void gpu_kernel_impl(TensorIteratorBase& iter, const func_t& f) {
 
   if (!dynamic_casting) {
     if (contiguous) {
-      std::cout << "gpu_kernel_impl: " << "!dynamic_casting && contiguous" << std::endl;
+      if( c10::utils::check_env("TORCH_CUDALOOPS_DEBUG") )
+          std::cout << "gpu_kernel_impl: " << "!dynamic_casting && contiguous" << std::endl;
       launch_vectorized_kernel(numel, f, data);
     } else {
-        std::cout << "gpu_kernel_impl: " << "!dynamic_casting && !contiguous" << std::endl;
+        if( c10::utils::check_env("TORCH_CUDALOOPS_DEBUG") )
+            std::cout << "gpu_kernel_impl: " << "!dynamic_casting && !contiguous" << std::endl;
         auto offset_calc = ::make_offset_calculator<traits::arity + 1>(iter);
         constexpr int unroll_factor = sizeof(arg0_t) >= 4 ? 2 : 4;
         launch_legacy_kernel<128,unroll_factor>(numel, [=]GPU_LAMBDA(int idx) {
@@ -227,14 +230,16 @@ void gpu_kernel_impl(TensorIteratorBase& iter, const func_t& f) {
     }
   } else {
     if (contiguous) {
-      std::cout << "gpu_kernel_impl: " << "dynamic_casting && contiguous" << std::endl;
+      if( c10::utils::check_env("TORCH_CUDALOOPS_DEBUG") )
+          std::cout << "gpu_kernel_impl: " << "dynamic_casting && contiguous" << std::endl;
       auto loader = memory::LoadWithCast<traits::arity>(iter);
       auto storer = memory::StoreWithCast<1>(iter);
       auto input_offset_calculator = TrivialOffsetCalculator<traits::arity>();
       auto output_offset_calculator = TrivialOffsetCalculator<1>();
       launch_unrolled_kernel(numel, f, data, input_offset_calculator, output_offset_calculator, loader, storer);
     } else {
-      std::cout << "gpu_kernel_impl: " << "dynamic_casting && !contiguous" << std::endl;
+      if( c10::utils::check_env("TORCH_CUDALOOPS_DEBUG") )
+          std::cout << "gpu_kernel_impl: " << "dynamic_casting && !contiguous" << std::endl;
       at::detail::Array<ScalarType, ntensors> dtypes;
       for (int i = 0; i < ntensors; i++) {
         dtypes[i] = iter.dtype(i);
