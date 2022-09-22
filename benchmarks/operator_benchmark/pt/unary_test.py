@@ -10,7 +10,7 @@ import torch
 unary_ops_configs_short = op_bench.config_list(
     attr_names=['M', 'N'],
     attrs=[
-        [512, 512],
+        [4096, 4096],
     ],
     cross_product_configs={
         'device': ['cpu', 'cuda'],
