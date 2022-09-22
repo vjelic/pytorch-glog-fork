@@ -211,8 +211,10 @@ void gpu_kernel_impl(TensorIteratorBase& iter, const func_t& f) {
 
   if (!dynamic_casting) {
     if (contiguous) {
+      std::cout << "gpu_kernel_impl: " << "!dynamic_casting && contiguous" << std::endl;
       launch_vectorized_kernel(numel, f, data);
     } else {
+        std::cout << "gpu_kernel_impl: " << "!dynamic_casting && !contiguous" << std::endl;
         auto offset_calc = ::make_offset_calculator<traits::arity + 1>(iter);
         constexpr int unroll_factor = sizeof(arg0_t) >= 4 ? 2 : 4;
         launch_legacy_kernel<128,unroll_factor>(numel, [=]GPU_LAMBDA(int idx) {
@@ -223,12 +225,14 @@ void gpu_kernel_impl(TensorIteratorBase& iter, const func_t& f) {
     }
   } else {
     if (contiguous) {
+      std::cout << "gpu_kernel_impl: " << "dynamic_casting && contiguous" << std::endl;
       auto loader = memory::LoadWithCast<traits::arity>(iter);
       auto storer = memory::StoreWithCast<1>(iter);
       auto input_offset_calculator = TrivialOffsetCalculator<traits::arity>();
       auto output_offset_calculator = TrivialOffsetCalculator<1>();
       launch_unrolled_kernel(numel, f, data, input_offset_calculator, output_offset_calculator, loader, storer);
     } else {
+      std::cout << "gpu_kernel_impl: " << "dynamic_casting && !contiguous" << std::endl;
       at::detail::Array<ScalarType, ntensors> dtypes;
       for (int i = 0; i < ntensors; i++) {
         dtypes[i] = iter.dtype(i);
