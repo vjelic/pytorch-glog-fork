@@ -28,12 +28,13 @@ unary_ops_configs_long = op_bench.cross_product_configs(
 class UnaryOpBenchmark(op_bench.TorchBenchmarkBase):
     def init(self, M, N, device, op_func):
         self.inputs = {
-            "input": torch.rand(M, N, device=device)
+            "input": torch.rand(M, N, requires_grad=True, device=device)
         }
         self.op_func = op_func
 
     def forward(self, input):
-        return self.op_func(input)
+        input2 = input.clone()
+        return self.op_func(input2)
 
 def bernoulli_(input):
     return input.bernoulli_()
@@ -153,6 +154,11 @@ unary_ops_list = op_bench.op_list(
 
 
 op_bench.generate_pt_tests_from_op_list(unary_ops_list,
+                                        unary_ops_configs_short + unary_ops_configs_long,
+                                        UnaryOpBenchmark)
+
+
+op_bench.generate_pt_gradient_tests_from_op_list(unary_ops_list,
                                         unary_ops_configs_short + unary_ops_configs_long,
                                         UnaryOpBenchmark)
 
