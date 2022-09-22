@@ -92,6 +92,8 @@ static inline void launch_vectorized_kernel(int64_t N, const func_t& f, array_t 
   int64_t grid = (N + block_work_size() - 1) / block_work_size();
   auto stream = at::cuda::getCurrentCUDAStream();
   int vec_size = memory::can_vectorize_up_to<func_t>(data);
+  
+  std::cout << "  launch_vectorized_kernel: " << "grid=" << grid << ", num_thread()=" << num_threads() << ", vec_size=" << vec_size << std::endl;
 
   switch (vec_size) {
   case 4:
