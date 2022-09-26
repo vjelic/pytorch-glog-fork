@@ -23,6 +23,9 @@ fi
 # shellcheck disable=SC2034
 BUILD_TEST_LIBTORCH=0
 
+# TODO: Reenable nvfuser when issues with gfx908 resolved
+PYTORCH_JIT_ENABLE_NVFUSER=0
+
 # Use conda cmake in some CI build. Conda cmake will be newer than our supported
 # min version (3.5 for xenial and 3.10 for bionic),
 # so we only do it in four builds that we know should use conda.
