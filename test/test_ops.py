@@ -819,7 +819,7 @@ class TestCommon(TestCase):
                 final_strides = _extract_strides(out)
                 final_ptrs = _extract_data_ptrs(out)
                 # Need to increase the tolerance for ROCm
-                if all([TEST_WITH_ROCM, op.name == "addbmm", out.dtype == torch.float32]):
+                if TEST_WITH_ROCM and op.name == "addbmm" and self.device_type == "cpu" and out.dtype == torch.float32:
                     self.assertEqual(expected, out, atol=5e-6, rtol=5e-6)
                 else:
                     self.assertEqual(expected, out)
