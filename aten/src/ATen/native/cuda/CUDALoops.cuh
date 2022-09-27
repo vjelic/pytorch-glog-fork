@@ -70,7 +70,8 @@ __global__ void vectorized_elementwise_kernel(int N, func_t f, array_t data) {
       data, remaining, input_calc, output_calc, loader, storer);
     elementwise_kernel_helper(f, policy);
   } else {  // if this block has a full `block_work_size` data to handle, use vectorized memory access
-    elementwise_kernel_helper(f, memory::policies::vectorized<vec_size, array_t>(data));
+    // elementwise_kernel_helper(f, memory::policies::vectorized<vec_size, array_t>(data));
+    elementwise_kernel_helper_amd(f, memory::policies::vectorized<vec_size, array_t>(data)); // TODO: TESTING
   }
 }
 

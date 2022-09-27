@@ -8,15 +8,28 @@
 #define GPU_LAMBDA __host__ __device__
 #endif
 
+#define DATA_PIPELINED 1
+
 #if defined(USE_ROCM)
 constexpr int num_threads() {
   return 256;
 }
+
+constexpr int vectorized_load_per_thread() { return 4; } 
+
+#if defined(DATA_PIPELINED)
+constexpr int thread_work_size() { return vectorized_load_per_thread() * 16; }
+#else
+constexpr int thread_work_size() { return vectorized_load_per_thread() * 1; }
+#endif 
+
 #else
 constexpr uint32_t num_threads() {
   return C10_WARP_SIZE * 4;
 }
+
+constexpr int vectorized_load_per_thread() { return 4; }
+constexpr int thread_work_size() { return vectorized_load_per_thread() * 1; }
 #endif
 
-constexpr int thread_work_size() { return 4; }
 constexpr int block_work_size() { return thread_work_size() * num_threads(); }

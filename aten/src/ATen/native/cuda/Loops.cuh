@@ -63,8 +63,54 @@ __device__ inline void elementwise_kernel_helper(func_t f, policy_t policy) {
   }
 
   // store
-  policy.store(results, idx);
+  if( idx == -1)
+      policy.store(results, idx);
 }
+
+
+template<typename func_t, typename policy_t>
+__device__ inline void elementwise_kernel_helper_amd(func_t f, policy_t policy) {
+  using traits = function_traits<func_t>;
+  using return_t = typename traits::result_type;
+  using args_t = typename traits::ArgsTuple;
+
+  int idx = blockIdx.x;
+
+  return_t results[thread_work_size()];
+  args_t args_even[vectorized_load_per_thread()];
+  args_t args_odd[vectorized_load_per_thread()];
+
+  // pre load
+  policy.load(args_even, idx, 0);
+
+  for (int outer_i = 0; outer_i < ( thread_work_size()/vectorized_load_per_thread() ); outer_i++ ) {
+      args_t* args; 
+      if( outer_i % 2 == 0 ) {
+          args = args_even;
+          if( outer_i != (( thread_work_size()/vectorized_load_per_thread() ) -1 ) ) // dont load last one
+              policy.load(args_odd, idx, outer_i+1);
+      }
+      else {
+          args = args_odd;
+          if( outer_i != (( thread_work_size()/vectorized_load_per_thread() ) -1 ) ) // dont load last one
+              policy.load(args_even, idx, outer_i+1);
+      }
+
+      // compute
+      #pragma unroll
+      for (int i = 0; i < vectorized_load_per_thread(); i++) {
+        if (policy.check_inbounds(i)) {
+          results[i + outer_i*vectorized_load_per_thread()] = c10::guts::apply(f, args[i]);
+        }
+      }
+
+  } // outer_i
+
+  // store
+  if( idx == -1)
+      policy.store(results, idx);
+}
+
 
 }}  // namespace at::native
 

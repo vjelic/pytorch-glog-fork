@@ -57,11 +57,11 @@ struct static_unroll<func, end, end> {
 template<int arg_index>
 struct vectorized_load_helper {
   template <typename args_t, typename policy_t>
-  static __device__ void apply(policy_t &self, args_t *args, int idx) {
+  static __device__ void apply(policy_t &self, args_t *args, int idx, int iidx) {
     using arg_t = std::tuple_element_t<arg_index, args_t>;
     // `data` hold the data_ptr for tensors [output, input0, input1, ...], so we
     // need a +1 offset to get the input
-    auto ptr = reinterpret_cast<arg_t *>(self.data[arg_index + 1]) + block_work_size() * idx;
+    auto ptr = reinterpret_cast<arg_t *>(self.data[arg_index + 1]) + block_work_size() * idx + vectorized_load_per_thread()*iidx;
     auto args_accessor = [&args] __device__ (int thread_unroll_idx) -> arg_t & { return std::get<arg_index>(args[thread_unroll_idx]); };
     self.load_single_arg(args_accessor, ptr);
   }
@@ -241,8 +241,8 @@ struct unroll {
 template <int vec_size, typename data_t>  // vec_size: number of scalars, can be 1, 2, or 4.
 struct vectorized {
 
-  static_assert(thread_work_size() % vec_size == 0, "The workload per thread must be a multiple of vec_size");
-  static constexpr int loop_size = thread_work_size() / vec_size;
+  static_assert(vectorized_load_per_thread() % vec_size == 0, "The workload per thread must be a multiple of vec_size");
+  static constexpr int loop_size = vectorized_load_per_thread() / vec_size;
 
   data_t data;
 
@@ -267,9 +267,9 @@ struct vectorized {
   }
 
   template<typename args_t>
-  __device__ inline void load(args_t *args, int idx) {
+  __device__ inline void load(args_t *args, int idx, int iidx=0) {
     constexpr int arity = std::tuple_size<args_t>::value;
-    detail::static_unroll<detail::vectorized_load_helper, arity>::with_args(*this, args, idx);
+    detail::static_unroll<detail::vectorized_load_helper, arity>::with_args(*this, args, idx, iidx);
   }
 
   template<typename scalar_t>
