@@ -63,8 +63,7 @@ __device__ inline void elementwise_kernel_helper(func_t f, policy_t policy) {
   }
 
   // store
-  if( idx == -1)
-      policy.store(results, idx);
+  policy.store(results, idx);
 }
 
 
@@ -83,32 +82,27 @@ __device__ inline void elementwise_kernel_helper_amd(func_t f, policy_t policy) 
   // pre load
   policy.load(args_even, idx, 0);
 
+  #pragma unroll
   for (int outer_i = 0; outer_i < ( thread_work_size()/vectorized_load_per_thread() ); outer_i++ ) {
-      args_t* args; 
-      if( outer_i % 2 == 0 ) {
-          args = args_even;
-          if( outer_i != (( thread_work_size()/vectorized_load_per_thread() ) -1 ) ) // dont load last one
-              policy.load(args_odd, idx, outer_i+1);
-      }
-      else {
-          args = args_odd;
-          if( outer_i != (( thread_work_size()/vectorized_load_per_thread() ) -1 ) ) // dont load last one
-              policy.load(args_even, idx, outer_i+1);
-      }
+
+      if( outer_i != (( thread_work_size()/vectorized_load_per_thread() ) -1 ) ) // dont load last one
+          policy.load( ( outer_i % 2 == 0 )? args_odd : args_even, idx, outer_i+1 );
 
       // compute
       #pragma unroll
       for (int i = 0; i < vectorized_load_per_thread(); i++) {
         if (policy.check_inbounds(i)) {
-          results[i + outer_i*vectorized_load_per_thread()] = c10::guts::apply(f, args[i]);
+          results[i + outer_i*vectorized_load_per_thread()] = c10::guts::apply(f, ( outer_i % 2 == 0 )? args_odd[i] : args_even[i]  );
         }
       }
+
+      __syncthreads();
 
   } // outer_i
 
   // store
-  if( idx == -1)
-      policy.store(results, idx);
+  if( idx == -1) // deactivate
+    policy.store(results, idx);
 }
 
 
