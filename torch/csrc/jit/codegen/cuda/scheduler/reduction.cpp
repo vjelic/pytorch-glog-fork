@@ -70,6 +70,7 @@ std::shared_ptr<ReductionParams> innerReductionHeuristic(
     const int64_t max_input_dtype_size,
     const size_t vectorize_factor) {
   // Set some targets for parallelization
+  const int device_warp_size = at::cuda::warp_size();
 
   const int64_t n_elems = total_reduction_numel * total_iteration_numel;
 
@@ -89,23 +90,27 @@ std::shared_ptr<ReductionParams> innerReductionHeuristic(
       scheduler_utils::lastPow2(
           std::max((int64_t)n_tensor_inputs >> 2, (int64_t)1)));
 
+#ifdef USE_ROCM
+  constexpr int64_t l1_cache = 16 * 1024;  // 16KB per CU
+#else
   // Conservative value, could be set to larger based on arch if necessary.
-  constexpr int64_t l1_cache = 32 * 1024;
+  constexpr int64_t l1_cache = 32 * 1024;  // V100 128KB per SM, A100 192KB per SM
+#endif
   // Could change per generation, but for l1 we want to consider active threads,
   // not resident
   constexpr int64_t active_threads = 1024;
 
   // if data fits in l2 and we need more parallelization in the reduction dim,
   // we can use a smaller warp size. While thread local data fits in l1, and
-  // reduction dim is really small, we can use <32 threads per warp.
+  // reduction dim is really small, we can use <device_warp_size threads per warp.
   const bool fits_in_l2 = n_elems * max_input_dtype_size * n_tensor_inputs <
       at::cuda::getCurrentDeviceProperties()->l2CacheSize;
 
   // If it fits in l2, we just want to make sure each warp uses 32Bytes. Set
-  // minimum warp as 16 threads instead of 32 as if we have a small reduction
-  // dim going a bit smaller than 32 usually helps.
+  // minimum warp as device_warp_size/2 threads instead of device_warp_size as if we have a small reduction
+  // dim going a bit smaller than device_warp_size usually helps.
   const int64_t warp_size_based_on_l2 =
-      fits_in_l2 ? (int64_t)32 / max_input_dtype_size : 16;
+      fits_in_l2 ? (int64_t)device_warp_size / max_input_dtype_size : device_warp_size/2;
 
   // Check how many elements it would take per thread to start thrashing l1
   // set that to minimum number we want to reduce per thread.
@@ -116,11 +121,16 @@ std::shared_ptr<ReductionParams> innerReductionHeuristic(
               l1_cache /
                   (n_tensor_inputs * max_input_dtype_size * active_threads),
               (int64_t)1)),
-      (int64_t)16);
+      (int64_t)device_warp_size/2);
 
   // Take the smaller
-  const int64_t min_warp_size =
+  const int64_t recommended_min_warp_size =
       std::min(warp_size_based_on_l1, warp_size_based_on_l2);
+#ifdef USE_ROCM
+  const int64_t min_warp_size = device_warp_size;
+#else
+  const int64_t min_warp_size = recommended_min_warp_size;
+#endif
 
   // Initialization
   int64_t target_blocks = 1;
@@ -131,7 +141,7 @@ std::shared_ptr<ReductionParams> innerReductionHeuristic(
   // communication is slow so it shouldn't be done for every element in the
   // reduction.
   int64_t min_target_iterations =
-      std::max((int64_t)32 / (int64_t)max_input_dtype_size, (int64_t)1);
+      std::max((int64_t)device_warp_size / (int64_t)max_input_dtype_size, (int64_t)1);
 
   // Start trying to break parallelization up across threads,
   // unrolling/iterations, and blocks.
@@ -513,6 +523,7 @@ std::shared_ptr<ReductionParams> outerReductionHeuristic(
     const int64_t max_input_dtype_size,
     const size_t vectorize_factor) {
   // WARNING: Current device for codegen may not be the target device
+  const int device_warp_size = at::cuda::warp_size();
   const int64_t device_max_threads_per_multiprocessor =
       (int64_t)at::cuda::getCurrentDeviceProperties()
           ->maxThreadsPerMultiProcessor;
@@ -531,13 +542,18 @@ std::shared_ptr<ReductionParams> outerReductionHeuristic(
 
   // if data fits in l2 and we need more parallelization in the iter dim,
   // we can use a smaller warp size. While thread local data fits in l1, and
-  // iter dim is really small, we can use <32 threads per warp.
+  // iter dim is really small, we can use <device_warp_size threads per warp.
   // TODO: Could get a much more accurate estimation of it the problem fits in
   // L2
   const bool fits_in_l2 = n_elems * max_input_dtype_size * n_tensor_inputs <
       at::cuda::getCurrentDeviceProperties()->l2CacheSize;
 
-  const int64_t min_warp_size = fits_in_l2 ? 16 : 32;
+  const int64_t recommended_min_warp_size = fits_in_l2 ? device_warp_size/2 : device_warp_size;
+#ifdef USE_ROCM
+  const int64_t min_warp_size = device_warp_size;
+#else
+  const int64_t min_warp_size = recommended_min_warp_size;
+#endif
 
   // Set some targets for parallelization
   int64_t target_threads_in_block = min_warp_size;
@@ -555,7 +571,7 @@ std::shared_ptr<ReductionParams> outerReductionHeuristic(
 
   // If there's available parallelism, divide it between threads, blocks, and
   // vectorization
-  // Threads are currently at a warp (16 or 32)
+  // Threads are currently at a warp (device_warp_size/2 or device_warp_size)
   // Blocks are currently at a quarter wave
   // Unroll is currently at 1
   while (

@@ -42,6 +42,7 @@ std::shared_ptr<ReductionParams> innerPersistentHeuristic(
     const int64_t max_persistent_buffer_size,
     const size_t vectorize_factor) {
   // Set some targets for parallelization
+  const int device_warp_size = at::cuda::warp_size();
   const int64_t n_elems = total_reduction_numel * total_iteration_numel;
 
   const int64_t outer_reduction_numel =
@@ -63,23 +64,27 @@ std::shared_ptr<ReductionParams> innerPersistentHeuristic(
       scheduler_utils::lastPow2(
           std::max((int64_t)n_tensor_inputs >> 2, (int64_t)1)));
 
+#ifdef USE_ROCM
+  constexpr int64_t l1_cache = 16 * 1024;  // 16KB per CU
+#else
   // Conservative value, could be set to larger based on arch if necessary.
-  constexpr int64_t l1_cache = 32 * 1024;
+  constexpr int64_t l1_cache = 32 * 1024;  // V100 128KB per SM, A100 192KB per SM
+#endif
   // Could change per generation, but for l1 we want to consider active threads,
   // not resident
   constexpr int64_t active_threads = 1024;
 
   // if data fits in l2 and we need more parallelization in the reduction dim,
   // we can use a smaller warp size. While thread local data fits in l1, and
-  // reduction dim is really small, we can use <32 threads per warp.
+  // reduction dim is really small, we can use <device_warp_size threads per warp.
   const bool fits_in_l2 = n_elems * max_input_dtype_size * n_tensor_inputs <
       at::cuda::getCurrentDeviceProperties()->l2CacheSize;
 
   // If it fits in l2, we just want to make sure each warp uses 32Bytes. Set
-  // minimum warp as 16 threads instead of 32 as if we have a small reduction
-  // dim going a bit smaller than 32 usually helps.
+  // minimum warp as device_warp_size/2 threads instead of device_warp_size as if we have a small reduction
+  // dim going a bit smaller than device_warp_size usually helps.
   const int64_t warp_size_based_on_l2 =
-      fits_in_l2 ? (int64_t)32 / max_input_dtype_size : 16;
+      fits_in_l2 ? (int64_t)device_warp_size / max_input_dtype_size : device_warp_size/2;
 
   // Check how many elements it would take per thread to start thrashing l1
   // set that to minimum number we want to reduce per thread.
@@ -89,11 +94,16 @@ std::shared_ptr<ReductionParams> innerPersistentHeuristic(
           scheduler_utils::safeDiv(
               l1_cache,
               n_tensor_inputs * max_input_dtype_size * active_threads)),
-      (int64_t)16);
+      (int64_t)device_warp_size/2);
 
   // Take the smaller
-  const int64_t warp_size =
+  const int64_t recommended_min_warp_size =
       std::min(warp_size_based_on_l1, warp_size_based_on_l2);
+#ifdef USE_ROCM
+  const int64_t min_warp_size = device_warp_size;
+#else
+  const int64_t min_warp_size = recommended_min_warp_size;
+#endif
 
   // Initialization
   int64_t target_blocks = 1;
@@ -104,24 +114,24 @@ std::shared_ptr<ReductionParams> innerPersistentHeuristic(
   // communication is slow so it shouldn't be done for every element in the
   // reduction.
   int64_t min_target_iterations =
-      scheduler_utils::safeDiv(32, max_input_dtype_size);
+      scheduler_utils::safeDiv(device_warp_size, max_input_dtype_size);
 
   // Start trying to break parallelization up across threads,
   // unrolling/iterations, and blocks.
 
   // max_threads_in_block is the cap on a thread block, the minimum is based on
-  // warp_size
+  // min_warp_size
   int64_t max_threads_in_block = std::max(
-      warp_size, ceilDiv(total_reduction_numel, min_target_iterations));
+      min_warp_size, ceilDiv(total_reduction_numel, min_target_iterations));
 
   // If we have one warp per block, check if that's enough to saturate the SMs
-  target_blocks = ceilDiv(n_elems, warp_size);
+  target_blocks = ceilDiv(n_elems, min_warp_size);
 
   // If we have more than a wave of blocks, put parallelism into unrolling and
   // target iterations
   if (target_blocks > device_multiprocessor_count) {
     auto available_unroll = scheduler_utils::safeDiv(
-        n_elems, warp_size * device_multiprocessor_count);
+        n_elems, min_warp_size * device_multiprocessor_count);
 
     // Spread across unrolling and iterations, want a balance of the two so flip
     // back and forth to alternate adding to them.
@@ -141,14 +151,14 @@ std::shared_ptr<ReductionParams> innerPersistentHeuristic(
 
       available_unroll = scheduler_utils::safeDiv(
           n_elems,
-          warp_size * device_multiprocessor_count * target_unroll *
+          min_warp_size * device_multiprocessor_count * target_unroll *
               target_iterations);
       flip = !flip;
     }
 
     // Recompute target blocks
     target_blocks =
-        ceilDiv(n_elems, warp_size * target_unroll * target_iterations);
+        ceilDiv(n_elems, min_warp_size * target_unroll * target_iterations);
   }
 
   // Cap target blocks to 4 waves
@@ -162,8 +172,8 @@ std::shared_ptr<ReductionParams> innerPersistentHeuristic(
   }
 
   // Round up to nearest warp.
-  if (max_threads_in_block % warp_size != 0) {
-    max_threads_in_block += warp_size - max_threads_in_block % warp_size;
+  if (max_threads_in_block % min_warp_size != 0) {
+    max_threads_in_block += min_warp_size - max_threads_in_block % min_warp_size;
   }
 
   // Compute maximum number of reductions we could do in the same kernel based
@@ -203,26 +213,26 @@ std::shared_ptr<ReductionParams> innerPersistentHeuristic(
   bdimx = std::min(
       std::max(
           ceilDiv(inner_most_dimension_numel, inner_reduction_unroll_factor),
-          (int64_t)warp_size),
+          (int64_t)min_warp_size),
       max_threads_in_block);
 
   // If we're not just barely covering the dimension, round to a more friendly
   // number
   if (bdimx * inner_reduction_unroll_factor != inner_most_dimension_numel) {
-    bdimx = bdimx > warp_size ? bdimx - bdimx % warp_size
-                              : scheduler_utils::lastPow2(bdimx);
+    bdimx = bdimx > min_warp_size ? bdimx - bdimx % min_warp_size
+                                  : scheduler_utils::lastPow2(bdimx);
 
     // Round bdimx down to multiple of warp size or power 2
-    if (bdimx < warp_size) {
+    if (bdimx < min_warp_size) {
       bdimx = scheduler_utils::lastPow2(bdimx);
     } else {
-      bdimx = bdimx - bdimx % warp_size;
+      bdimx = bdimx - bdimx % min_warp_size;
     }
   }
 
   // Put everything else in bdimy for now
   bdimy = std::min(
-      scheduler_utils::safeDiv(warp_size, bdimx), max_multi_reduction_factor);
+      scheduler_utils::safeDiv(min_warp_size, bdimx), max_multi_reduction_factor);
 
   // If 3D fill the rest of the threads into bdimz
   bdimz = std::min(
@@ -238,16 +248,16 @@ std::shared_ptr<ReductionParams> innerPersistentHeuristic(
 
   // If we don't have a full warp and have an unroll factor, move unroll into
   // bdimx
-  if (bdimx * bdimy * bdimz < warp_size && inner_reduction_unroll_factor > 1) {
+  if (bdimx * bdimy * bdimz < min_warp_size && inner_reduction_unroll_factor > 1) {
     bdimx = std::min(
-        std::max(inner_most_dimension_numel, warp_size), max_threads_in_block);
+        std::max(inner_most_dimension_numel, min_warp_size), max_threads_in_block);
 
     inner_reduction_unroll_factor =
         std::min(ceilDiv(inner_most_dimension_numel, bdimx), max_unroll);
 
     // Readjust bdimy and bdimz
     bdimy = std::min(
-        scheduler_utils::safeDiv(warp_size, bdimx), max_multi_reduction_factor);
+        scheduler_utils::safeDiv(min_warp_size, bdimx), max_multi_reduction_factor);
 
     bdimz = std::min(
         scheduler_utils::safeDiv(max_threads_in_block, bdimx * bdimy),
@@ -392,12 +402,11 @@ std::shared_ptr<ReductionParams> innerPersistentHeuristic(
     batches_per_block_outer_reduction /= 2;
   }
 
-  auto device_warp_size = at::cuda::warp_size();
   auto padded_bdimx = bdimx % device_warp_size == 0
       ? bdimx
       : bdimx + (device_warp_size - bdimx % device_warp_size);
 
-  bool pad_bdimx = bdimx > 16 &&
+  bool pad_bdimx = bdimx > device_warp_size/2 &&
       padded_bdimx * bdimy * bdimz <
           (int64_t)at::cuda::getCurrentDeviceProperties()->maxThreadsPerBlock;
 
@@ -496,6 +505,8 @@ std::shared_ptr<ReductionParams> outerPersistentHeuristic(
     const int64_t max_persistent_buffer_size,
     const size_t vectorize_factor) {
   // Set some targets for parallelization
+  const int device_warp_size = at::cuda::warp_size();
+
   const int64_t n_elems = total_reduction_numel * total_iteration_numel;
 
   // WARNING: Current device for codegen may not be the target device
@@ -514,12 +525,12 @@ std::shared_ptr<ReductionParams> outerPersistentHeuristic(
           std::max((int64_t)n_tensor_inputs >> 2, (int64_t)1)));
 
   // If it fits in l2, we just want to make sure each warp uses 32Bytes. Set
-  // minimum warp as 16 threads instead of 32 as if we have a small reduction
-  // dim going a bit smaller than 32 usually helps.
+  // minimum warp as device_warp_size/2 threads instead of device_warp_size as if we have a small reduction
+  // dim going a bit smaller than device_warp_size usually helps.
   const int64_t warp_size = n_elems * max_input_dtype_size * n_tensor_inputs <
           at::cuda::getCurrentDeviceProperties()->l2CacheSize
-      ? (int64_t)32 / max_input_dtype_size
-      : 16;
+      ? (int64_t)device_warp_size / max_input_dtype_size
+      : device_warp_size/2;
 
   // Initialization
   int64_t target_blocks = 1;
