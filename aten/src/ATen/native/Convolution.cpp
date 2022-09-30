@@ -1249,13 +1249,11 @@ static inline at::MemoryFormat determine_backend_memory_format(
       }
       break;
     case ConvBackend::Miopen:
+      backend_memory_format = weight.suggest_memory_format();
     case ConvBackend::MiopenDepthwise:
+      backend_memory_format = weight.suggest_memory_format();
     case ConvBackend::MiopenTranspose:
-      if (detail::getCUDAHooks().compiledWithMIOpen() && miopen_conv_use_channels_last(input, weight)) {
-        TORCH_INTERNAL_ASSERT((k == 4 || k == 5),
-            "Expected 4D or 5D input for miopen memory format selection in determine_backend_memory_format()");
-        backend_memory_format = (k == 5) ? at::MemoryFormat::Contiguous /*at::MemoryFormat::ChannelsLast3d*/ : at::MemoryFormat::ChannelsLast;
-      }
+      backend_memory_format = weight.suggest_memory_format();
       break;
     case ConvBackend::Mkldnn:
       if (mkldnn_conv_use_channels_last(input, weight)) {
@@ -1369,17 +1367,20 @@ at::Tensor _convolution(
       output = at::miopen_convolution(
           input.contiguous(backend_memory_format), weight, bias, params.padding, params.stride,
           params.dilation, params.groups, params.benchmark, params.deterministic);
+      output = output.contiguous(backend_memory_format);
       break;
     case ConvBackend::MiopenDepthwise:
       output = at::miopen_depthwise_convolution(
           input.contiguous(backend_memory_format), weight, bias, params.padding, params.stride,
           params.dilation, params.groups, params.benchmark, params.deterministic);
+      output = output.contiguous(backend_memory_format);
       break;
     case ConvBackend::MiopenTranspose:
       check_input_same_type_as_parameters(input, weight, bias);
       output = at::miopen_convolution_transpose(
           input.contiguous(backend_memory_format), weight, bias, params.padding, params.output_padding,
           params.stride, params.dilation, params.groups, params.benchmark, params.deterministic);
+      output = output.contiguous(backend_memory_format);
       break;
     case ConvBackend::Mkldnn:
 #if AT_MKLDNN_ENABLED()
@@ -1483,22 +1484,6 @@ at::Tensor _convolution(
   if (k == 3 && !input.is_mkldnn()) {
     output = view3d(output);
   }
-
-#ifdef USE_ROCM
-  if (backend == ConvBackend::Miopen ||
-      backend == ConvBackend::MiopenDepthwise ||
-      backend == ConvBackend::MiopenTranspose) {
-    if (input_r.suggest_memory_format() == at::MemoryFormat::ChannelsLast3d) {
-      output = output.contiguous(at::MemoryFormat::ChannelsLast3d);
-    } else if (
-        input_r.suggest_memory_format() == at::MemoryFormat::ChannelsLast) {
-      output = output.contiguous(at::MemoryFormat::ChannelsLast);
-    } else if (
-        input_r.suggest_memory_format() == at::MemoryFormat::Contiguous) {
-      output = output.contiguous(at::MemoryFormat::Contiguous);
-    }
-  }
-#endif
 
   return output;
 }
