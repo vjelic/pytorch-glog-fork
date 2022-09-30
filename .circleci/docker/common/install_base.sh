@@ -66,6 +66,7 @@ install_ubuntu() {
     software-properties-common \
     wget \
     sudo \
+    unzip \
     vim \
     jq
 
@@ -125,6 +126,7 @@ install_centos() {
     opencv-devel \
     sudo \
     wget \
+    unzip \
     vim
 
   # Cleanup
