@@ -13,6 +13,7 @@
 #include <hip/hip_runtime_api.h>
 #include <hip/hip_bfloat16.h>
 #include <c10/cuda/CUDACachingAllocator.h>
+#include <iostream>
 
 // cublasLT was introduced in CUDA 10.1 but we enable only for 11.1 that also
 // added bf16 support
@@ -43,6 +44,7 @@
       " but got ",                            \
       X)
 
+using namespace std;
 namespace {
 
 static cublasOperation_t _cublasOpFromChar(char op) {
@@ -360,6 +362,7 @@ void gemm<float>(CUDABLAS_GEMM_ARGTYPES(float)) {
   float fbeta = beta;
 
 if (!NoTF32Guard::should_disable_tf32() && at::globalContext().allowTF32CuBLAS() && __HIP_PLATFORM_HCC__) {
+	  //cout << "--bflaot16-----" << endl;
 	  bool transa_ = ((transa == 't') || (transa == 'T'));
 	  bool transb_ = ((transb == 't') || (transb == 'T'));
 	  bool is_a_contig = transa_ ? lda == k : lda == m;
@@ -406,6 +409,7 @@ if (!NoTF32Guard::should_disable_tf32() && at::globalContext().allowTF32CuBLAS()
 	  c10::hip::HIPCachingAllocator::raw_delete(b_bf16);	
 }
 else{
+	//cout << "----float32-------" << endl;
   TORCH_CUDABLAS_CHECK(cublasSgemm(
       handle, opa, opb, m, n, k, &alpha, a, lda, b, ldb, &beta, c, ldc));
 }
