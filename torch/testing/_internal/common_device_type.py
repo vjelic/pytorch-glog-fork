@@ -953,7 +953,6 @@ class expectedFailure(object):
             return fn(slf, *args, **kwargs)
         return efail_fn
 
-
 class onlyOn(object):
 
     def __init__(self, device_type):
@@ -1151,6 +1150,12 @@ def disableMkldnn(fn):
 
     return disable_mkldnn
 
+def expectedFailureCUDAOnly(fn):
+    if torch.version.hip is not None:
+        # function is launched on rocm and expected to succeed
+        return fn
+    else:
+        return expectedFailure('cuda')(fn)
 
 def expectedFailureCUDA(fn):
     return expectedFailure('cuda')(fn)
