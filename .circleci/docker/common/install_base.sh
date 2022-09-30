@@ -47,6 +47,7 @@ install_ubuntu() {
     software-properties-common \
     sudo \
     wget \
+    unzip \
     vim
 
   # Should resolve issues related to various apt package repository cert issues
@@ -96,6 +97,7 @@ install_centos() {
     make \
     sudo \
     wget \
+    unzip \
     vim
 
   if [[ $OS_VERSION == 9 ]]
