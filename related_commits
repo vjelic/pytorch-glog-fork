@@ -4,3 +4,5 @@ ubuntu|pytorch|torchvision|main|9effc4cdc940952500c72b3ea5a0d7348f33b004|https:/
 centos|pytorch|torchvision|main|9effc4cdc940952500c72b3ea5a0d7348f33b004|https://github.com/pytorch/vision
 ubuntu|pytorch|torchtext|main|67bb7fcc1c60997757eeb66febf7c715269fb506|https://github.com/ROCmSoftwarePlatform/text
 centos|pytorch|torchtext|main|67bb7fcc1c60997757eeb66febf7c715269fb506|https://github.com/ROCmSoftwarePlatform/text
+ubuntu|pytorch|torchaudio|main|34ef7e9cd55fc558f691ae32c61fbd3baec7f9fa|https://github.com/pytorch/audio
+centos|pytorch|torchaudio|main|34ef7e9cd55fc558f691ae32c61fbd3baec7f9fa|https://github.com/pytorch/audio
