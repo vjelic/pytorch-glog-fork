@@ -41,6 +41,10 @@
 #include <algorithm>
 #include <iostream>
 
+#ifdef USE_ROCM
+#define sharedMemPerBlockOptin sharedMemPerBlock
+#endif
+
 // Tests go in torch::jit
 namespace torch {
 namespace jit {
