@@ -127,7 +127,7 @@ struct TupleReduce<TupleType0, TupleType1, Func, 1> {
             typename TupleType0::ValTypes,
             typename TupleType1::ValTypes>::value,
         "Invalid value types");
-    reduction_op(val0.val<0>(offset0), val1.val<0>(offset1));
+    reduction_op(val0.template val<0>(offset0), val1.template val<0>(offset1));
   }
 };
 
@@ -145,10 +145,10 @@ struct TupleReduce<TupleType0, TupleType1, Func, 2> {
             typename TupleType1::ValTypes>::value,
         "Invalid value types");
     reduction_op(
-        val0.val<0>(offset0),
-        val0.val<1>(offset0),
-        val1.val<0>(offset1),
-        val1.val<1>(offset1));
+        val0.template val<0>(offset0),
+        val0.template val<1>(offset0),
+        val1.template val<0>(offset1),
+        val1.template val<1>(offset1));
   }
 };
 
@@ -166,12 +166,12 @@ struct TupleReduce<TupleType0, TupleType1, Func, 3> {
             typename TupleType1::ValTypes>::value,
         "Invalid value types");
     reduction_op(
-        val0.val<0>(offset0),
-        val0.val<1>(offset0),
-        val0.val<2>(offset0),
-        val1.val<0>(offset1),
-        val1.val<1>(offset1),
-        val1.val<2>(offset1));
+        val0.template val<0>(offset0),
+        val0.template val<1>(offset0),
+        val0.template val<2>(offset0),
+        val1.template val<0>(offset1),
+        val1.template val<1>(offset1),
+        val1.template val<2>(offset1));
   }
 };
 

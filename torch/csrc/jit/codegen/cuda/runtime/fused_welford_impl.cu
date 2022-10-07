@@ -27,12 +27,12 @@ struct WelfordForEach {
     WelfordForEach<ValIdx - 1, Triplet0, Triplet1>::call(
         triplet0, offset0, triplet1, offset1);
     welfordCombine<DataType, IndexType>(
-        triplet0.avg.val<ValIdx>(offset0),
-        triplet0.var.val<ValIdx>(offset0),
-        triplet0.N.val<ValIdx>(offset0),
-        triplet1.avg.val<ValIdx>(offset1),
-        triplet1.var.val<ValIdx>(offset1),
-        triplet1.N.val<ValIdx>(offset1));
+        triplet0.avg.template val<ValIdx>(offset0),
+        triplet0.var.template val<ValIdx>(offset0),
+        triplet0.N.template val<ValIdx>(offset0),
+        triplet1.avg.template val<ValIdx>(offset1),
+        triplet1.var.template val<ValIdx>(offset1),
+        triplet1.N.template val<ValIdx>(offset1));
   }
 };
 
@@ -99,9 +99,9 @@ struct BlockWelfordEach {
     using IndexType = typename LocalWelfordTripletTupleT::IndexType;
 
     LocalTuple<DataType, DataType, IndexType> block_result_i(
-        partial_result.avg.val<idx>(0),
-        partial_result.var.val<idx>(0),
-        partial_result.N.val<idx>(0));
+        partial_result.avg.template val<idx>(0),
+        partial_result.var.template val<idx>(0),
+        partial_result.N.template val<idx>(0));
 
     const auto smem_offset =
         reduction_idx * num_threads_per_reduction + tid_in_reduction;
@@ -176,9 +176,9 @@ struct BlockWelfordEach {
           reduction_idx * num_threads_per_reduction);
     }
 
-    block_result.avg.val<idx>(0) = block_result_i.val<0>(0);
-    block_result.var.val<idx>(0) = block_result_i.val<1>(0);
-    block_result.N.val<idx>(0) = block_result_i.val<2>(0);
+    block_result.avg.template val<idx>(0) = block_result_i.template val<0>(0);
+    block_result.var.template val<idx>(0) = block_result_i.template val<1>(0);
+    block_result.N.template val<idx>(0) = block_result_i.template val<2>(0);
 
     if (FORWARD_PROTECT_SMEM) {
       block_sync::sync();
