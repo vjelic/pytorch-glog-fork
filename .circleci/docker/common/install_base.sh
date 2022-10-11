@@ -47,6 +47,7 @@ install_ubuntu() {
     software-properties-common \
     sudo \
     wget \
+    unzip \
     vim
 
   # Cleanup package manager
@@ -92,6 +93,7 @@ install_centos() {
     make \
     sudo \
     wget \
+    unzip \
     vim
 
   if [[ $OS_VERSION == 9 ]]
