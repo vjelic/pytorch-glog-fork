@@ -147,3 +147,7 @@
 [submodule "third_party/VulkanMemoryAllocator"]
 	path = third_party/VulkanMemoryAllocator
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+[submodule "third_party/tensorpipe"]
+	path = third_party/tensorpipe
+	url = https://github.com/ROCmSoftwarePlatform/tensorpipe.git
+	branch = tp_rocm_54
