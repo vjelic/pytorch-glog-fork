@@ -562,7 +562,7 @@ void spmm(
     const Scalar& beta,
     const Scalar& alpha,
     const Tensor& result) {
-#if !(AT_USE_CUSPARSE_GENERIC_API() || AT_USE_HIPSPARSE_GENERIC_52_API()) || (defined(USE_ROCM) && ROCM_VERSION < 50200)
+#if !(AT_USE_CUSPARSE_GENERIC_API() || AT_USE_HIPSPARSE_GENERIC_52_API())
   addmm_out_legacy(mat1, mat2, beta, alpha, result);
 #else
   c10::MaybeOwned<Tensor> result_ = prepare_dense_matrix_for_cusparse(result);
@@ -672,14 +672,13 @@ void spgemm(
     const Scalar& beta,
     const Scalar& alpha,
     const at::sparse_csr::SparseCsrTensor& C) {
-#if !(defined(USE_ROCM)) && (defined(CUDA_VERSION) && CUDA_VERSION < 11000)
+#if (!defined(USE_ROCM)) && (defined(CUDA_VERSION) && CUDA_VERSION < 11000)
   TORCH_CHECK(
       false,
       "Calling addmm with sparse GPU tensors requires compiling ",
       "PyTorch with CUDA 11+. ",
       "Please use PyTorch built with newer CUDA version.");
 #elif defined(USE_ROCM) && ROCM_VERSION < 50200
-  //TODO: Test if this is reachable
   TORCH_CHECK(
       false,
       "Calling addmm with sparse GPU tensors requires compiling ",

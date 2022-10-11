@@ -43,6 +43,7 @@ using cusparseMatDescr = std::remove_pointer<cusparseMatDescr_t>::type;
 using cusparseDnMatDescr = std::remove_pointer<cusparseDnMatDescr_t>::type;
 using cusparseDnVecDescr = std::remove_pointer<cusparseDnVecDescr_t>::type;
 using cusparseSpMatDescr = std::remove_pointer<cusparseSpMatDescr_t>::type;
+using cusparseSpMatDescr = std::remove_pointer<cusparseSpMatDescr_t>::type;
 using cusparseSpGEMMDescr = std::remove_pointer<cusparseSpGEMMDescr_t>::type;
 #if AT_USE_HIPSPARSE_TRIANGULAR_SOLVE()
 using bsrsv2Info = std::remove_pointer<bsrsv2Info_t>::type;
@@ -100,7 +101,7 @@ class TORCH_CUDA_CPP_API CuSparseBsrsm2Info
 
 cusparseIndexType_t getCuSparseIndexType(const c10::ScalarType& scalar_type);
 
-#if AT_USE_HIPSPARSE_GENERIC_52_API() || AT_USE_CUSPARSE_GENERIC_API() || defined(CUDA_VERSION) || (defined(USE_ROCM) && ROCM_VERSION >= 50200)
+#if AT_USE_HIPSPARSE_GENERIC_52_API() || AT_USE_CUSPARSE_GENERIC_API()
 class TORCH_CUDA_CPP_API CuSparseDnMatDescriptor
     : public CuSparseDescriptor<cusparseDnMatDescr, &cusparseDestroyDnMat> {
  public:
