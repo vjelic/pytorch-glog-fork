@@ -12709,7 +12709,7 @@ add_test(NewModuleTest(
     input_size=(4, 16),
     fullname='AdaptiveLogSoftmax',
     with_tf32=True,
-    tf32_precision=0.005))
+    tf32_precision=0.05))
 
 
 # The following are helpers for TestNN.test_affine_*
@@ -15184,7 +15184,7 @@ torch.cuda.synchronize()
 
     @onlyCUDA
     @dtypes(torch.float, torch.double)
-    @tf32_on_and_off(0.005)
+    @tf32_on_and_off(0.5)
     def test_rnn_fused(self, device, dtype):
 
         def copy_rnn(rnn1, rnn2):

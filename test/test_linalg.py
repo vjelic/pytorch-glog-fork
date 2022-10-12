@@ -65,7 +65,7 @@ class TestLinalg(TestCase):
 
     @dtypes(torch.float, torch.cfloat)
     @precisionOverride({torch.float: 1e-06, torch.cfloat: 1e-06})
-    @tf32_on_and_off(5e-3)
+    @tf32_on_and_off(5e-2)
     def test_inner(self, device, dtype):
         def check(a_sizes_, b_sizes_):
             for a_sizes, b_sizes in ((a_sizes_, b_sizes_), (b_sizes_, a_sizes_)):
@@ -588,7 +588,7 @@ class TestLinalg(TestCase):
     @skipCUDAIfNoMagma
     @skipCPUIfNoLapack
     @dtypes(*floating_and_complex_types())
-    @tf32_on_and_off(0.01)
+    @tf32_on_and_off(1.0)
     def test_old_cholesky(self, device, dtype):
         from torch.testing._internal.common_utils import random_hermitian_pd_matrix
 
@@ -5631,7 +5631,7 @@ scipy_lobpcg  | {:10.2e}  | {:10.2e}  | {:6} | N/A
     @dtypesIfCUDA(*floating_and_complex_types_and(
                   *[torch.bfloat16] if TEST_WITH_ROCM or (CUDA11OrLater and SM53OrLater) else []))
     @dtypes(*floating_and_complex_types_and(torch.bfloat16))
-    @tf32_on_and_off(0.05)
+    @tf32_on_and_off(0.5)
     def test_addmm(self, device, dtype):
         self._test_addmm_impl(torch.addmm, None, device, dtype)
 
@@ -5640,13 +5640,13 @@ scipy_lobpcg  | {:10.2e}  | {:10.2e}  | {:6} | N/A
     @dtypesIfCUDA(*floating_types_and(
                   *[torch.bfloat16] if TEST_WITH_ROCM or (CUDA11OrLater and SM53OrLater) else []))
     @dtypes(*floating_types_and(torch.bfloat16))
-    @tf32_on_and_off(0.05)
+    @tf32_on_and_off(0.5)
     def test_addmm_activation(self, device, dtype):
         self._test_addmm_impl(torch._addmm_activation, "relu", device, dtype)
 
     @dtypes(torch.float, torch.double)
     @dtypesIfCUDA(*floating_and_complex_types())
-    @tf32_on_and_off(0.005)
+    @tf32_on_and_off(0.5)
     def test_addmm_sizes(self, device, dtype):
         for m in [0, 1, 25]:
             for n in [0, 1, 10]:
@@ -6958,7 +6958,7 @@ scipy_lobpcg  | {:10.2e}  | {:10.2e}  | {:6} | N/A
             r1 = fntorch(t0_full, t1, t2)
             self.assertEqual(r0, r1)
 
-    @tf32_on_and_off(0.001)
+    @tf32_on_and_off(0.1)
     def test_broadcast_batched_matmul(self, device):
         n_dim = random.randint(1, 8)
         m_dim = random.randint(1, 8)
@@ -7510,7 +7510,7 @@ scipy_lobpcg  | {:10.2e}  | {:10.2e}  | {:6} | N/A
         self.assertRaises(RuntimeError, lambda: torch.lstsq(torch.randn(0, 0), torch.randn(0, 0)))
         self.assertRaises(RuntimeError, lambda: torch.lstsq(torch.randn(0,), torch.randn(0, 0)))
 
-    @tf32_on_and_off(0.005)
+    @tf32_on_and_off(0.5)
     def test_tensordot(self, device):
         a = torch.arange(60., device=device).reshape(3, 4, 5)
         b = torch.arange(24., device=device).reshape(4, 3, 2)
