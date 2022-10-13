@@ -15184,7 +15184,7 @@ torch.cuda.synchronize()
 
     @onlyCUDA
     @dtypes(torch.float, torch.double)
-    @tf32_on_and_off(0.5)
+    @tf32_on_and_off(0.1)
     def test_rnn_fused(self, device, dtype):
 
         def copy_rnn(rnn1, rnn2):
