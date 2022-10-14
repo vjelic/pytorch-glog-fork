@@ -9,6 +9,11 @@
 #include <c10/macros/Export.h>
 #include <c10/util/irange.h>
 
+#include <ATen/cuda/detail/BFloat16Utils.cuh>
+#include <hip/hip_runtime_api.h>
+#include <hip/hip_bfloat16.h>
+#include <c10/cuda/CUDACachingAllocator.h>
+
 // cublasLT was introduced in CUDA 10.1 but we enable only for 11.1 that also
 // added bf16 support
 #if defined(CUDA_VERSION) && CUDA_VERSION >= 11000 && !defined(_MSC_VER)
@@ -351,8 +356,59 @@ void gemm<float>(CUDABLAS_GEMM_ARGTYPES(float)) {
   cublasOperation_t opb = _cublasOpFromChar(transb);
   _cublasAdjustLdLevel3(transa, transb, m, n, k, &lda, &ldb, &ldc);
   GEMM_CHECK_ARGVALUES(float);
+  float falpha = alpha;
+  float fbeta = beta;
+
+if (!NoTF32Guard::should_disable_tf32() && at::globalContext().allowTF32CuBLAS() && __HIP_PLATFORM_HCC__) {
+	  bool transa_ = ((transa == 't') || (transa == 'T'));
+	  bool transb_ = ((transb == 't') || (transb == 'T'));
+	  bool is_a_contig = transa_ ? lda == k : lda == m;
+	  bool is_b_contig = transb_ ? ldb == n : ldb == k;
+	  hipStream_t stream;
+	  TORCH_CUDABLAS_CHECK(rocblas_get_stream(handle, &stream));
+	  int64_t Na = lda * (transa_ ? m : k);
+	  int64_t Nb = ldb * (transb_ ? k : n);
+	  int64_t Nc = ldc * n;
+	  uint16_t *a_bf16 = (uint16_t*)c10::cuda::CUDACachingAllocator::raw_alloc(Na * sizeof(uint16_t));
+	  uint16_t *b_bf16 = (uint16_t*)c10::cuda::CUDACachingAllocator::raw_alloc(Nb * sizeof(uint16_t));
+	  //uint16_t *c_bf16 = (uint16_t*)THCudaMalloc(globalContext().lazyInitCUDA(), Nc * sizeof(uint16_t));
+	  // cast inputs one row at a time, instead of as a chunk, to avoid memory faults for non-contig cases
+	  if (is_a_contig) {
+	    at::cuda::detail::out_of_place_fp32_to_bf16(const_cast<float*>(a), a_bf16, Na, stream);
+	  }
+	  else{
+	    const float *cur_a = a;
+	    uint16_t *cur_a_bf16 = a_bf16;
+	    int64_t nelem = transa_ ? k : m;
+	    int64_t stop = transa_ ? m : k;
+	    for (int64_t i=0; i<stop; ++i) {
+	      at::cuda::detail::out_of_place_fp32_to_bf16(const_cast<float*>(cur_a), cur_a_bf16, nelem, stream);
+	      cur_a += lda;
+	      cur_a_bf16 += lda;
+	    }
+	  }
+	  if (is_b_contig) {
+	    at::cuda::detail::out_of_place_fp32_to_bf16(const_cast<float*>(b), b_bf16, Nb, stream);
+	  }
+	  else {
+	    const float *cur_b = b;
+	    uint16_t *cur_b_bf16 = b_bf16;
+	    int64_t nelem = transb_ ? n : k;
+	    int64_t stop = transb_ ? k : n;
+	    for (int64_t i=0; i<stop; ++i) {
+	      at::cuda::detail::out_of_place_fp32_to_bf16(const_cast<float*>(cur_b), cur_b_bf16, nelem, stream);
+	      cur_b += ldb;
+	      cur_b_bf16 += ldb;
+	    }
+	  }
+	  TORCH_CUDABLAS_CHECK(rocblas_gemm_ex(handle, opa, opb, m, n, k, &falpha, a_bf16, rocblas_datatype_bf16_r, lda, b_bf16, rocblas_datatype_bf16_r, ldb, &fbeta, c, rocblas_datatype_f32_r, ldc, c, rocblas_datatype_f32_r, ldc, rocblas_datatype_f32_r, rocblas_gemm_algo_standard, 0, 0));
+	  c10::hip::HIPCachingAllocator::raw_delete(a_bf16);
+	  c10::hip::HIPCachingAllocator::raw_delete(b_bf16);	
+}
+else{
   TORCH_CUDABLAS_CHECK(cublasSgemm(
       handle, opa, opb, m, n, k, &alpha, a, lda, b, ldb, &beta, c, ldc));
+}
 }
 
 #if !defined(USE_ROCM) || (defined(USE_ROCM) && ROCM_VERSION >= 21000)

@@ -150,7 +150,11 @@ bool Context::allowTF32CuBLAS() const {
 }
 
 void Context::setAllowTF32CuBLAS(bool b) {
-  float32_matmul_precision = b ? at::Float32MatmulPrecision::HIGH : at::Float32MatmulPrecision::HIGHEST;
+  #ifdef USE_ROCM
+    float32_matmul_precision = b ? at::Float32MatmulPrecision::MEDIUM : at::Float32MatmulPrecision::HIGHEST;
+  #else
+    float32_matmul_precision = b ? at::Float32MatmulPrecision::HIGH : at::Float32MatmulPrecision::HIGHEST;
+  #endif
 }
 
 Float32MatmulPrecision Context::float32MatmulPrecision() const {

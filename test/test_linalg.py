@@ -63,9 +63,14 @@ class TestLinalg(TestCase):
 
     exact_dtype = True
 
+    if torch.version.hip:
+        tf32_precision = 5e-2
+    else:
+        tf32_precision = 5e-3
+
     @dtypes(torch.float, torch.cfloat)
     @precisionOverride({torch.float: 1e-06, torch.cfloat: 1e-06})
-    @tf32_on_and_off(5e-3)
+    @tf32_on_and_off(tf32_precision)
     def test_inner(self, device, dtype):
         def check(a_sizes_, b_sizes_):
             for a_sizes, b_sizes in ((a_sizes_, b_sizes_), (b_sizes_, a_sizes_)):
@@ -584,11 +589,16 @@ class TestLinalg(TestCase):
         for upper, batchsize in itertools.product([True, False], [(3,), (3, 4), (2, 3, 4)]):
             cholesky_test_helper(3, batchsize, upper)
 
+    if torch.version.hip:
+        tf32_precision = 0.2
+    else:
+        tf32_precision = 0.01
+
     @precisionOverride({torch.float32: 1e-4, torch.complex64: 1e-4})
     @skipCUDAIfNoMagma
     @skipCPUIfNoLapack
     @dtypes(*floating_and_complex_types())
-    @tf32_on_and_off(0.01)
+    @tf32_on_and_off(tf32_precision)
     def test_old_cholesky(self, device, dtype):
         from torch.testing._internal.common_utils import random_hermitian_pd_matrix
 
@@ -5625,28 +5635,43 @@ scipy_lobpcg  | {:10.2e}  | {:10.2e}  | {:6} | N/A
             m2 = maybe_transpose(t3, torch.randn(50, 25, device=device).to(dtype))
             self._test_addmm_addmv(func, M, m1, m2, transpose_out=t4, activation=activation)
 
+    if torch.version.hip:
+        tf32_precision = 0.5
+    else:
+        tf32_precision = 0.05
+
     @precisionOverride({torch.double: 1e-8, torch.float: 1e-4, torch.bfloat16: 0.6,
                         torch.half: 1e-1, torch.cfloat: 1e-4, torch.cdouble: 1e-8})
     @dtypesIfMPS(torch.float32)
     @dtypesIfCUDA(*floating_and_complex_types_and(
                   *[torch.bfloat16] if TEST_WITH_ROCM or (CUDA11OrLater and SM53OrLater) else []))
     @dtypes(*floating_and_complex_types_and(torch.bfloat16))
-    @tf32_on_and_off(0.05)
+    @tf32_on_and_off(tf32_precision)
     def test_addmm(self, device, dtype):
         self._test_addmm_impl(torch.addmm, None, device, dtype)
+
+    if torch.version.hip:
+        tf32_precision = 0.5
+    else:
+        tf32_precision = 0.05
 
     @precisionOverride({torch.double: 1e-8, torch.float: 1e-4, torch.bfloat16: 0.6,
                         torch.half: 1e-1, torch.cfloat: 1e-4, torch.cdouble: 1e-8})
     @dtypesIfCUDA(*floating_types_and(
                   *[torch.bfloat16] if TEST_WITH_ROCM or (CUDA11OrLater and SM53OrLater) else []))
     @dtypes(*floating_types_and(torch.bfloat16))
-    @tf32_on_and_off(0.05)
+    @tf32_on_and_off(tf32_precision)
     def test_addmm_activation(self, device, dtype):
         self._test_addmm_impl(torch._addmm_activation, "relu", device, dtype)
 
+    if torch.version.hip:
+        tf32_precision = 0.06
+    else:
+        tf32_precision = 0.005
+
     @dtypes(torch.float, torch.double)
     @dtypesIfCUDA(*floating_and_complex_types())
-    @tf32_on_and_off(0.005)
+    @tf32_on_and_off(tf32_precision)
     def test_addmm_sizes(self, device, dtype):
         for m in [0, 1, 25]:
             for n in [0, 1, 10]:
@@ -6958,7 +6983,12 @@ scipy_lobpcg  | {:10.2e}  | {:10.2e}  | {:6} | N/A
             r1 = fntorch(t0_full, t1, t2)
             self.assertEqual(r0, r1)
 
-    @tf32_on_and_off(0.001)
+    if torch.version.hip:
+        tf32_precision = 0.05
+    else:
+        tf32_precision = 0.001
+
+    @tf32_on_and_off(tf32_precision)
     def test_broadcast_batched_matmul(self, device):
         n_dim = random.randint(1, 8)
         m_dim = random.randint(1, 8)
@@ -7510,7 +7540,12 @@ scipy_lobpcg  | {:10.2e}  | {:10.2e}  | {:6} | N/A
         self.assertRaises(RuntimeError, lambda: torch.lstsq(torch.randn(0, 0), torch.randn(0, 0)))
         self.assertRaises(RuntimeError, lambda: torch.lstsq(torch.randn(0,), torch.randn(0, 0)))
 
-    @tf32_on_and_off(0.005)
+    if torch.version.hip:
+        tf32_precision = 0.2
+    else:
+        tf32_precision = 0.005
+
+    @tf32_on_and_off(tf32_precision)
     def test_tensordot(self, device):
         a = torch.arange(60., device=device).reshape(3, 4, 5)
         b = torch.arange(24., device=device).reshape(4, 3, 2)
