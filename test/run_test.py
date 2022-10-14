@@ -230,7 +230,6 @@ ROCM_BLOCKLIST = [
     "distributed/_shard/sharding_spec/test_sharding_spec",
     "distributed/_shard/sharding_plan/test_sharding_plan",
     "distributed/_shard/sharded_tensor/test_megatron_prototype",
-    "distributed/_shard/sharded_tensor/test_sharded_tensor",
     "distributed/_shard/sharded_tensor/test_sharded_tensor_reshard",
     "distributed/_shard/sharded_tensor/ops/test_chunk",
     "distributed/_shard/sharded_tensor/ops/test_elementwise_ops",
@@ -1071,7 +1070,9 @@ def main():
     if IS_CI:
         selected_tests = get_reordered_tests(selected_tests)
         # downloading test cases configuration to local environment
-        get_test_case_configs(dirpath=test_directory)
+        # TODO: Commenting out because causing timeouts in internal CI: https://github.com/ROCmSoftwarePlatform/pytorch/pull/1040#issuecomment-1206609026
+        # Issue: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/2369
+        # get_test_case_configs(dirpath=test_directory)
 
     has_failed = False
     failure_messages = []
