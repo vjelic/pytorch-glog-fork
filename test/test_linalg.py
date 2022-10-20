@@ -5636,7 +5636,7 @@ scipy_lobpcg  | {:10.2e}  | {:10.2e}  | {:6} | N/A
             self._test_addmm_addmv(func, M, m1, m2, transpose_out=t4, activation=activation)
 
     if torch.version.hip:
-        tf32_precision = 0.5
+        tf32_precision = 0.05
     else:
         tf32_precision = 0.05
 
@@ -5651,7 +5651,7 @@ scipy_lobpcg  | {:10.2e}  | {:10.2e}  | {:6} | N/A
         self._test_addmm_impl(torch.addmm, None, device, dtype)
 
     if torch.version.hip:
-        tf32_precision = 0.5
+        tf32_precision = 0.25
     else:
         tf32_precision = 0.05
 
@@ -7541,7 +7541,7 @@ scipy_lobpcg  | {:10.2e}  | {:10.2e}  | {:6} | N/A
         self.assertRaises(RuntimeError, lambda: torch.lstsq(torch.randn(0,), torch.randn(0, 0)))
 
     if torch.version.hip:
-        tf32_precision = 0.2
+        tf32_precision = 0.15
     else:
         tf32_precision = 0.005
 

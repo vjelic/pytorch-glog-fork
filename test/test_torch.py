@@ -2167,7 +2167,7 @@ else:
             self.assertEqual(expected, actual)
 
     if torch.version.hip:
-        tf32_precision = 0.05
+        tf32_precision = 0.03
     else:
         tf32_precision = 0.005
 

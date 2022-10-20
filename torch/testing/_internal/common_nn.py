@@ -2296,7 +2296,7 @@ new_module_tests = [
         cpp_constructor_args='torch::nn::Conv2dOptions(4, 4, {2, 2}).dilation({2, 2}).groups(4)',
         input_size=(2, 4, 5, 5),
         with_tf32=True,
-        tf32_precision=0.05 if torch.version.hip else 0.005,
+        tf32_precision=0.02 if torch.version.hip else 0.005,
     ),
     dict(
         module_name='MaxPool2d',
@@ -4201,7 +4201,7 @@ new_module_tests = [
         check_gradgrad=False,
         desc='gelu_activation',
         with_tf32=True,
-        tf32_precision=0.75 if torch.version.hip else 0.05,
+        tf32_precision=0.7 if torch.version.hip else 0.05,
     ),
     dict(
         module_name='TransformerDecoderLayer',
