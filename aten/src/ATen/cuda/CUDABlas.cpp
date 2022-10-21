@@ -9,11 +9,12 @@
 #include <c10/macros/Export.h>
 #include <c10/util/irange.h>
 
+#ifdef USE_ROCM
 #include <ATen/cuda/detail/BFloat16Utils.cuh>
 #include <hip/hip_runtime_api.h>
 #include <hip/hip_bfloat16.h>
 #include <c10/cuda/CUDACachingAllocator.h>
-
+#endif
 // cublasLT was introduced in CUDA 10.1 but we enable only for 11.1 that also
 // added bf16 support
 #if defined(CUDA_VERSION) && CUDA_VERSION >= 11000 && !defined(_MSC_VER)
@@ -359,7 +360,7 @@ void gemm<float>(CUDABLAS_GEMM_ARGTYPES(float)) {
   float falpha = alpha;
   float fbeta = beta;
 
-if (!NoTF32Guard::should_disable_tf32() && at::globalContext().allowTF32CuBLAS() && __HIP_PLATFORM_HCC__) {
+if (!NoTF32Guard::should_disable_tf32() && at::globalContext().allowTF32CuBLAS() && USE_ROCM) {
 	  bool transa_ = ((transa == 't') || (transa == 'T'));
 	  bool transb_ = ((transb == 't') || (transb == 'T'));
 	  bool is_a_contig = transa_ ? lda == k : lda == m;
@@ -371,7 +372,6 @@ if (!NoTF32Guard::should_disable_tf32() && at::globalContext().allowTF32CuBLAS()
 	  int64_t Nc = ldc * n;
 	  uint16_t *a_bf16 = (uint16_t*)c10::cuda::CUDACachingAllocator::raw_alloc(Na * sizeof(uint16_t));
 	  uint16_t *b_bf16 = (uint16_t*)c10::cuda::CUDACachingAllocator::raw_alloc(Nb * sizeof(uint16_t));
-	  //uint16_t *c_bf16 = (uint16_t*)THCudaMalloc(globalContext().lazyInitCUDA(), Nc * sizeof(uint16_t));
 	  // cast inputs one row at a time, instead of as a chunk, to avoid memory faults for non-contig cases
 	  if (is_a_contig) {
 	    at::cuda::detail::out_of_place_fp32_to_bf16(const_cast<float*>(a), a_bf16, Na, stream);
