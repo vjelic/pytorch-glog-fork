@@ -5636,7 +5636,7 @@ scipy_lobpcg  | {:10.2e}  | {:10.2e}  | {:6} | N/A
             self._test_addmm_addmv(func, M, m1, m2, transpose_out=t4, activation=activation)
 
     if torch.version.hip:
-        tf32_precision = 0.05
+        tf32_precision = 0.3
     else:
         tf32_precision = 0.05
 
