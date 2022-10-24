@@ -1053,35 +1053,41 @@ void LayerNormBackwardKernelImplInternal(
   cudaStream_t cuda_stream = at::cuda::getCurrentCUDAStream();
   const int warp_size = at::cuda::warp_size();
   if (dX_data != nullptr) {
-    if(c10::utils::check_env("ENABLE_APEX_GRADINPUT") && M >= 32768) {
-        const uint64_t maxGridY = at::cuda::getCurrentDeviceProperties()->maxGridSize[1];
-        const dim3 blocks1(1, std::min((uint64_t)M, maxGridY), 1);
-        dim3 threads1(warp_size, 4, 1);
 #if defined __HIP_PLATFORM_HCC__
-        threads1.y = 2; // Optimization for ROCm
-#endif
-        int nshared =
-                threads1.y > 1 ?
-                threads1.y*threads1.x*sizeof(T_ACC) :
-                0;
-        cuComputeGradInput<<<blocks1, threads1, nshared, cuda_stream>>>(
-                dY_data,
-                X_data,
-                M,N,
-                mean_data,
-                rstd_data,
-                gamma_data,
-                dX_data);
+    if (M >= 32768) {
+      const uint64_t maxGridY = at::cuda::getCurrentDeviceProperties()->maxGridSize[1];
+      const dim3 blocks1(1, std::min((uint64_t)M, maxGridY), 1);
+      dim3 threads1(warp_size, 4, 1);
+      threads1.y = 2; // Optimization for ROCm
+      int nshared =
+              threads1.y > 1 ?
+              threads1.y*threads1.x*sizeof(T_ACC) :
+              0;
+      cuComputeGradInput<<<blocks1, threads1, nshared, cuda_stream>>>(
+              dY_data,
+              X_data,
+              M, N,
+              mean_data,
+              rstd_data,
+              gamma_data,
+              dX_data);
         C10_CUDA_KERNEL_LAUNCH_CHECK();
     } else {
-        const dim3 blocks(M);
-        int nshared = (num_threads()/warp_size) * sizeof(T_ACC);
-        layer_norm_grad_input_kernel<<<blocks, num_threads(), nshared, cuda_stream>>>(dY_data,
-        X_data, mean_data, rstd_data, gamma_data, dX_data, N);
-        C10_CUDA_KERNEL_LAUNCH_CHECK(); 
+      const dim3 blocks(M);
+      int nshared = (num_threads()/warp_size) * sizeof(T_ACC);
+      layer_norm_grad_input_kernel<<<blocks, num_threads(), nshared, cuda_stream>>>(dY_data,
+      X_data, mean_data, rstd_data, gamma_data, dX_data, N);
+      C10_CUDA_KERNEL_LAUNCH_CHECK();
     }
+#else
+    const dim3 blocks(M);
+    int nshared = (num_threads()/warp_size) * sizeof(T_ACC);
+    layer_norm_grad_input_kernel<<<blocks, num_threads(), nshared, cuda_stream>>>(dY_data,
+    X_data, mean_data, rstd_data, gamma_data, dX_data, N);
+    C10_CUDA_KERNEL_LAUNCH_CHECK();
+#endif
   }
-
+  
   if (dgamma->defined() || dbeta->defined()) {
     T* dgamma_data =
         dgamma->defined() ? dgamma->template data_ptr<T>() : nullptr;
