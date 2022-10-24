@@ -1235,6 +1235,9 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_cuda(
   mean = mean.view(stat_shape);
   rstd = rstd.view(stat_shape);
 
+  mean = mean.view(stat_shape);
+  rstd = rstd.view(stat_shape);
+
   return std::make_tuple(std::move(Y), std::move(mean), std::move(rstd));
 }
 
