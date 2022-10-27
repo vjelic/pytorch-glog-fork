@@ -18347,6 +18347,8 @@ class TestNNDeviceType(NNTestCase):
                 self.assertEqual(q.size(), out[0].size())
                 self.assertEqual(dtype, out[0].dtype)
 
+    # Skip the test for ROCm as per https://ontrack-internal.amd.com/browse/SWDEV-355273
+    @skipIfRocm
     @dtypesIfCUDA(*floating_types_and(torch.half, *[torch.bfloat16] if AMPERE_OR_ROCM else []))
     @dtypes(torch.float)
     def test_Conv2d_naive_groups(self, device, dtype):
