@@ -112,7 +112,7 @@ class TensorpipeCudaConverter : public TensorpipeDeviceTypeConverter {
     at::cuda::CUDAStream stream(getStreamForDevice(streams, device));
     // CUDACachingAllocator will call recordStream accordingly on the current
     // stream.
-    at::cuda::CUDAStream guard(stream);
+    at::cuda::CUDAStreamGuard guard(stream);
     at::DataPtr dataPtr =
         c10::cuda::CUDACachingAllocator::get()->allocate(length);
 
