@@ -20,7 +20,7 @@ from torch.testing._internal.common_device_type import instantiate_device_type_t
 from torch.testing._internal.common_jit import JitCommonTestCase
 from torch.testing._internal.common_methods_invocations import op_db, SampleInput
 from torch.testing._internal.common_utils import run_tests, ProfilingMode, GRAPH_EXECUTOR, TEST_WITH_ROCM, slowTest, \
-    is_iterable_of_tensors, freeze_rng_state
+    is_iterable_of_tensors, freeze_rng_state, skipIfRocm
 from torch.testing._internal.jit_utils import clone_inputs, get_traced_sample_variant_pairs, JitTestCase, RUN_CUDA
 from torch.testing._internal.jit_metaprogramming_utils import create_traced_fn
 from torch.testing import FileCheck
@@ -98,8 +98,10 @@ class CudaFuserTestOptions():
         torch._C._debug_set_autodiff_subgraph_inlining(False)
         self.old_value = torch._C._jit_set_autocast_mode(True)
 
-        if(RUN_CUDA):
+        if(RUN_CUDA and not TEST_WITH_ROCM):
             self.old_nvfuser = torch._C._jit_set_nvfuser_enabled(True)
+        else:
+            self.old_nvfuser = torch._C._jit_set_nvfuser_enabled(False)
 
     def restore(self):
         if(RUN_CUDA):
@@ -1928,6 +1930,8 @@ class TestCudaFuser(JitTestCase):
         self.assertTrue(self._compare("comparing output failed", o, jit_o, 1e-3))
         self.assertGraphContainsExactly(t_jit.graph_for(x, y), FUSION_GUARD, 1, consider_subgraphs=True)
 
+    # Skip the test for ROCm until NVFuser enabled - https://ontrack-internal.amd.com/browse/SWDEV-361875
+    @skipIfRocm
     @unittest.skipIf(is_pre_volta(), "reduction not supported in pre volta device")
     @unittest.skipIf(not RUN_NVFUSER, "requires CUDA")
     @unittest.skipIf(GRAPH_EXECUTOR != ProfilingMode.PROFILING,
