@@ -8,11 +8,7 @@
 #include <c10/cuda/CUDAStream.h>
 
 #include <tensorpipe/tensorpipe.h>
-#if defined(USE_ROCM)
-#include <tensorpipe/tensorpipe_hip.h>
-#else
 #include <tensorpipe/tensorpipe_cuda.h>
-#endif
 
 namespace torch {
 namespace distributed {
