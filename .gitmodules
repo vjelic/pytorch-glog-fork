@@ -86,10 +86,6 @@
     ignore = dirty
     path = third_party/fmt
     url = https://github.com/fmtlib/fmt.git
-[submodule "third_party/tensorpipe"]
-    ignore = dirty
-    path = third_party/tensorpipe
-    url = https://github.com/pytorch/tensorpipe.git
 [submodule "third_party/cudnn_frontend"]
 	path = third_party/cudnn_frontend
 	url = https://github.com/NVIDIA/cudnn-frontend.git
@@ -124,3 +120,8 @@
 	path = third_party/cpp-httplib
 	url = https://github.com/yhirose/cpp-httplib.git
 	branch = v0.15.3
+[submodule "third_party/tensorpipe"]
+	ignore = dirty
+	path = third_party/tensorpipe
+	url = https://github.com/ROCmSoftwarePlatform/tensorpipe.git
+	branch = tp_rocm_54
