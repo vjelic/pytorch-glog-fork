@@ -11,7 +11,6 @@ from torch.testing._internal.common_distributed import (
     requires_gloo,
     requires_nccl,
     skip_if_lt_x_gpu,
-    skip_if_rocm,
 )
 from torch.distributed.pipeline.sync import Pipe
 
