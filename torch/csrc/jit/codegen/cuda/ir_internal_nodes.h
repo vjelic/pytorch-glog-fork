@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ATen/cuda/CUDAContext.h>
 #include <c10/macros/Export.h>
 
 #include <torch/csrc/jit/codegen/cuda/fusion.h>
@@ -1388,6 +1389,9 @@ class TORCH_CUDA_CU_API IterDomain : public Val {
     is_padded_dimension_ = true;
     if (maybe_to_size.has_value()) {
       if (maybe_to_size.value() > 0) {
+        TORCH_CHECK(
+            maybe_to_size.value() % at::cuda::warp_size() == 0,
+            "padToMultipleOfWarp : given warp padding not a multiple of warp size");
         padded_to_size_ = maybe_to_size.value();
       }
     }

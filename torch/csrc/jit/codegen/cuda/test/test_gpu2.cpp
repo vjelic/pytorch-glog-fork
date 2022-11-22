@@ -6472,6 +6472,7 @@ TEST_F(NVFuserTest, FusionSimpleWarp_CUDA) {
 }
 
 TEST_F(NVFuserTest, FusionSimpleWarpPad_CUDA) {
+  auto warpSize = at::cuda::warp_size();
   auto fusion = std::make_unique<Fusion>();
   FusionGuard fg(fusion.get());
 
@@ -6491,19 +6492,19 @@ TEST_F(NVFuserTest, FusionSimpleWarpPad_CUDA) {
   auto tv1_rf = tv1->rFactor({1});
   tv1_rf->axis(0)->parallelize(ParallelType::BIDx);
   tv1_rf->axis(-1)->parallelize(ParallelType::TIDx);
-  tv1_rf->axis(-1)->padToMultipleOfWarp(32);
+  tv1_rf->axis(-1)->padToMultipleOfWarp(warpSize);
   tv1->axis(-1)->parallelize(ParallelType::TIDx);
-  tv1->axis(-1)->padToMultipleOfWarp(32);
+  tv1->axis(-1)->padToMultipleOfWarp(warpSize);
   TransformPropagatorWithCheck propagator(tv1_rf);
   MaxRootDomainInfoSpanningTree(tv1_rf).traverse(&propagator);
   tv0->axis(-1)->parallelize(ParallelType::TIDx);
-  tv0->axis(-1)->padToMultipleOfWarp(32);
+  tv0->axis(-1)->padToMultipleOfWarp(warpSize);
   tv0_cache->axis(-1)->parallelize(ParallelType::TIDx);
-  tv0_cache->axis(-1)->padToMultipleOfWarp(32);
+  tv0_cache->axis(-1)->padToMultipleOfWarp(warpSize);
   tv2->axis(-1)->parallelize(ParallelType::TIDx);
-  tv2->axis(-1)->padToMultipleOfWarp(32);
+  tv2->axis(-1)->padToMultipleOfWarp(warpSize);
   tv3->axis(-1)->parallelize(ParallelType::TIDx);
-  tv3->axis(-1)->padToMultipleOfWarp(32);
+  tv3->axis(-1)->padToMultipleOfWarp(warpSize);
 
   tv0->computeAt(tv3, -1, ComputeAtMode::MostInlined);
 
@@ -6652,6 +6653,7 @@ TEST_F(NVFuserTest, FusionTrivialWarpReduction_CUDA) {
 }
 
 TEST_F(NVFuserTest, FusionMultipleDimBinding_CUDA) {
+  auto warpSize = at::cuda::warp_size();
   auto fusion = std::make_unique<Fusion>();
   FusionGuard fg(fusion.get());
 
@@ -6675,21 +6677,21 @@ TEST_F(NVFuserTest, FusionMultipleDimBinding_CUDA) {
   auto tv1_rf = tv1->rFactor({1});
   tv1_rf->axis(0)->parallelize(ParallelType::BIDx);
   tv1_rf->axis(-1)->parallelize(ParallelType::TIDx);
-  tv1_rf->axis(-1)->padToMultipleOfWarp(32);
+  tv1_rf->axis(-1)->padToMultipleOfWarp(warpSize);
   tv1->axis(-1)->parallelize(ParallelType::TIDx);
-  tv1->axis(-1)->padToMultipleOfWarp(32);
+  tv1->axis(-1)->padToMultipleOfWarp(warpSize);
   TransformPropagatorWithCheck propagator(tv1_rf);
   MaxRootDomainInfoSpanningTree(tv1_rf).traverse(&propagator);
   tv0->axis(-1)->parallelize(ParallelType::TIDx);
-  tv0->axis(-1)->padToMultipleOfWarp(32);
+  tv0->axis(-1)->padToMultipleOfWarp(warpSize);
   tv0_cache->axis(-1)->parallelize(ParallelType::TIDx);
-  tv0_cache->axis(-1)->padToMultipleOfWarp(32);
+  tv0_cache->axis(-1)->padToMultipleOfWarp(warpSize);
   tv2->axis(-1)->parallelize(ParallelType::TIDx);
-  tv2->axis(-1)->padToMultipleOfWarp(32);
+  tv2->axis(-1)->padToMultipleOfWarp(warpSize);
   tv3->axis(-1)->parallelize(ParallelType::TIDx);
-  tv3->axis(-1)->padToMultipleOfWarp(32);
+  tv3->axis(-1)->padToMultipleOfWarp(warpSize);
   tv4->axis(-1)->parallelize(ParallelType::TIDx);
-  tv4->axis(-1)->padToMultipleOfWarp(64);
+  tv4->axis(-1)->padToMultipleOfWarp(2*warpSize);
 
   tv0->computeAt(tv3, -1, ComputeAtMode::MostInlined);
 
