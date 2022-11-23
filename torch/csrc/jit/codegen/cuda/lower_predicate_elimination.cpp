@@ -595,6 +595,29 @@ class PredicateChcker : public IterVisitor {
       needs_predicate_ = true;
       return;
     }
+
+    // If the reduction op will be a warp reduction, we must keep the predicate.
+    // The following tests would fail on ROCm because the
+    // warpReduceTIDX had its predicate eliminated.  The warpReduceTIDX
+    // implementation would initialize all values to the init value (0), then
+    // re-initialize all values to the input buffer.  But since the input buffer
+    // domain was smaller than the warpSize, it was filled with garbage values.
+    // On CUDA, these were conveniently zero-initialized, masking the problem.
+    // - FusionMagicSchedulerInstanceNormalization_CUDA
+    // - FusionWarpPadMergeSplit_CUDA
+    // - FusionTrivialWarpReduction_CUDA
+    // - FusionMultipleDimBinding_CUDA
+    // - FusionPersistentBufferProjection_CUDA
+    // - FusionViewPersistentShmoo_CUDA
+    // The following logic is copied from codegen.cpp.
+    {
+      const auto output = rop->out()->as<kir::TensorIndex>();
+      const auto input = rop->in()->as<kir::TensorIndex>();
+      if (auto reduction_id = ir_utils::getMaybeWarpReductionDim(output, input)) {
+        needs_predicate_ = true;
+        return;
+      }
+    }
   }
 
   // Welford. See FusionPredicateElimination5.
