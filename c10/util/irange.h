@@ -16,7 +16,13 @@ namespace detail {
 template <
     typename I,
     typename std::enable_if<std::is_integral<I>::value, int>::type = 0>
-struct integer_iterator : std::iterator<std::input_iterator_tag, I> {
+struct integer_iterator {
+  using iterator_category = std::input_iterator_tag;
+  using value_type = I;
+  using difference_type = std::ptrdiff_t;
+  using pointer = I*;
+  using reference = I&;
+
   explicit integer_iterator(I value) : value(value) {}
 
   I operator*() const {
