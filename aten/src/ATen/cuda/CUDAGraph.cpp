@@ -238,16 +238,16 @@ void CUDAGraph::replay() {
 }
 
 void CUDAGraph::enable_debug_mode() {
-#if (defined(CUDA_VERSION) && CUDA_VERSION >= 11000) || (defined(USE_ROCM) && ROCM_VERSION >= 50300)
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 11000
   _cuda_graphs_debug = true;
 #else
-  TORCH_CHECK(false, "CUDA graphs may only be used in Pytorch built with CUDA >= 11.0 or ROCM >= 5.3");
+  TORCH_CHECK(false, "CUDA graphs debug mode may only be used in Pytorch built with CUDA >= 11.0 and not yet supported on ROCM");
 #endif
 
 }
 
 void CUDAGraph::debug_dump(const std::string& debug_path) {
-#if (defined(CUDA_VERSION) && CUDA_VERSION >= 11000) || (defined(USE_ROCM) && ROCM_VERSION >= 50300)
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 11000
   if (_cuda_graphs_debug) {
     TORCH_WARN("DEBUG: calling debug_dump()");
     if (has_graph_) {
@@ -256,10 +256,10 @@ void CUDAGraph::debug_dump(const std::string& debug_path) {
       AT_CUDA_CHECK(cudaGraphDestroy(graph_));
     }
   } else {
-    TORCH_WARN("CUDA Graphs debug not enabled, set with torch._C._cuda_enable_graphs_debug_mode");
+    TORCH_WARN("CUDA Graphs debug not enabled for ROCm, set with torch._C._cuda_enable_graphs_debug_mode for CUDA");
   }
 #else
-  TORCH_CHECK(false, "CUDA graphs may only be used in Pytorch built with CUDA >= 11.0 or ROCM >= 5.3");
+  TORCH_CHECK(false, "CUDA graphs debug mode may only be used in Pytorch built with CUDA >= 11.0 and not yet supported on ROCM");
 #endif
 }
 
