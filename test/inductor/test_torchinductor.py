@@ -34,6 +34,8 @@ from torch.testing._internal.common_utils import (
 from torch.utils._python_dispatch import TorchDispatchMode
 from torch.utils._pytree import tree_flatten, tree_unflatten
 
+from torch.testing._internal.common_device_type import skipCUDAIfRocm 
+
 try:
     import sympy
 
@@ -2612,11 +2614,8 @@ class CommonTemplate:
         if self.device != "cpu":
             self.assertEqual(torch._inductor.metrics.generated_kernel_count, 1)
 
-    @unittest.skip(
-        """
-        FIXME: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3378
-        """
-    )
+    # FIXME: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3378
+    @skipCUDAIfRocm
     def test_gather_scatter(self):
         def fn(node_feat, edge_index):
             src_node_feat = node_feat[edge_index[0]]
@@ -3827,11 +3826,8 @@ class CommonTemplate:
             fn, [torch.randn(1024, 4, 2), torch.arange(4), torch.randn(4, 1, 1)]
         )
 
-    @unittest.skip(
-        """
-        FIXME: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3378
-        """
-    )
+    # FIXME: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3378
+    @skipCUDAIfRocm
     def test_index_put2(self):
         def fn(a, b, c):
             return torch.index_put(a, [b], c, True)
@@ -4065,11 +4061,8 @@ class CommonTemplate:
             ],
         )
 
-    @unittest.skip(
-        """
-        FIXME: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3378
-        """
-    )
+    # FIXME: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3378
+    @skipCUDAIfRocm
     def test_scatter3(self):
         def fn(a, dim, index, b):
             return aten.scatter(a, dim, index, b, reduce="add")
@@ -4113,11 +4106,8 @@ class CommonTemplate:
             ],
         )
 
-    @unittest.skip(
-        """
-        FIXME: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3378
-        """
-    )
+    # FIXME: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3378
+    @skipCUDAIfRocm
     def test_scatter_add2(self):
         def fn(a, dim, index, b):
             return aten.scatter_add(a, dim, index, b)
@@ -4132,11 +4122,8 @@ class CommonTemplate:
             ],
         )
 
-    @unittest.skip(
-        """
-        FIXME: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3378
-        """
-    )
+    # FIXME: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3378
+    @skipCUDAIfRocm
     def test_scatter_add3(self):
         def fn(a, dim, index, b):
             return aten.scatter_add(a, dim, index, b)
@@ -4151,11 +4138,8 @@ class CommonTemplate:
             ],
         )
 
-    @unittest.skip(
-        """
-        FIXME: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3378
-        """
-    )
+    # FIXME: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3378
+    @skipCUDAIfRocm
     def test_scatter_reduce1(self):
         def fn(a, dim, index, b):
             return aten.scatter_reduce(a, dim, index, b, "sum")
@@ -4170,11 +4154,8 @@ class CommonTemplate:
             ],
         )
 
-    @unittest.skip(
-        """
-        FIXME: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3378
-        """
-    )
+    # FIXME: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3378
+    @skipCUDAIfRocm
     def test_scatter_reduce2(self):
         def fn(a, dim, index, b):
             return aten.scatter_reduce(a, dim, index, b, "sum", include_self=False)
@@ -4646,11 +4627,8 @@ class CommonTemplate:
             ],
         )
 
-    @unittest.skip(
-        """
-        FIXME: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3411
-        """
-    )
+    # FIXME: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3411
+    @skipCUDAIfRocm
     def test_argmax_argmin1(self):
         def fn(x):
             return (aten.argmax(x), aten.argmin(x))
@@ -4662,11 +4640,8 @@ class CommonTemplate:
             ],
         )
 
-    @unittest.skip(
-        """
-        FIXME: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3411
-        """
-    )
+    # FIXME: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3411
+    @skipCUDAIfRocm
     def test_argmax_argmin2(self):
         def fn(x):
             return (
@@ -5851,11 +5826,8 @@ if HAS_CUDA:
     class CudaReproTests(TestCase):
         common = check_model_cuda
 
-        @unittest.skip(
-            """
-            FIXME: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3387
-            """
-        )
+        # FIXME: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3387
+        @skipCUDAIfRocm
         def test_index_put_issue(self):
             def forward(
                 self,
