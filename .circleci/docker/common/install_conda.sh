@@ -88,10 +88,11 @@ if [ -n "$ANACONDA_PYTHON_VERSION" ]; then
   if [ "$ANACONDA_PYTHON_VERSION" = "3.9" ]; then
     # Install llvm-8 as it is required to compile llvmlite-0.30.0 from source
     conda_install numpy=1.19.2 ${CONDA_COMMON_DEPS} llvmdev=8.0.0 -c conda-forge
-    SCIPY_VERSION=1.6.0
+    SCIPY_VERSION=1.6.3
   elif [ "$ANACONDA_PYTHON_VERSION" = "3.8" ]; then
     # Install llvm-8 as it is required to compile llvmlite-0.30.0 from source
     conda_install numpy=1.18.5 ${CONDA_COMMON_DEPS} llvmdev=8.0.0
+    SCIPY_VERSION=1.6.3
   elif [ "$ANACONDA_PYTHON_VERSION" = "3.7" ]; then
     # DO NOT install dataclasses if installing python-3.7, since its part of python-3.7 core packages
     conda_install numpy=1.18.5 ${CONDA_COMMON_DEPS} typing_extensions
