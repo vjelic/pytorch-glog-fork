@@ -357,9 +357,11 @@ void gemm<float>(CUDABLAS_GEMM_ARGTYPES(float)) {
   cublasOperation_t opb = _cublasOpFromChar(transb);
   _cublasAdjustLdLevel3(transa, transb, m, n, k, &lda, &ldb, &ldc);
   GEMM_CHECK_ARGVALUES(float);
+#ifdef USE_ROCM
   float falpha = alpha;
   float fbeta = beta;
-
+#endif
+#ifdef USE_ROCM
 if (!NoTF32Guard::should_disable_tf32() && at::globalContext().allowTF32CuBLAS() && USE_ROCM) {
 	  bool transa_ = ((transa == 't') || (transa == 'T'));
 	  bool transb_ = ((transb == 't') || (transb == 'T'));
@@ -409,6 +411,10 @@ else{
   TORCH_CUDABLAS_CHECK(cublasSgemm(
       handle, opa, opb, m, n, k, &alpha, a, lda, b, ldb, &beta, c, ldc));
 }
+#elif !USE_ROCM
+TORCH_CUDABLAS_CHECK(cublasSgemm(
+	handle, opa, opb, m, n, k, &alpha, a, lda, b, ldb, &beta, c, ldc));
+#endif
 }
 
 #if !defined(USE_ROCM) || (defined(USE_ROCM) && ROCM_VERSION >= 21000)
