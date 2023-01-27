@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ubuntu|pytorch|apex|master|f05aaca01b1c572dc60b67bf7df2899057a66943|https://github.com/ROCmSoftwarePlatform/apex
 centos|pytorch|apex|master|f05aaca01b1c572dc60b67bf7df2899057a66943|https://github.com/ROCmSoftwarePlatform/apex
 ubuntu|pytorch|torchvision|release/0.14|5ce4506ac43c8b1dc1736ed9e51c58e0e29f5237|https://github.com/pytorch/vision
@@ -8,3 +9,13 @@ ubuntu|pytorch|torchdata|release/0.5|26c70a88d90a8390a3f061c8dc978bad8d419659|ht
 centos|pytorch|torchdata|release/0.5|26c70a88d90a8390a3f061c8dc978bad8d419659|https://github.com/pytorch/data
 ubuntu|pytorch|torchaudio|release/0.13|bc8640b4722abf6587fb4cc2521da45aeb55a711|https://github.com/pytorch/audio
 centos|pytorch|torchaudio|release/0.13|bc8640b4722abf6587fb4cc2521da45aeb55a711|https://github.com/pytorch/audio
+=======
+ubuntu|pytorch|apex|master|719215bd0f62f4a8b7f1271ec093a5ed470338e7|https://github.com/ROCmSoftwarePlatform/apex
+centos|pytorch|apex|master|719215bd0f62f4a8b7f1271ec093a5ed470338e7|https://github.com/ROCmSoftwarePlatform/apex
+ubuntu|pytorch|torchvision|main|369317f45354248582884f6e2f500b7cebea2236|https://github.com/pytorch/vision
+centos|pytorch|torchvision|main|369317f45354248582884f6e2f500b7cebea2236|https://github.com/pytorch/vision
+ubuntu|pytorch|torchtext|main|99c2735662a3b3701853e2a76d4c0b1df5bafa70|https://github.com/ROCmSoftwarePlatform/text
+centos|pytorch|torchtext|main|99c2735662a3b3701853e2a76d4c0b1df5bafa70|https://github.com/ROCmSoftwarePlatform/text
+ubuntu|pytorch|torchdata|main|983e87ada583b7a58d13a1a5f047dd9d256155dd|https://github.com/pytorch/data
+centos|pytorch|torchdata|main|983e87ada583b7a58d13a1a5f047dd9d256155dd|https://github.com/pytorch/data
+>>>>>>> pytorch-private/dev/dhwmehta/tf32-emulation

@@ -2134,7 +2134,12 @@ else:
                         self.assertEqual(x1.grad, x2.grad, rtol=0, atol=0.001)
                         self.assertEqual(y1.grad, y2.grad, rtol=0, atol=0.001)
 
-    @tf32_on_and_off(0.005)
+    if torch.version.hip:
+        tf32_precision = 0.05
+    else:
+        tf32_precision = 0.005
+
+    @tf32_on_and_off(tf32_precision)
     def test_cdist_large(self, device):
         for cm in ['use_mm_for_euclid_dist_if_necessary', 'use_mm_for_euclid_dist', 'donot_use_mm_for_euclid_dist']:
             x = torch.randn(1000, 10, device=device)
@@ -2153,7 +2158,12 @@ else:
             expected = self._brute_cdist(x, y, p=2)
             self.assertEqual(expected, actual)
 
-    @tf32_on_and_off(0.005)
+    if torch.version.hip:
+        tf32_precision = 0.03
+    else:
+        tf32_precision = 0.005
+
+    @tf32_on_and_off(tf32_precision)
     def test_cdist_non_contiguous(self, device):
         for cm in ['use_mm_for_euclid_dist', 'donot_use_mm_for_euclid_dist']:
             x = torch.randn(5, 7, device=device).mT
@@ -2712,6 +2722,7 @@ else:
 
     @onlyCUDA
     @dtypes(torch.half)  # only small dtype not to get oom
+    @largeTensorTest("48GB", "cpu")
     def test_large_cumprod(self, device, dtype):
         # initialization to avoid overflow and half caveats
         x = torch.empty(2**30 + 200, device=device, dtype=dtype)

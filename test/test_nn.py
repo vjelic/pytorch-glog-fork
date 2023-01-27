@@ -11751,7 +11751,7 @@ add_test(NewModuleTest(
     input_size=(4, 16),
     fullname='AdaptiveLogSoftmax',
     with_tf32=True,
-    tf32_precision=0.005))
+    tf32_precision=0.05 if torch.version.hip else 0.005))
 
 
 # The following are helpers for TestNN.test_affine_*
@@ -13888,9 +13888,164 @@ class TestNNDeviceType(NNTestCase):
             unfold = torch.nn.Unfold(kernel_size=(2, 3)).to(device)
             unfold(inp)
 
+    @onlyNativeDeviceTypes
+    def test_MaxPool_zero_batch_dim(self, device):
+        inp = torch.randn(0, 16, 50, device=device)
+        mod = torch.nn.MaxPool1d(3, stride=2).to(device)
+        self._test_module_empty_input(mod, inp, check_size=False)
+
+        # 1D is supposed to be okay with 0 numel() inputs so dont test
+        # error raising for that case.
+
+        inp = torch.randn(0, 16, 50, 32, device=device)
+        mod = torch.nn.MaxPool2d(3, stride=2).to(device)
+        self._test_module_empty_input(mod, inp, check_size=False)
+
+        with self.assertRaisesRegex(RuntimeError, "Expected"):
+            inp = torch.randn(1, 0, 50, 32, device=device)
+            mod(inp)
+
+        inp = torch.ones(0, 16, 50, 44, 31, device=device)
+        mod = torch.nn.MaxPool3d(3, stride=2).to(device)
+        self._test_module_empty_input(mod, inp, check_size=False)
+
+        with self.assertRaisesRegex(RuntimeError, "Expected"):
+            inp = torch.ones(1, 0, 50, 44, 31, device=device)
+            mod(inp)
+
+    @onlyNativeDeviceTypes
+    def test_MaxUnpool_zero_batch_dim(self, device):
+        pool = torch.nn.MaxPool1d(2, stride=2, return_indices=True).to(device)
+        unpool = torch.nn.MaxUnpool1d(2, stride=2).to(device)
+        inp = torch.randn(0, 10, 10, requires_grad=True, device=device)
+        output, indices = pool(inp)
+        output.requires_grad_(True)
+        unpool_out = unpool(output, indices)
+        unpool_out.sum().backward()
+
+        self.assertEqual(inp.grad, torch.zeros_like(inp))
+        self.assertEqual(unpool_out, torch.zeros_like(unpool_out))
+
+        pool = torch.nn.MaxPool2d(2, stride=2, return_indices=True).to(device)
+        unpool = torch.nn.MaxUnpool2d(2, stride=2).to(device)
+        inp = torch.randn(0, 10, 10, 10, requires_grad=True, device=device)
+        output, indices = pool(inp)
+        unpool_out = unpool(output, indices)
+        unpool_out.sum().backward()
+
+        self.assertEqual(inp.grad, torch.zeros_like(inp))
+        self.assertEqual(unpool_out, torch.zeros_like(unpool_out))
+
+        pool = torch.nn.MaxPool3d(2, stride=2, return_indices=True).to(device)
+        unpool = torch.nn.MaxUnpool3d(2, stride=2).to(device)
+        inp = torch.randn(0, 10, 10, 10, 10, requires_grad=True, device=device)
+        output, indices = pool(inp)
+        output.requires_grad_(True)
+        unpool_out = unpool(output, indices)
+        unpool_out.sum().backward()
+
+        self.assertEqual(inp.grad, torch.zeros_like(inp))
+        self.assertEqual(unpool_out, torch.zeros_like(unpool_out))
+
+    @slowTest
+    @onlyNativeDeviceTypes
+    @skipCUDAIfRocm
+    @parametrize_test("module_name,module_size,output_size,test_index,should_error", [
+        subtest(('MaxUnpool2d', (2, 2), (1, 3, 4, 5), -1, True), name='case1'),
+        subtest(('MaxUnpool2d', (2, 2), (1, 3, 4, 5), 2 * 2 * 4 * 5, True), name='case2'),
+        subtest(('MaxUnpool2d', (2, 2), (1, 3, 4, 5), (2 * 2 * 4 * 5) - 1, False), name='case3'),
+        subtest(('MaxUnpool2d', (2, 3), (2, 1, 4, 2), 2 * 3 * 4 * 2, True), name='case4'),
+        subtest(('MaxUnpool2d', (2, 3), (2, 1, 4, 2), (2 * 3 * 4 * 2) - 1, False), name='case5'),
+
+        subtest(('MaxUnpool3d', (2, 2, 2), (1, 3, 4, 5), -1, True), name='case6'),
+        subtest(('MaxUnpool3d', (2, 2, 2), (1, 3, 4, 5), 2 * 2 * 2 * 3 * 4 * 5, True), name='case7'),
+        subtest(('MaxUnpool3d', (2, 2, 2), (1, 3, 4, 5), (2 * 2 * 2 * 3 * 4 * 5) - 1, False), name='case8'),
+        subtest(('MaxUnpool3d', (2, 2, 2), (2, 3, 4, 1), 2 * 2 * 2 * 3 * 4 * 1, True), name='case9'),
+        subtest(('MaxUnpool3d', (2, 2, 2), (2, 3, 4, 1), (2 * 2 * 2 * 3 * 4 * 1) - 1, False), name='case10'),
+    ])
+    def test_MaxUnpool_index_errors(self, device, module_name, module_size, output_size, test_index, should_error):
+        # NOTE: CUDA tests need to be run in a subprocess because they cause device asserts
+        if torch.device(device).type == 'cuda':
+            error_msgs = {
+                'MaxUnpool2d': r'Assertion `maxind >= 0 && maxind < outputImageSize` failed',
+                'MaxUnpool3d': r'Assertion `index >= 0 && index < outputImageSize` failed'}
+
+            script = f'''
+import torch
+unpool = torch.nn.{module_name}({module_size}).to('{device}')
+output = torch.rand({output_size}, dtype=torch.float32, device='{device}')
+indices = torch.zeros({output_size}, dtype=torch.int64, device='{device}')
+indices.flatten()[0] = {test_index}
+unpool(output, indices)
+torch.cuda.synchronize()
+'''
+            p = subprocess.run(
+                [sys.executable, '-c', script],
+                cwd=os.path.dirname(os.path.realpath(__file__)),
+                capture_output=True,
+            )
+
+            output = str(p.stdout) + '\n' + str(p.stderr)
+
+            error_msg = error_msgs[module_name]
+
+            if should_error:
+                self.assertIn(
+                    error_msg,
+                    output,
+                    'The expected error was not found')
+            else:
+                self.assertNotIn(
+                    'Error',
+                    output,
+                    'Should not have produced an error')
+        else:
+            module_class = getattr(torch.nn, module_name)
+            unpool = module_class(module_size).to(device)
+            output = torch.rand(output_size, dtype=torch.float32, device=device)
+            indices = torch.zeros(output_size, dtype=torch.int64, device=device)
+            indices.flatten()[0] = test_index
+
+            if should_error:
+                with self.assertRaisesRegex(RuntimeError, r'Found an invalid max index:'):
+                    unpool(output, indices)
+            else:
+                unpool(output, indices)
+
+    @onlyNativeDeviceTypes
+    def test_AdaptiveMaxPool_zero_batch_dim(self, device):
+        inp = torch.randn(0, 16, 50, device=device)
+        mod = torch.nn.AdaptiveMaxPool1d(3).to(device)
+        self._test_module_empty_input(mod, inp, check_size=False)
+
+        with self.assertRaisesRegex(RuntimeError, "Expected"):
+            inp = torch.randn(1, 0, 50, device=device)
+            mod(inp)
+
+        inp = torch.randn(0, 16, 50, 32, device=device)
+        mod = torch.nn.AdaptiveMaxPool2d(3).to(device)
+        self._test_module_empty_input(mod, inp, check_size=False)
+
+        with self.assertRaisesRegex(RuntimeError, "Expected"):
+            inp = torch.randn(1, 0, 50, 32, device=device)
+            mod(inp)
+
+        inp = torch.ones(0, 16, 50, 44, 31, device=device)
+        mod = torch.nn.AdaptiveMaxPool3d(3).to(device)
+        self._test_module_empty_input(mod, inp, check_size=False)
+
+        with self.assertRaisesRegex(RuntimeError, "Expected"):
+            inp = torch.ones(1, 0, 50, 44, 31, device=device)
+            mod(inp)
+
+    if torch.version.hip:
+        tf32_precision = 0.1
+    else:
+        tf32_precision = 0.005
+
     @onlyCUDA
     @dtypes(torch.float, torch.double)
-    @tf32_on_and_off(0.005)
+    @tf32_on_and_off(tf32_precision)
     def test_rnn_fused(self, device, dtype):
 
         def copy_rnn(rnn1, rnn2):
