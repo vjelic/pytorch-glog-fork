@@ -25,7 +25,6 @@ using c10::ListType;
 using c10::MemoryFormatType;
 using c10::NoneType;
 using c10::NumberType;
-using c10::OptionalType;
 using c10::QSchemeType;
 using c10::QuantizerType;
 using c10::RRefType;

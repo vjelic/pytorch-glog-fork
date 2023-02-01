@@ -27,18 +27,11 @@
 #include <pybind11/pybind11.h>
 #include <vector>
 
-using at::ArrayRef;
-using at::Backend;
-using at::Device;
 using at::DeviceGuard;
-using at::Dimname;
 using at::DimnameList;
-using at::Generator;
 using at::IntArrayRef;
-using at::Layout;
 using at::OptionalDeviceGuard;
 using at::Scalar;
-using at::ScalarType;
 using at::Tensor;
 using at::TensorList;
 using at::TensorOptions;
