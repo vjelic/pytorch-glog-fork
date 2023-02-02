@@ -18,7 +18,7 @@ from .file_baton import FileBaton
 from ._cpp_extension_versioner import ExtensionVersioner
 from .hipify import hipify_python
 from .hipify.hipify_python import GeneratedFileCleaner
-from typing import List, Optional, Union, Tuple
+from typing import Dict, List, Optional, Union, Tuple
 from torch.torch_version import TorchVersion
 
 from setuptools.command.build_ext import build_ext
@@ -42,29 +42,33 @@ SUBPROCESS_DECODE_ARGS = ('oem',) if IS_WINDOWS else ()
 MINIMUM_GCC_VERSION = (5, 0, 0)
 MINIMUM_MSVC_VERSION = (19, 0, 24215)
 
+VersionRange = Tuple[Tuple[int, ...], Tuple[int, ...]]
+VersionMap = Dict[str, VersionRange]
 # The following values were taken from the following GitHub gist that
 # summarizes the minimum valid major versions of g++/clang++ for each supported
 # CUDA version: https://gist.github.com/ax3l/9489132
-CUDA_GCC_VERSIONS = {
-    '10.2': (MINIMUM_GCC_VERSION, (8, 0, 0)),
-    '11.1': (MINIMUM_GCC_VERSION, (10, 0, 0)),
-    '11.2': (MINIMUM_GCC_VERSION, (10, 2, 1)),
-    '11.3': (MINIMUM_GCC_VERSION, (10, 2, 1)),
-    '11.4': ((6, 0, 0), (11, 5, 0)),
-    '11.5': ((6, 0, 0), (11, 5, 0)),
-    '11.6': ((6, 0, 0), (11, 5, 0)),
-    '11.7': ((6, 0, 0), (11, 5, 0)),
+# Or from include/crt/host_config.h in the CUDA SDK
+# The second value is the exclusive(!) upper bound, i.e. min <= version < max
+CUDA_GCC_VERSIONS: VersionMap = {
+    '11.0': (MINIMUM_GCC_VERSION, (10, 0)),
+    '11.1': (MINIMUM_GCC_VERSION, (11, 0)),
+    '11.2': (MINIMUM_GCC_VERSION, (11, 0)),
+    '11.3': (MINIMUM_GCC_VERSION, (11, 0)),
+    '11.4': ((6, 0, 0), (12, 0)),
+    '11.5': ((6, 0, 0), (12, 0)),
+    '11.6': ((6, 0, 0), (12, 0)),
+    '11.7': ((6, 0, 0), (12, 0)),
 }
 
-CUDA_CLANG_VERSIONS = {
-    '10.2': ((3, 3, 0), (8, 0, 0)),
-    '11.1': ((6, 0, 0), (9, 0, 0)),
-    '11.2': ((6, 0, 0), (9, 0, 0)),
-    '11.3': ((6, 0, 0), (11, 0, 0)),
-    '11.4': ((6, 0, 0), (11, 0, 0)),
-    '11.5': ((6, 0, 0), (12, 0, 0)),
-    '11.6': ((6, 0, 0), (12, 0, 0)),
-    '11.7': ((6, 0, 0), (13, 0, 0)),
+MINIMUM_CLANG_VERSION = (3, 3, 0)
+CUDA_CLANG_VERSIONS: VersionMap = {
+    '11.1': (MINIMUM_CLANG_VERSION, (11, 0)),
+    '11.2': (MINIMUM_CLANG_VERSION, (12, 0)),
+    '11.3': (MINIMUM_CLANG_VERSION, (12, 0)),
+    '11.4': (MINIMUM_CLANG_VERSION, (13, 0)),
+    '11.5': (MINIMUM_CLANG_VERSION, (13, 0)),
+    '11.6': (MINIMUM_CLANG_VERSION, (14, 0)),
+    '11.7': (MINIMUM_CLANG_VERSION, (14, 0)),
 }
 
 __all__ = ["get_default_build_root", "check_compiler_ok_for_platform", "get_compiler_abi_compatibility_and_version", "BuildExtension",
@@ -388,20 +392,19 @@ def _check_cuda_version(compiler_name: str, compiler_version: TorchVersion) -> N
             _is_binary_build()):
         return
 
-    cuda_compiler_bounds = CUDA_CLANG_VERSIONS if compiler_name.startswith('clang') else CUDA_GCC_VERSIONS
+    cuda_compiler_bounds: VersionMap = CUDA_CLANG_VERSIONS if compiler_name.startswith('clang') else CUDA_GCC_VERSIONS
 
     if cuda_str_version not in cuda_compiler_bounds:
         warnings.warn(f'There are no {compiler_name} version bounds defined for CUDA version {cuda_str_version}')
     else:
-        min_compiler_version, max_compiler_version = cuda_compiler_bounds[cuda_str_version]
-        # Special case for 11.4.0, which has lower compiler bounds that 11.4.1
+        min_compiler_version, max_excl_compiler_version = cuda_compiler_bounds[cuda_str_version]
+        # Special case for 11.4.0, which has lower compiler bounds than 11.4.1
         if "V11.4.48" in cuda_version_str and cuda_compiler_bounds == CUDA_GCC_VERSIONS:
-            max_compiler_version = (10, 0, 0)
+            max_excl_compiler_version = (11, 0)
         min_compiler_version_str = '.'.join(map(str, min_compiler_version))
-        max_compiler_version_str = '.'.join(map(str, max_compiler_version))
+        max_excl_compiler_version_str = '.'.join(map(str, max_excl_compiler_version))
 
-        version_bound_str = f'>={min_compiler_version_str}'
-        version_bound_str = f'{version_bound_str}, <={max_compiler_version_str}'
+        version_bound_str = f'>={min_compiler_version_str}, <{max_excl_compiler_version_str}'
 
         if compiler_version < TorchVersion(min_compiler_version_str):
             raise RuntimeError(
@@ -409,10 +412,10 @@ def _check_cuda_version(compiler_name: str, compiler_version: TorchVersion) -> N
                 f'than the minimum required version by CUDA {cuda_str_version} ({min_compiler_version_str}). '
                 f'Please make sure to use an adequate version of {compiler_name} ({version_bound_str}).'
             )
-        if compiler_version > TorchVersion(max_compiler_version_str):
+        if compiler_version >= TorchVersion(max_excl_compiler_version_str):
             raise RuntimeError(
                 f'The current installed version of {compiler_name} ({compiler_version}) is greater '
-                f'than the maximum required version by CUDA {cuda_str_version} ({max_compiler_version_str}). '
+                f'than the maximum required version by CUDA {cuda_str_version}. '
                 f'Please make sure to use an adequate version of {compiler_name} ({version_bound_str}).'
             )
 
@@ -907,6 +910,7 @@ def CppExtension(name, sources, *args, **kwargs):
 
     Example:
         >>> # xdoctest: +SKIP
+        >>> # xdoctest: +REQUIRES(env:TORCH_DOCTEST_CPP_EXT)
         >>> from setuptools import setup
         >>> from torch.utils.cpp_extension import BuildExtension, CppExtension
         >>> setup(
@@ -954,6 +958,7 @@ def CUDAExtension(name, sources, *args, **kwargs):
 
     Example:
         >>> # xdoctest: +SKIP
+        >>> # xdoctest: +REQUIRES(env:TORCH_DOCTEST_CPP_EXT)
         >>> from setuptools import setup
         >>> from torch.utils.cpp_extension import BuildExtension, CUDAExtension
         >>> setup(
@@ -1001,14 +1006,12 @@ def CUDAExtension(name, sources, *args, **kwargs):
     To workaround the issue, move python binding logic to pure C++ file.
 
     Example use:
-        >>> # xdoctest: +SKIP
-        >>> #include <ATen/ATen.h>
-        >>> at::Tensor SigmoidAlphaBlendForwardCuda(....)
+        #include <ATen/ATen.h>
+        at::Tensor SigmoidAlphaBlendForwardCuda(....)
 
     Instead of:
-        >>> # xdoctest: +SKIP
-        >>> #include <torch/extension.h>
-        >>> torch::Tensor SigmoidAlphaBlendForwardCuda(...)
+        #include <torch/extension.h>
+        torch::Tensor SigmoidAlphaBlendForwardCuda(...)
 
     Currently open issue for nvcc bug: https://github.com/pytorch/pytorch/issues/69460
     Complete workaround code example: https://github.com/facebookresearch/pytorch3d/commit/cb170ac024a949f1f9614ffe6af1c38d972f7d48
@@ -1032,6 +1035,7 @@ def CUDAExtension(name, sources, *args, **kwargs):
 
     Example:
         >>> # xdoctest: +SKIP
+        >>> # xdoctest: +REQUIRES(env:TORCH_DOCTEST_CPP_EXT)
         >>> CUDAExtension(
         ...        name='cuda_extension',
         ...        sources=['extension.cpp', 'extension_kernel.cu'],
@@ -1078,8 +1082,11 @@ def CUDAExtension(name, sources, *args, **kwargs):
         hipified_sources = set()
         for source in sources:
             s_abs = os.path.abspath(source)
-            hipified_sources.add(hipify_result[s_abs]["hipified_path"] if (s_abs in hipify_result and
-                                 hipify_result[s_abs]["hipified_path"] is not None) else s_abs)
+            hipified_s_abs = (hipify_result[s_abs]["hipified_path"] if (s_abs in hipify_result and
+                              hipify_result[s_abs]["hipified_path"] is not None) else s_abs)
+            # setup() arguments must *always* be /-separated paths relative to the setup.py directory,
+            # *never* absolute paths
+            hipified_sources.add(os.path.relpath(hipified_s_abs, build_dir))
 
         sources = list(hipified_sources)
 
@@ -1357,6 +1364,7 @@ def load_inline(name,
             causes issues.
 
     Example:
+        >>> # xdoctest: +REQUIRES(env:TORCH_DOCTEST_CPP_EXT)
         >>> from torch.utils.cpp_extension import load_inline
         >>> source = """
         at::Tensor sin_add(at::Tensor x, at::Tensor y) {
@@ -2140,7 +2148,7 @@ def _write_ninja_file(path,
         # --generate-dependencies-with-compile was added in CUDA 10.2.
         # Compilation will work on earlier CUDA versions but header file
         # dependencies are not correctly computed.
-        required_cuda_version = packaging.version.parse('10.2')
+        required_cuda_version = packaging.version.parse('11.0')
         has_cuda_version = torch.version.cuda is not None
         if has_cuda_version and packaging.version.parse(torch.version.cuda) >= required_cuda_version:
             cuda_compile_rule.append('  depfile = $out.d')
