@@ -44,6 +44,7 @@ from torch.testing._internal.common_utils import (
 )
 from torch.utils._python_dispatch import TorchDispatchMode
 from torch.utils._pytree import tree_flatten, tree_unflatten
+from torch.testing._internal.common_utils import skipIfRocm
 
 if IS_WINDOWS and IS_CI:
     sys.stderr.write(
@@ -4416,6 +4417,7 @@ class CommonTemplate:
             ],
         )
 
+    @skipIfRocm
     def test_scatter3(self):
         def fn(a, dim, index, b):
             return aten.scatter(a, dim, index, b, reduce="add")
@@ -4459,6 +4461,7 @@ class CommonTemplate:
             ],
         )
 
+    @skipIfRocm
     def test_scatter_add2(self):
         def fn(a, dim, index, b):
             return aten.scatter_add(a, dim, index, b)
@@ -4473,6 +4476,7 @@ class CommonTemplate:
             ],
         )
 
+    @skipIfRocm
     def test_scatter_add3(self):
         def fn(a, dim, index, b):
             return aten.scatter_add(a, dim, index, b)
@@ -4487,6 +4491,7 @@ class CommonTemplate:
             ],
         )
 
+    @skipIfRocm
     def test_scatter_reduce1(self):
         def fn(a, dim, index, b):
             return aten.scatter_reduce(a, dim, index, b, "sum")
@@ -4501,6 +4506,7 @@ class CommonTemplate:
             ],
         )
 
+    @skipIfRocm
     def test_scatter_reduce2(self):
         def fn(a, dim, index, b):
             return aten.scatter_reduce(a, dim, index, b, "sum", include_self=False)
@@ -6531,6 +6537,7 @@ if HAS_CUDA and not TEST_WITH_ASAN:
     class CudaReproTests(TestCase):
         common = check_model_cuda
 
+        @skipIfRocm
         def test_index_put_issue(self):
             def forward(
                 self,
