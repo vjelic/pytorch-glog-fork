@@ -131,10 +131,14 @@ template <typename scalar_t>
 static void apply_lu_solve_batched_cublas(const Tensor& LU, const Tensor& pivots, const Tensor& B, TransposeType transpose) {
   TORCH_INTERNAL_ASSERT(batchCount(LU) == batchCount(B), "batch_size of LU and B must be the same");
   TORCH_INTERNAL_ASSERT(batchCount(LU) == batchCount(pivots.unsqueeze(-1)), "batch_size of LU and pivots must be the same");
+#ifdef USE_ROCM
+  const auto trans = (hipblasOperation_t)to_cublas(transpose);
+#else  
   const auto trans = to_cublas(transpose);
+#endif
 
   auto pivots_data = pivots.data_ptr<int>();
-  auto batch_size = cuda_int_cast(batchCount(LU), "batch_size");;
+  auto batch_size = cuda_int_cast(batchCount(LU), "batch_size");
   auto m = cuda_int_cast(LU.size(-2), "m");
   auto nrhs = cuda_int_cast(B.size(-1), "nrhs");
   auto lda = cuda_int_cast(std::max<int>(1, m), "lda");
@@ -225,7 +229,11 @@ void triangular_solve_batched_cublas(const Tensor& A, const Tensor& B, bool left
 
 template <typename scalar_t>
 inline void apply_gels_batched(const Tensor& A, Tensor& B, Tensor& infos) {
+#if defined(ROCM_VERSION) && (ROCM_VERSION >= 50400)
+  auto trans = HIPBLAS_OP_N;
+#else
   auto trans = CUBLAS_OP_N;
+#endif
   auto m = cuda_int_cast(A.size(-2), "m");
   auto n = cuda_int_cast(A.size(-1), "n");
 

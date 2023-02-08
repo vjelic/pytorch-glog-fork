@@ -12,6 +12,9 @@
 #include <c10/util/Exception.h>
 #include <c10/cuda/CUDAException.h>
 
+#ifdef USE_ROCM
+#include <hipblas/hipblas.h>
+#endif
 
 namespace c10 {
 
@@ -48,6 +51,7 @@ C10_EXPORT const char* _hipblasGetErrorEnum(hipblasStatus_t error);
 } // namespace at::cuda::blas
 
 
+
 #define TORCH_CUDABLAS_CHECK(EXPR)                              \
   do {                                                          \
     cublasStatus_t __err = EXPR;                                \
@@ -56,6 +60,17 @@ C10_EXPORT const char* _hipblasGetErrorEnum(hipblasStatus_t error);
                 at::cuda::blas::_cublasGetErrorEnum(__err),     \
                 " when calling `" #EXPR "`");                   \
   } while (0)
+
+#ifdef USE_ROCM
+#define TORCH_HIPBLAS_CHECK(EXPR)                                 \
+  do {                                                            \
+        hipblasStatus_t __err = EXPR;                             \
+        TORCH_CHECK(__err == HIPBLAS_STATUS_SUCCESS,              \
+                                "CUDA error: ",                   \
+                                " when calling `" #EXPR "`");     \
+  } while (0)
+#endif
+
 
 const char *cusparseGetErrorString(cusparseStatus_t status);
 
