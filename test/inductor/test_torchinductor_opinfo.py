@@ -208,6 +208,9 @@ inductor_skips_rocm["cuda"] = {
     "scatter_reduce.mean": {f16, f32, f64, i32, i64},
     "scatter_reduce.sum": {f16, f32, f64, i32, i64},
     "take_along_dim": {f16, f32, f64, i32, i64},
+    "linalg_pinv_hermitian": {f16},
+    "tanh": {f16},
+    "logcumsumexp": {f16, f32},
 }
 
 inductor_expected_failures_single_sample = defaultdict(dict)
