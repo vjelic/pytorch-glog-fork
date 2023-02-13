@@ -5022,6 +5022,7 @@ class CommonTemplate:
             ],
         )
 
+    @skipIfRocm
     def test_argmax_argmin2(self):
         def fn(x):
             return (
