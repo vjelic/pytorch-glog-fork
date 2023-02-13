@@ -38,7 +38,6 @@ from torch.testing._internal.common_utils import (
     IS_WINDOWS,
     IS_X86,
     TEST_WITH_ASAN,
-    TEST_WITH_ROCM,
     TEST_WITH_SLOW,
     TestCase as TorchTestCase,
 )
@@ -4595,7 +4594,7 @@ class CommonTemplate:
         def fn(a):
             return torch.nn.functional.dropout(a, 0.55, True)
 
-        for cg in[False, True] if not torch.version.hip else [False]:
+        for cg in [False, True] if not torch.version.hip else [False]:
             with patch.object(config.triton, "cudagraphs", cg):
                 torch._dynamo.reset()
 

@@ -29,8 +29,8 @@ from torch.testing._internal.common_utils import (
     skipIfCrossRef,
     skipIfTorchDynamo,
     suppress_warnings,
-    TestCase,
     TEST_WITH_ROCM,
+    TestCase,
 )
 from torch.testing._internal.inductor_utils import HAS_CPU, HAS_CUDA
 
@@ -491,7 +491,9 @@ class TestInductorOpInfo(TestCase):
             #     print(f"SKIPPING OP {op_name} on {device_type}", flush=True, file=f)
             #     print(f"SKIPPING OP {op_name} on {device_type}", flush=True)
             self.skipTest(f"{op_name} in {dtype} not supported")
-        elif TEST_WITH_ROCM and dtype in inductor_skips_rocm[device_type].get(op_name, set()):
+        elif TEST_WITH_ROCM and dtype in inductor_skips_rocm[device_type].get(
+            op_name, set()
+        ):
             test_expect = TestExpect.SKIP
             self.skipTest(f"{op_name} in {dtype} not supported on ROCM")
         elif dtype in inductor_expected_failures_single_sample[device_type].get(

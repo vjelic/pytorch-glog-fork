@@ -7,7 +7,6 @@ import torch.testing
 from torch.testing._internal.common_utils import (
     IS_WINDOWS,
     TEST_WITH_CROSSREF,
-    TEST_WITH_ROCM,
     TEST_WITH_TORCHDYNAMO,
     TestCase as TorchTestCase,
 )
