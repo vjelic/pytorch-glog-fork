@@ -206,6 +206,8 @@ _SANITY_CHECK_ARGS = (
 
 
 def main():
+    import torch
+
     python_ver = check_python()
     torch_ver = check_torch()
     cuda_ver = check_cuda() if torch.version.hip is None else "None"
