@@ -2387,6 +2387,7 @@ class CommonTemplate:
             (torch.randn([4, 4, 4]),),
         )
 
+    @skipIfRocm
     def test_convolution1(self):
         m = torch.nn.Sequential(
             torch.nn.Conv2d(5, 6, [3, 3]),
@@ -2834,6 +2835,7 @@ class CommonTemplate:
             (torch.randn([10, 4]), torch.randint(10, [8]), torch.tensor([0, 2, 6])),
         )
 
+    @skipIfRocm
     def test_batch_norm_2d(self):
         m = torch.nn.Sequential(
             torch.nn.BatchNorm2d(10),
@@ -3510,6 +3512,7 @@ class CommonTemplate:
                 ),
             )
 
+    @skipIfRocm
     def test_cudnn_rnn(self):
         if self.device == "cpu":
             raise unittest.SkipTest("requires CUDA")
@@ -3912,7 +3915,7 @@ class CommonTemplate:
         )
         self.assertTrue(same(fn(*inputs), inputs[0] + inputs[1]))
 
-    @config.patch({"triton.cudagraphs": True})
+    @config.patch({"triton.cudagraphs": True if not torch.version.hip else False})
     @patch.object(functorch_config, "use_fake_tensor", True)
     def test_input_mutation1(self):
         def fn(a):
@@ -4564,7 +4567,7 @@ class CommonTemplate:
 
         self.common(fn, [torch.randn(55)], assert_equal=False)
 
-    @config.patch({"triton.cudagraphs": True})
+    @config.patch({"triton.cudagraphs": True if not torch.version.hip else False})
     def test_dropout(self):
         random.seed(1234)
         torch.manual_seed(1234)
@@ -6574,6 +6577,7 @@ if HAS_CUDA and not TEST_WITH_ASAN:
             compiled = compile_fx_inner(mod, inps)
             compiled(inps)
 
+        @skipIfRocm
         @requires_cuda()
         def test_input_channels_last(self):
             m = torch.nn.Sequential(
@@ -6648,7 +6652,7 @@ if HAS_CUDA and not TEST_WITH_ASAN:
             compiled = compile_fx_inner(mod, ())
             assert compiled([])[0].device.type == "cuda"
 
-        @config.patch({"triton.cudagraphs": True})
+        @config.patch({"triton.cudagraphs": True if not torch.version.hip else False})
         def test_expanded_inputs_cudagraphs(self):
             @torch._dynamo.optimize("inductor")
             def fn(x, y):
@@ -6682,7 +6686,7 @@ if HAS_CUDA and not TEST_WITH_ASAN:
             self.assertEqual(real_out, compiled_out)
             torch._dynamo.reset()
 
-        @config.patch({"triton.cudagraphs": True, "size_asserts": False})
+        @config.patch({"triton.cudagraphs": True if not torch.version.hip else False, "size_asserts": False})
         def test_expanded_inputs_cudagraphs_no_size_asserts(self):
             @torch._dynamo.optimize("inductor")
             def fn(x, y):
@@ -6694,7 +6698,8 @@ if HAS_CUDA and not TEST_WITH_ASAN:
             )
             self.assertTrue(same(fn(*inputs), inputs[0] + inputs[1]))
 
-        @config.patch({"triton.cudagraphs": True})
+        @skipIfRocm
+        @config.patch({"triton.cudagraphs": True if not torch.version.hip else False})
         def test_inplace_updates_cudagraphs(self):
             class Repro(torch.nn.Module):
                 def __init__(self):
@@ -6977,6 +6982,7 @@ if HAS_CUDA and not TEST_WITH_ASAN:
             self.assertEqual(arguments_that_are_divisible_by_16_in_kernel1, (0, 1))
             torch._dynamo.reset()
 
+        @skipIfRocm
         def test_optimize_indexing_dtype(self):
             def fn(x: torch.Tensor) -> torch.Tensor:
                 return aten.upsample_bilinear2d.vec(x, None, True, [2.0, 2.0])
@@ -7005,7 +7011,8 @@ if HAS_CUDA and not TEST_WITH_ASAN:
             self.assertTrue("out_ptr1" in code)
             self.assertFalse("out_ptr0" in code)
             self.assertEqual(fn_opt(*inps), fn(*inps))
-
+        
+        @skipIfRocm
         def test_cant_optimize_compute(self):
             def ones():
                 return torch.ones([4], device="cuda")
@@ -7032,6 +7039,7 @@ if HAS_CUDA and not TEST_WITH_ASAN:
                 self.assertTrue("to(tl.int64)" in code)
                 self.assertEqual(fn_opt(), fn())
 
+        @skipIfRocm
         def test_optimize_compute(self):
             def ones():
                 return torch.ones([4], device="cuda")
