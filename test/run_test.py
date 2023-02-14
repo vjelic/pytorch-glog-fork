@@ -275,6 +275,12 @@ ROCM_BLOCKLIST = [
     "test_cuda_nvml_based_avail",
     "test_jit_cuda_fuser", # Skipped until NVFuser enabled - https://ontrack-internal.amd.com/browse/SWDEV-361875
     "test_openmp",
+    "inductor/test_minifier",  #inductor is supported in ROCm pytorch 2.x onwards
+    "inductor/test_perf",
+    "inductor/test_select_algorithm",
+    "inductor/test_smoke",
+    "inductor/test_torchinductor",
+    "inductor/test_torchinductor_opinfo",
 ]
 
 RUN_PARALLEL_BLOCKLIST = [
