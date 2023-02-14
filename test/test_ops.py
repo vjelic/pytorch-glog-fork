@@ -31,6 +31,7 @@ from torch.testing._internal.common_utils import (
     set_default_dtype,
     suppress_warnings,
     noncontiguous_like,
+    TEST_WITH_ROCM,
     TEST_WITH_ASAN,
     TEST_WITH_UBSAN,
     IS_WINDOWS,
@@ -1177,6 +1178,10 @@ class TestCommon(TestCase):
     # NOTE: We test against complex64 as NumPy doesn't have a complex32 equivalent dtype.
     @ops(op_db, allowed_dtypes=(torch.complex32,))
     def test_complex_half_reference_testing(self, device, dtype, op):
+        # SWDEV-373709, refer for more info
+        if all([TEST_WITH_ROCM, op.name == "nn.functional.conv_transpose3d", device == 'cuda:0', dtype == torch.complex32]):
+            self.skipTest("Skipped!!! SWDEV-373709 Tensor accuracy issue")
+
         if not op.supports_dtype(torch.complex32, device):
             unittest.skip("Does not support complex32")
 
