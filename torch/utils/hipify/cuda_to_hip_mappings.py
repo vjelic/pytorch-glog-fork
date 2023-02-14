@@ -624,6 +624,7 @@ CUDA_INCLUDE_MAP = collections.OrderedDict(
         ("nvtx3/nvtx3.hpp", ("roctracer/roctx.h", CONV_INCLUDE, API_ROCTX)),
         ("nvToolsExt.h", ("roctracer/roctx.h", CONV_INCLUDE, API_ROCTX)),
         ("nvml.h", ("rocm_smi/rocm_smi.h", CONV_INCLUDE, API_ROCMSMI)),
+        ("tensorpipe/tensorpipe_cuda.h", ("tensorpipe/tensorpipe_hip.h", CONV_INCLUDE, API_PYT_EXT)),
     ]
 )
 
