@@ -6,9 +6,7 @@
 
 #if defined(CUDART_VERSION) || defined(ROCM_VERSION) && ROCM_VERSION >= 50300
 
-namespace at {
-namespace cuda {
-namespace solver {
+namespace at::cuda::solver {
 
 template <>
 void getrf<double>(
@@ -1958,8 +1956,6 @@ void xsyevd<c10::complex<double>, double>(
 }
 #endif // USE_CUSOLVER_64_BIT
 
-} // namespace solver
-} // namespace cuda
-} // namespace at
+} // namespace at::cuda::solver
 
 #endif // CUDART_VERSION
