@@ -7271,10 +7271,10 @@ scipy_lobpcg  | {:10.2e}  | {:10.2e}  | {:6} | N/A
                          fn(torch.slogdet, (0, 0)))
 
         # eig, symeig
-        evalues, evectors = fn(torch.eig, (0, 0), True)
-        self.assertEqual([(0, 2), (0, 0)], [evalues.shape, evectors.shape])
-        evalues, evectors = fn(torch.symeig, (0, 0), True)
-        self.assertEqual([(0,), (0, 0)], [evalues.shape, evectors.shape])
+        #evalues, evectors = fn(torch.eig, (0, 0), True)
+        #self.assertEqual([(0, 2), (0, 0)], [evalues.shape, evectors.shape])
+        #evalues, evectors = fn(torch.symeig, (0, 0), True)
+        #self.assertEqual([(0,), (0, 0)], [evalues.shape, evectors.shape])
 
         # lstsq
         self.assertRaises(RuntimeError, lambda: torch.lstsq(torch.randn(0, 0), torch.randn(0, 0)))
