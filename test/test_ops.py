@@ -1190,6 +1190,8 @@ class TestCommon(TestCase):
 
 
     @ops(op_db, allowed_dtypes=(torch.bool,))
+    # https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3725
+    @skipIfRocm
     @unittest.skipIf(TEST_WITH_UBSAN, "Test uses undefined behavior")
     @skipIfTorchInductor("Inductor does not support view with dtype yet")
     def test_non_standard_bool_values(self, device, dtype, op):
