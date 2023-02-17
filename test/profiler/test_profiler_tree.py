@@ -110,6 +110,8 @@ class ProfilerTree:
             for node in nodes:
                 cls.validate_node(node)
                 name = cls.fmt_name(node.name)
+                if name.startswith("hip"):
+                    continue
                 prune_level = PRUNE_FUNCTIONS.get(name.strip(), None)
                 if prune_level is None:
                     out.append((depth, name))
