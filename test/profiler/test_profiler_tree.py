@@ -110,8 +110,6 @@ class ProfilerTree:
             for node in nodes:
                 cls.validate_node(node)
                 name = cls.fmt_name(node.name)
-                if name.startswith("hip"):
-                    continue
                 prune_level = PRUNE_FUNCTIONS.get(name.strip(), None)
                 if prune_level is None:
                     out.append((depth, name))
@@ -131,6 +129,9 @@ class ProfilerTree:
 
         # Profiler inserts a `cudaDeviceSynchronize` at the end of profiling.
         if flat_nodes and flat_nodes[-1][1] == "cudaDeviceSynchronize":
+            flat_nodes = flat_nodes[:-1]
+
+        if flat_nodes and flat_nodes[-1][1] == "hipDeviceSynchronize":
             flat_nodes = flat_nodes[:-1]
 
         min_depth = min([d + 1 for d, name in flat_nodes if "begin_unit_test_marker" in name] or [0])
