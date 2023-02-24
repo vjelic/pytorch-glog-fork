@@ -65,6 +65,13 @@ ARG ROCM_VERSION
 COPY ./common/install_rocm.sh install_rocm.sh
 RUN bash ./install_rocm.sh
 RUN rm install_rocm.sh
+### INSTALL AFAR ASAN ROCM SIDE BY SIDE, UPDATE /opt/rocm symbolic link
+RUN cd /opt && \
+    wget https://repo.radeon.com/rocm/misc/.ea/afar/roc5.4/asan/rocm-afar001-260-ubuntu.tar.bz2 && \
+    tar -xvjf rocm-afar001-260-ubuntu.tar.bz2 && \
+    rm rocm-afar001-260-ubuntu.tar.bz2 && \
+    rm -f rocm && \
+    ln -s rocm-afar001-260 rocm
 COPY ./common/install_rocm_magma.sh install_rocm_magma.sh
 RUN bash ./install_rocm_magma.sh
 RUN rm install_rocm_magma.sh

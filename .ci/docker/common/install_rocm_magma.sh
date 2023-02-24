@@ -22,6 +22,11 @@ for arch in $amdgpu_targets; do
 done
 # hipcc with openmp flag may cause isnan() on __device__ not to be found; depending on context, compiler may attempt to match with host definition
 sed -i 's/^FOPENMP/#FOPENMP/g' make.inc
+#### HACK IN ASAN
+echo "DEVCCFLAGS += -fsanitize=address -shared-libasan"
+echo "CFLAGS += -fsanitize=address -shared-libasan"
+echo "CXXFLAGS += -fsanitize=address -shared-libasan"
+echo "LDFLAGS += -fuse-ld=lld"
 make -f make.gen.hipMAGMA -j $(nproc)
 LANG=C.UTF-8 make lib/libmagma.so -j $(nproc) MKLROOT=/opt/conda/envs/py_$ANACONDA_PYTHON_VERSION
 make testing/testing_dgemm -j $(nproc) MKLROOT=/opt/conda/envs/py_$ANACONDA_PYTHON_VERSION
