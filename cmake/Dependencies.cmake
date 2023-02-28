@@ -1325,6 +1325,9 @@ if(USE_ROCM)
     foreach(pytorch_rocm_arch ${PYTORCH_ROCM_ARCH})
       list(APPEND HIP_CLANG_FLAGS --amdgpu-target=${pytorch_rocm_arch})
     endforeach()
+    list(APPEND HIP_CLANG_FLAGS -fsanitize=address)
+    list(APPEND HIP_CLANG_FLAGS -shared-libasan)
+    list(APPEND HIP_CLANG_FLAGS -fuse-ld=lld)
 
     set(Caffe2_HIP_INCLUDE
        $<INSTALL_INTERFACE:include> ${Caffe2_HIP_INCLUDE})
