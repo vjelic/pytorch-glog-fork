@@ -20,7 +20,7 @@ std::string demangle(const char* name) {
   // https://github.com/gcc-mirror/gcc/blob/master/libstdc%2B%2B-v3/libsupc%2B%2B/cxxabi.h
   // NOTE: `__cxa_demangle` returns a malloc'd string that we have to free
   // ourselves.
-  std::unique_ptr<char, std::function<void(char*)>> demangled(
+  std::unique_ptr<char, decltype(std::free)*> demangled(
       abi::__cxa_demangle(
           name,
           /*__output_buffer=*/nullptr,

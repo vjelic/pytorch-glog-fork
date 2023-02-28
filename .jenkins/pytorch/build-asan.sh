@@ -21,12 +21,26 @@ if [ -n "$(which conda)" ]; then
   export CMAKE_PREFIX_PATH=/opt/conda
 fi
 
+# otherwise any program run at build time will fail
+export LD_LIBRARY_PATH=/opt/rocm/llvm/lib/clang/17.0.0/lib/linux
+export HSA_XNACK=1
+
 # TODO: Make the ASAN flags a centralized env var and unify with USE_ASAN option
-CC="clang" CXX="clang++" LDSHARED="clang --shared" \
-  CFLAGS="-fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all -fsanitize-address-use-after-scope -shared-libasan" \
-  USE_ASAN=1 USE_CUDA=0 USE_MKLDNN=0 \
-  python setup.py bdist_wheel
-  python -mpip install "$(echo dist/*.whl)[opt-einsum]"
+export CC="/opt/rocm/llvm/bin/clang"
+export CXX="/opt/rocm/llvm/bin/clang++"
+export LDSHARED="/opt/rocm/llvm/bin/clang --shared -fuse-ld=lld"
+export LDFLAGS="-fuse-ld=lld"
+#export CFLAGS="-fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all -fsanitize-address-use-after-scope -shared-libasan"
+#export CXXFLAGS="-fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all -fsanitize-address-use-after-scope -shared-libasan"
+export CFLAGS="-g -fsanitize=address -shared-libasan"
+export CXXFLAGS="-g -fsanitize=address -shared-libasan"
+export USE_ASAN=1
+export USE_CUDA=0
+export USE_ROCM=1
+export USE_MKLDNN=0
+python setup.py bdist_wheel
+python -mpip install "$(echo dist/*.whl)[opt-einsum]"
+exit 0
 
 # Test building via the sdist source tarball
 python setup.py sdist

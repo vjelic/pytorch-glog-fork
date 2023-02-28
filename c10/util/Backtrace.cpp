@@ -270,7 +270,7 @@ std::string get_backtrace(
   // string, so we'll have to parse the string after. NOTE: The array returned
   // by `backtrace_symbols` is malloc'd and must be manually freed, but not the
   // strings inside the array.
-  std::unique_ptr<char*, std::function<void(char**)>> raw_symbols(
+  std::unique_ptr<char*, decltype(std::free)*> raw_symbols(
       ::backtrace_symbols(callstack.data(), static_cast<int>(callstack.size())),
       /*deleter=*/free);
   const std::vector<std::string> symbols(

@@ -93,7 +93,7 @@ C10_DEVICE scalar_t sample_gamma(scalar_t alpha, BaseSampler<accscalar_t, unifor
   // Boost alpha for higher acceptance probability.
   if (alpha < 1.0f) {
     if (alpha == 0.f) return 0.f;
-    scale *= compat_pow(1 - standard_uniform.sample(), 1.0f / alpha);
+    scale *= compat_pow(accscalar_t(1 - standard_uniform.sample()), accscalar_t(1.0f / alpha));
     alpha += 1.0f;
   }
 
