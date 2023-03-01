@@ -77,9 +77,6 @@ pushd pytorch.github.io
 
 export LC_ALL=C
 export PATH=/opt/conda/bin:$PATH
-if [ -n $ANACONDA_PYTHON_VERSION ]; then
-  export PATH=/opt/conda/envs/py_$ANACONDA_PYTHON_VERSION/bin:$PATH
-fi
 
 rm -rf pytorch || true
 
