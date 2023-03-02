@@ -2456,7 +2456,7 @@ void LLVMCodeGenImpl::optimize(llvm::Module& M) {
   PMB.OptLevel = 3;
   PMB.LoopVectorize = true;
   PMB.SLPVectorize = true;
-  TM.adjustPassManager(PMB);
+  //TM.adjustPassManager(PMB);
 
   PMB.populateFunctionPassManager(FPM);
   PMB.populateModulePassManager(PM);
