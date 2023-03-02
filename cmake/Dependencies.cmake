@@ -1328,6 +1328,8 @@ if(USE_ROCM)
     list(APPEND HIP_CLANG_FLAGS -fsanitize=address)
     list(APPEND HIP_CLANG_FLAGS -shared-libasan)
     list(APPEND HIP_CLANG_FLAGS -fuse-ld=lld)
+    list(APPEND HIP_CLANG_FLAGS -g)
+    list(APPEND HIP_CLANG_FLAGS -O1)
 
     set(Caffe2_HIP_INCLUDE
        $<INSTALL_INTERFACE:include> ${Caffe2_HIP_INCLUDE})
