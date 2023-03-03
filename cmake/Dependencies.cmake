@@ -1328,7 +1328,7 @@ if(USE_ROCM)
     list(APPEND HIP_CLANG_FLAGS -fsanitize=address)
     list(APPEND HIP_CLANG_FLAGS -shared-libasan)
     list(APPEND HIP_CLANG_FLAGS -fuse-ld=lld)
-    list(APPEND HIP_CLANG_FLAGS -g2)
+    list(APPEND HIP_CLANG_FLAGS -ggdb)
     list(APPEND HIP_CLANG_FLAGS -O1)
 
     set(Caffe2_HIP_INCLUDE
