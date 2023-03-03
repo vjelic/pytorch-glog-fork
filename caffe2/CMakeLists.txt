@@ -898,6 +898,7 @@ endif()
 # Compile exposed libraries.
 if(USE_ROCM)
   set(CUDA_LINK_LIBRARIES_KEYWORD PRIVATE)
+  link_directories(/opt/rocm/lib)
   hip_add_library(torch_hip ${Caffe2_HIP_SRCS})
   set(CUDA_LINK_LIBRARIES_KEYWORD)
   torch_compile_options(torch_hip)  # see cmake/public/utils.cmake
@@ -1297,6 +1298,8 @@ if(USE_ROCM)
     /opt/rocm/rocblas/include
     /opt/rocm/hipsparse/include
     )
+set_target_properties(torch_hip PROPERTIES LINK_FLAGS -fuse-ld=lld -shared-libasan -fsanitize=address)
+  #target_link_options(torch_hip PUBLIC -L/opt/rocm)
 endif()
 
 if(BUILD_LITE_INTERPRETER)
