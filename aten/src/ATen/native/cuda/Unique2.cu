@@ -187,26 +187,26 @@ namespace native{
 //} // namespace
 
 
-std::tuple<Tensor, Tensor>
-_unique_cuda(const Tensor& self, const bool sorted, const bool return_inverse) {
-  return AT_DISPATCH_ALL_TYPES_AND2(kBool, kHalf, self.scalar_type(), "unique", [&] {
-    // The current CUDA implementation of unique always sort due to the
-    // lack of hashtable implementation in thrust
-    Tensor output, inverse;
-    std::tie(output, inverse, std::ignore) = internal::unique_cuda_template<scalar_t>(self, false, return_inverse, false);
-    return std::make_tuple(output, inverse);
-  });
-}
-
-//std::tuple<Tensor, Tensor, Tensor>
-//_unique2_cuda(const Tensor& self, const bool sorted, const bool return_inverse, const bool return_counts) {
+//std::tuple<Tensor, Tensor>
+//_unique_cuda(const Tensor& self, const bool sorted, const bool return_inverse) {
 //  return AT_DISPATCH_ALL_TYPES_AND2(kBool, kHalf, self.scalar_type(), "unique", [&] {
 //    // The current CUDA implementation of unique always sort due to the
 //    // lack of hashtable implementation in thrust
-//    return internal::unique_cuda_template<scalar_t>(self, false, return_inverse, return_counts);
+//    Tensor output, inverse;
+//    std::tie(output, inverse, std::ignore) = internal::unique_cuda_template<scalar_t>(self, false, return_inverse, false);
+//    return std::make_tuple(output, inverse);
 //  });
 //}
-//
+
+std::tuple<Tensor, Tensor, Tensor>
+_unique2_cuda(const Tensor& self, const bool sorted, const bool return_inverse, const bool return_counts) {
+  return AT_DISPATCH_ALL_TYPES_AND2(kBool, kHalf, self.scalar_type(), "unique", [&] {
+    // The current CUDA implementation of unique always sort due to the
+    // lack of hashtable implementation in thrust
+    return internal::unique_cuda_template<scalar_t>(self, false, return_inverse, return_counts);
+  });
+}
+
 //std::tuple<Tensor, Tensor, Tensor>
 //unique_dim_cuda(const Tensor& self, const int64_t dim, const bool sorted, const bool return_inverse, const bool return_counts) {
 //  return AT_DISPATCH_ALL_TYPES_AND2(kBool, kHalf, self.scalar_type(), "unique_dim", [&] {
