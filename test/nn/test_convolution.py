@@ -13,7 +13,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.testing._internal.common_dtype import floating_types_and, floating_and_complex_types_and
 from torch.testing._internal.common_utils import run_tests, \
-    skipIfRocmVersionLessThan, skipIfNotMiopenSuggestNHWC, TEST_SCIPY, TEST_WITH_ROCM, \
+    skipIfRocm, skipIfRocmVersionLessThan, skipIfNotMiopenSuggestNHWC, TEST_SCIPY, TEST_WITH_ROCM, \
     download_file, parametrize as parametrize_test, subtest, \
     instantiate_parametrized_tests, set_default_dtype
 from torch.testing._internal.common_cuda import TEST_CUDA, TEST_CUDNN
