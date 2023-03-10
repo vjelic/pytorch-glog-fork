@@ -42,6 +42,9 @@ constexpr const char* NCCL_ASYNC_ERROR_HANDLING = "NCCL_ASYNC_ERROR_HANDLING";
 // This variable must be set together with NCCL_ASYNC_ERROR_HANDLING.
 constexpr const char* NCCL_DESYNC_DEBUG = "NCCL_DESYNC_DEBUG";
 
+// Environment variable which controls whether NCCL uses current stream.
+constexpr const char* NCCL_SAME_STREAM = "NCCL_SAME_STREAM";
+
 constexpr const char* NCCL_BACKEND_NAME = "nccl";
 
 // ProcessGroupNCCL implements NCCL bindings for c10d.

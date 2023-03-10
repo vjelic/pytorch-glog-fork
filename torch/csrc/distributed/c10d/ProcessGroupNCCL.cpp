@@ -190,6 +190,9 @@ void syncStreams(
     const std::vector<at::Device>& devices,
     std::vector<at::cuda::CUDAEvent>& ncclEvents,
     std::vector<at::cuda::CUDAStream>& ncclStreams) {
+  if (parseEnvVarFlag(NCCL_SAME_STREAM)) {
+    return;  // no-op; nccl stream shared with current stream
+  }
   for (const auto i : c10::irange(devices.size())) {
     at::cuda::CUDAStream& ncclStream = ncclStreams[i];
     at::cuda::CUDAEvent& ncclEvent = ncclEvents[i];
@@ -424,6 +427,9 @@ void ProcessGroupNCCL::WorkNCCL::synchronize() {
 }
 
 void ProcessGroupNCCL::WorkNCCL::synchronizeStreams() {
+  if (parseEnvVarFlag(NCCL_SAME_STREAM)) {
+    return;  // no-op; nccl stream shared with current stream
+  }
   for (const auto i : c10::irange(devices_.size())) {
     auto currentStream = at::cuda::getCurrentCUDAStream(devices_[i].index());
     // Block the current stream on the NCCL stream
@@ -1183,8 +1189,13 @@ std::vector<std::shared_ptr<NCCLComm>>& ProcessGroupNCCL::getNCCLComm(
     ncclComms[i] = NCCLComm::create(numRanks, rank, ncclID);
 
     // Creates the NCCL streams
-    streamVal.push_back(
-        at::cuda::getStreamFromPool(options_->is_high_priority_stream));
+    if (parseEnvVarFlag(NCCL_SAME_STREAM)) {
+      streamVal.push_back(at::cuda::getCurrentCUDAStream(deviceIndex));
+    }
+    else {
+      streamVal.push_back(
+          at::cuda::getStreamFromPool(options_->is_high_priority_stream));
+    }
   }
 
   // [Note 2 ]
