@@ -47,6 +47,12 @@ test_skips = {
     "test_roi_align_dynamic_shapes": ("cpu", "cuda"),
 }
 
+if TEST_WITH_ROCM:
+    # FIXME: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3849
+    test_skips["test_argmax_argmin1_dynamic_shapes"] = ("cpu", "cuda")
+    # FIXME: https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/3462
+    test_skips["test_convolution1_dynamic_shapes"] = ("cpu", "cuda")
+
 
 def make_dynamic_cls(cls):
     return make_test_cls_with_patches(
@@ -134,5 +140,5 @@ instantiate_device_type_tests(TestInductorDynamic, globals())
 if __name__ == "__main__":
     from torch._dynamo.test_case import run_tests
 
-    if (HAS_CPU or HAS_CUDA) and not TEST_WITH_ROCM:
+    if (HAS_CPU or HAS_CUDA):
         run_tests(needs="filelock")
