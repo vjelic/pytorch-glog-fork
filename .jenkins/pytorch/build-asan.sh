@@ -17,7 +17,7 @@ python tools/amd_build/build_amd.py
 
 # patch fbgemm to work around build failure
 pushd third_party/fbgemm
-patch -p1 -i ../../.jenkins/pytorch/fbgemm.patch
+patch -p1 -i ../../.jenkins/pytorch/fbgemm.patch || true
 popd
 
 python tools/stats/export_test_times.py
@@ -59,6 +59,6 @@ cd torch-*
 python setup.py build --cmake-only
 popd
 
-print_sccache_stats
+#print_sccache_stats
 
 assert_git_not_dirty
