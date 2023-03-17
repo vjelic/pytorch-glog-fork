@@ -12,6 +12,14 @@ source "$(dirname "${BASH_SOURCE[0]}")/common-build.sh"
 echo "Clang version:"
 clang --version
 
+# hipify sources
+python tools/amd_build/build_amd.py
+
+# patch fbgemm to work around build failure
+pushd third_party/fbgemm
+patch -p1 -i ../../.jenkins/pytorch/fbgemm.patch
+popd
+
 python tools/stats/export_test_times.py
 
 # detect_leaks=0: Python is very leaky, so we need suppress it
@@ -32,9 +40,9 @@ export LDSHARED="/opt/rocm/llvm/bin/clang --shared -fuse-ld=lld"
 export LDFLAGS="-fuse-ld=lld"
 #export CFLAGS="-fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all -fsanitize-address-use-after-scope -shared-libasan"
 #export CXXFLAGS="-fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all -fsanitize-address-use-after-scope -shared-libasan"
-export CFLAGS="-g -fsanitize=address -shared-libasan"
-export CXXFLAGS="-g -fsanitize=address -shared-libasan"
-export USE_ASAN=1
+export CFLAGS="-ggdb -fsanitize=address -shared-libasan"
+export CXXFLAGS="-ggdb -fsanitize=address -shared-libasan"
+#export USE_ASAN=1
 export USE_CUDA=0
 export USE_ROCM=1
 export USE_MKLDNN=0
