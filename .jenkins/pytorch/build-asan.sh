@@ -15,10 +15,13 @@ clang --version
 # hipify sources
 python tools/amd_build/build_amd.py
 
-# patch fbgemm to work around build failure
-pushd third_party/fbgemm
-patch -p1 -i ../../.jenkins/pytorch/fbgemm.patch || true
-popd
+# sccache somehow forces gfx906 -x hip, remove it all
+rm -rf /opt/cache
+
+## patch fbgemm to work around build failure
+#pushd third_party/fbgemm
+#patch -p1 -i ../../.jenkins/pytorch/fbgemm.patch || true
+#popd
 
 python tools/stats/export_test_times.py
 
