@@ -1824,6 +1824,8 @@ struct CudaCachingAllocator : public Allocator {
     C10_CUDA_CHECK(cudaGetDevice(&device));
     void* r = nullptr;
     if (forceUncachedAllocator()) {
+      // size must be a multiple of 4, otherwise atomics on half or bfloat16 will read past array
+      size = ((size+3u)/4u)*4u;
       // Deliberately don't use cudaMallocMaybeCapturing here, to force an error
       // if someone tries to use forceUncachedAllocator while capturing.
       C10_CUDA_CHECK(cudaMalloc(&r, size));
