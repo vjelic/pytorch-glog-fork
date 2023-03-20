@@ -18,10 +18,10 @@ python tools/amd_build/build_amd.py
 # sccache somehow forces gfx906 -x hip, remove it all
 rm -rf /opt/cache
 
-## patch fbgemm to work around build failure
-#pushd third_party/fbgemm
-#patch -p1 -i ../../.jenkins/pytorch/fbgemm.patch || true
-#popd
+# patch fbgemm to work around build failure
+pushd third_party/fbgemm
+patch -p1 -i ../../.jenkins/pytorch/fbgemm.patch || true
+popd
 
 python tools/stats/export_test_times.py
 
@@ -43,8 +43,8 @@ export LDSHARED="/opt/rocm/llvm/bin/clang --shared -fuse-ld=lld"
 export LDFLAGS="-fuse-ld=lld"
 #export CFLAGS="-fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all -fsanitize-address-use-after-scope -shared-libasan"
 #export CXXFLAGS="-fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all -fsanitize-address-use-after-scope -shared-libasan"
-export CFLAGS="-ggdb -fsanitize=address -shared-libasan"
-export CXXFLAGS="-ggdb -fsanitize=address -shared-libasan"
+export CFLAGS="-ggdb -fsanitize=address -shared-libasan -Wno-cast-function-type-strict"
+export CXXFLAGS="-ggdb -fsanitize=address -shared-libasan -Wno-cast-function-type-strict"
 #export USE_ASAN=1
 export USE_CUDA=0
 export USE_ROCM=1

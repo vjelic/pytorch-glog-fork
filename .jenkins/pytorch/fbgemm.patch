@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 58dcb9a..01b2dd2 100644
+index 58dcb9a..87387c6 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -144,7 +144,7 @@ if(MSVC)
@@ -11,11 +11,12 @@ index 58dcb9a..01b2dd2 100644
    string(APPEND CMAKE_CXX_FLAGS " -Wno-deprecated-declarations")
    target_compile_options(fbgemm_avx2 PRIVATE
      "-m64" "-mavx2" "-mf16c" "-mfma")
-@@ -162,6 +162,10 @@ else(MSVC)
+@@ -162,6 +162,11 @@ else(MSVC)
      src/FbgemmI8DepthwiseAvx2.cc
      src/UtilsAvx2.cc
      PROPERTIES COMPILE_FLAGS "-Wno-uninitialized")
 +  set_source_files_properties(
++    src/RefImplementations.cc
 +    src/UtilsAvx2.cc
 +    src/UtilsAvx512.cc
 +    PROPERTIES COMPILE_FLAGS "-Wno-uninitialized -O0 -g0")
