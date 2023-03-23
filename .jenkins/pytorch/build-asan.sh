@@ -10,7 +10,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/common-build.sh"
 
 echo "Clang version:"
-clang --version
+/opt/rocm/llvm/bin/clang --version
 
 # hipify sources
 python tools/amd_build/build_amd.py
@@ -45,7 +45,7 @@ export LDFLAGS="-fuse-ld=lld"
 #export CXXFLAGS="-fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all -fsanitize-address-use-after-scope -shared-libasan"
 export CFLAGS="-ggdb -fsanitize=address -shared-libasan -Wno-cast-function-type-strict"
 export CXXFLAGS="-ggdb -fsanitize=address -shared-libasan -Wno-cast-function-type-strict"
-#export USE_ASAN=1
+export USE_ASAN=1
 export USE_CUDA=0
 export USE_ROCM=1
 export USE_MKLDNN=0
