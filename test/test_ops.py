@@ -663,11 +663,8 @@ class TestCommon(TestCase):
     # Cases test here:
     #   - out= with the correct dtype and device, but the wrong shape
     @ops(_ops_and_refs, dtypes=OpDTypes.none)
-<<<<<<< HEAD
     @skipIfTorchInductor("Inductor does not support complex dtype yet")
-=======
     @setLinalgBackendsToDefaultFinally
->>>>>>> rocm5.6_internal_testing
     def test_out_warning(self, device, op):
         torch.backends.cuda.preferred_linalg_library('magma')
         # Prefers running in float32 but has a fallback for the first listed supported dtype
@@ -797,11 +794,8 @@ class TestCommon(TestCase):
     #   - if device, dtype are NOT passed, any combination of dtype/device should be OK for out
     #   - if device, dtype are passed, device and dtype should match
     @ops(_ops_and_refs, dtypes=OpDTypes.any_one)
-<<<<<<< HEAD
     @skipIfTorchInductor("Inductor does not support complex dtype yet")
-=======
     @setLinalgBackendsToDefaultFinally
->>>>>>> rocm5.6_internal_testing
     def test_out(self, device, dtype, op):
         torch.backends.cuda.preferred_linalg_library('magma')
         # Prefers running in float32 but has a fallback for the first listed supported dtype

@@ -208,29 +208,8 @@ case "$image" in
     NINJA_VERSION=1.9.0
     CONDA_CMAKE=yes
     ;;
-<<<<<<< HEAD:.ci/docker/build.sh
   pytorch-linux-focal-py3.8-gcc7)
     ANACONDA_PYTHON_VERSION=3.8
-=======
-  pytorch-linux-focal-rocm5.3-py3.8)
-    ANACONDA_PYTHON_VERSION=3.8
-    GCC_VERSION=9
-    PROTOBUF=yes
-    DB=yes
-    VISION=yes
-    ROCM_VERSION=5.3
-    ;;
-  pytorch-linux-focal-rocm5.4-py3.8)
-    ANACONDA_PYTHON_VERSION=3.8
-    GCC_VERSION=9
-    PROTOBUF=yes
-    DB=yes
-    VISION=yes
-    ROCM_VERSION=5.4
-    ;;
-  pytorch-linux-focal-py3.7-gcc7)
-    ANACONDA_PYTHON_VERSION=3.7
->>>>>>> rocm5.6_internal_testing:.circleci/docker/build.sh
     GCC_VERSION=7
     PROTOBUF=yes
     DB=yes

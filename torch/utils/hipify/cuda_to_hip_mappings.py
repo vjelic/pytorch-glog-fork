@@ -567,12 +567,9 @@ CUDA_TYPE_NAME_MAP = collections.OrderedDict(
         ("curandStateXORWOW_t", ("hiprandStateXORWOW_t", CONV_TYPE, API_RAND)),
         ("curandState_t", ("hiprandState_t", CONV_TYPE, API_RAND)),
         ("curandState", ("hiprandState_t", CONV_TYPE, API_RAND)),
-<<<<<<< HEAD
         ("cudaGraph_t", ("hipGraph_t", CONV_TYPE, API_RAND)),
         ("cudaGraphExec_t", ("hipGraphExec_t", CONV_TYPE, API_RAND)),
-=======
         ("CUuuid", ("hipUUID", CONV_TYPE, API_RUNTIME)),
->>>>>>> rocm5.6_internal_testing
     ]
 )
 
