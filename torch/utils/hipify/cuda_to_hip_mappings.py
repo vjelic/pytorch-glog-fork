@@ -4,8 +4,8 @@ import re
 import subprocess
 
 from .constants import (API_BLAS, API_C10, API_CAFFE2, API_DRIVER, API_FFT,
-                        API_PYTORCH, API_RAND, API_ROCTX, API_RTC, API_RUNTIME,
-                        API_SPARSE, CONV_CACHE, CONV_CONTEXT, CONV_D3D9,
+                        API_PYTORCH, API_PYT_EXT, API_RAND, API_ROCTX, API_RTC, API_RUNTIME,
+                        API_SPARSE, API_SOLVER, API_ROCMSMI, CONV_CACHE, CONV_CONTEXT, CONV_D3D9,
                         CONV_D3D10, CONV_D3D11, CONV_DEF, CONV_DEVICE,
                         CONV_DEVICE_FUNC, CONV_EGL, CONV_ERROR, CONV_EVENT,
                         CONV_EXEC, CONV_GL, CONV_GRAPHICS, CONV_INCLUDE,
@@ -79,6 +79,7 @@ CUDA_TYPE_NAME_MAP = collections.OrderedDict(
     [
         ("CUresult", ("hipError_t", CONV_TYPE, API_DRIVER)),
         ("cudaError_t", ("hipError_t", CONV_TYPE, API_RUNTIME)),
+        ("cudaError", ("hipError_t", CONV_TYPE, API_RUNTIME)),
         (
             "CUDA_ARRAY3D_DESCRIPTOR",
             ("HIP_ARRAY3D_DESCRIPTOR", CONV_TYPE, API_DRIVER, HIP_UNSUPPORTED),
@@ -128,6 +129,9 @@ CUDA_TYPE_NAME_MAP = collections.OrderedDict(
         ("CUdevice", ("hipDevice_t", CONV_TYPE, API_DRIVER)),
         ("CUdevice_attribute_enum", ("hipDeviceAttribute_t", CONV_TYPE, API_DRIVER)),
         ("CUdevice_attribute", ("hipDeviceAttribute_t", CONV_TYPE, API_DRIVER)),
+        ("CUpointer_attribute", ("hipPointer_attribute", CONV_TYPE, API_DRIVER)),
+        ("CU_POINTER_ATTRIBUTE_DEVICE_ORDINAL", ("HIP_POINTER_ATTRIBUTE_DEVICE_ORDINAL", CONV_TYPE, API_DRIVER)),
+        ("CU_POINTER_ATTRIBUTE_BUFFER_ID", ("HIP_POINTER_ATTRIBUTE_BUFFER_ID", CONV_TYPE, API_DRIVER)),
         ("CUdeviceptr", ("hipDeviceptr_t", CONV_TYPE, API_DRIVER)),
         ("CUarray_st", ("hipArray", CONV_TYPE, API_DRIVER)),
         ("CUarray", ("hipArray *", CONV_TYPE, API_DRIVER)),
@@ -317,7 +321,7 @@ CUDA_TYPE_NAME_MAP = collections.OrderedDict(
         ),
         ("cudaArrayCubemap", ("hipArrayCubemap", CONV_MEM, API_RUNTIME)),
         ("cudaArrayTextureGather", ("hipArrayTextureGather", CONV_MEM, API_RUNTIME)),
-        ("cudaMemoryAdvise", ("hipMemAdvise", CONV_TYPE, API_RUNTIME, HIP_UNSUPPORTED)),
+        ("cudaMemoryAdvise", ("hipMemoryAdvise", CONV_TYPE, API_RUNTIME, HIP_UNSUPPORTED)),
         (
             "cudaMemRangeAttribute",
             ("hipMemRangeAttribute", CONV_TYPE, API_RUNTIME, HIP_UNSUPPORTED),
@@ -563,8 +567,12 @@ CUDA_TYPE_NAME_MAP = collections.OrderedDict(
         ("curandStateXORWOW_t", ("hiprandStateXORWOW_t", CONV_TYPE, API_RAND)),
         ("curandState_t", ("hiprandState_t", CONV_TYPE, API_RAND)),
         ("curandState", ("hiprandState_t", CONV_TYPE, API_RAND)),
+<<<<<<< HEAD
         ("cudaGraph_t", ("hipGraph_t", CONV_TYPE, API_RAND)),
         ("cudaGraphExec_t", ("hipGraphExec_t", CONV_TYPE, API_RAND)),
+=======
+        ("CUuuid", ("hipUUID", CONV_TYPE, API_RUNTIME)),
+>>>>>>> rocm5.6_internal_testing
     ]
 )
 
@@ -585,6 +593,7 @@ CUDA_INCLUDE_MAP = collections.OrderedDict(
             ("hip/hip_runtime.h", CONV_INCLUDE_CUDA_MAIN_H, API_RUNTIME),
         ),
         ("cuda_runtime_api.h", ("hip/hip_runtime_api.h", CONV_INCLUDE, API_RUNTIME)),
+        ("cuda_profiler_api.h", ("hip/hip_runtime_api.h", CONV_INCLUDE, API_RUNTIME)),
         (
             "channel_descriptor.h",
             ("hip/channel_descriptor.h", CONV_INCLUDE, API_RUNTIME),
@@ -631,11 +640,15 @@ CUDA_INCLUDE_MAP = collections.OrderedDict(
         ("cub/util_allocator.cuh", ("hipcub/hipcub.hpp", CONV_INCLUDE, API_BLAS)),
         ("cub/block/block_reduce.cuh", ("hipcub/hipcub.hpp", CONV_INCLUDE, API_BLAS)),
         ("cub/cub.cuh", ("hipcub/hipcub.hpp", CONV_INCLUDE, API_BLAS)),
+        ("cub/device/device_run_length_encode.cuh", ("hipcub/hipcub.hpp", CONV_INCLUDE, API_BLAS)),
         ("cub/block/block_load.cuh", ("hipcub/hipcub.hpp", CONV_INCLUDE, API_BLAS)),
         ("cub/device/device_radix_sort.cuh", ("hipcub/hipcub.hpp", CONV_INCLUDE, API_BLAS)),
         ("cub/device/device_reduce.cuh", ("hipcub/hipcub.hpp", CONV_INCLUDE, API_BLAS)),
         ("cub/device/device_scan.cuh", ("hipcub/hipcub.hpp", CONV_INCLUDE, API_BLAS)),
+        ("cub/device/device_select.cuh", ("hipcub/hipcub.hpp", CONV_INCLUDE, API_BLAS)),
         ("nvToolsExt.h", ("roctracer/roctx.h", CONV_INCLUDE, API_ROCTX)),
+        ("nvml.h", ("rocm_smi/rocm_smi.h", CONV_INCLUDE, API_ROCMSMI)),
+        ("tensorpipe/tensorpipe_cuda.h", ("tensorpipe/tensorpipe_hip.h", CONV_INCLUDE, API_PYT_EXT)),
     ]
 )
 
@@ -1353,7 +1366,7 @@ CUDA_IDENTIFIER_MAP = collections.OrderedDict(
         ("CU_LAUNCH_PARAM_END", ("HIP_LAUNCH_PARAM_END", CONV_TYPE, API_DRIVER)),
         (
             "CU_IPC_HANDLE_SIZE",
-            ("HIP_LAUNCH_PARAM_END", CONV_TYPE, API_DRIVER, HIP_UNSUPPORTED),
+            ("HIP_IPC_HANDLE_SIZE", CONV_TYPE, API_DRIVER, HIP_UNSUPPORTED),
         ),
         (
             "CU_MEMHOSTALLOC_DEVICEMAP",
@@ -2761,21 +2774,24 @@ CUDA_IDENTIFIER_MAP = collections.OrderedDict(
         ),
         (
             "cuGetErrorName",
-            ("hipGetErrorName___", CONV_ERROR, API_DRIVER, HIP_UNSUPPORTED),
+            ("hipGetErrorName", CONV_ERROR, API_DRIVER, HIP_UNSUPPORTED),
         ),
         (
             "cuGetErrorString",
-            ("hipGetErrorString___", CONV_ERROR, API_DRIVER, HIP_UNSUPPORTED),
+            ("hipGetErrorString", CONV_ERROR, API_DRIVER, HIP_UNSUPPORTED),
         ),
         ("cuInit", ("hipInit", CONV_INIT, API_DRIVER)),
         ("cuDriverGetVersion", ("hipDriverGetVersion", CONV_VERSION, API_DRIVER)),
+        ("cuCtxCreate", ("hipCtxCreate", CONV_CONTEXT, API_DRIVER)),
         ("cuCtxCreate_v2", ("hipCtxCreate", CONV_CONTEXT, API_DRIVER)),
+        ("cuCtxDestroy", ("hipCtxDestroy", CONV_CONTEXT, API_DRIVER)),
         ("cuCtxDestroy_v2", ("hipCtxDestroy", CONV_CONTEXT, API_DRIVER)),
         ("cuCtxGetApiVersion", ("hipCtxGetApiVersion", CONV_CONTEXT, API_DRIVER)),
         ("cuCtxGetCacheConfig", ("hipCtxGetCacheConfig", CONV_CONTEXT, API_DRIVER)),
         ("cuCtxGetCurrent", ("hipCtxGetCurrent", CONV_CONTEXT, API_DRIVER)),
         ("cuCtxGetDevice", ("hipCtxGetDevice", CONV_CONTEXT, API_DRIVER)),
         ("cuCtxGetFlags", ("hipCtxGetFlags", CONV_CONTEXT, API_DRIVER)),
+        ("cuDeviceGetUuid", ("hipDeviceGetUuid", CONV_CONTEXT, API_DRIVER)),
         (
             "cuCtxGetLimit",
             ("hipCtxGetLimit", CONV_CONTEXT, API_DRIVER, HIP_UNSUPPORTED),
@@ -2897,6 +2913,7 @@ CUDA_IDENTIFIER_MAP = collections.OrderedDict(
         ("CU_EVENT_DISABLE_TIMING", ("hipEventDisableTiming", CONV_EVENT, API_DRIVER)),
         ("CU_EVENT_INTERPROCESS", ("hipEventInterprocess", CONV_EVENT, API_DRIVER)),
         ("cuEventCreate", ("hipEventCreate", CONV_EVENT, API_DRIVER)),
+        ("cuEventDestroy", ("hipEventDestroy", CONV_EVENT, API_DRIVER)),
         ("cuEventDestroy_v2", ("hipEventDestroy", CONV_EVENT, API_DRIVER)),
         ("cuEventElapsedTime", ("hipEventElapsedTime", CONV_EVENT, API_DRIVER)),
         ("cuEventQuery", ("hipEventQuery", CONV_EVENT, API_DRIVER)),
@@ -2980,6 +2997,7 @@ CUDA_IDENTIFIER_MAP = collections.OrderedDict(
             "cuStreamCreateWithPriority",
             ("hipStreamCreateWithPriority", CONV_STREAM, API_DRIVER, HIP_UNSUPPORTED),
         ),
+        ("cuStreamDestroy", ("hipStreamDestroy", CONV_STREAM, API_DRIVER)),
         ("cuStreamDestroy_v2", ("hipStreamDestroy", CONV_STREAM, API_DRIVER)),
         ("cuStreamGetFlags", ("hipStreamGetFlags", CONV_STREAM, API_DRIVER)),
         (
@@ -3090,6 +3108,7 @@ CUDA_IDENTIFIER_MAP = collections.OrderedDict(
             ("hipMemcpyPeerAsync__", CONV_MEM, API_DRIVER, HIP_UNSUPPORTED),
         ),
         ("cuMemcpyPeer", ("hipMemcpyPeer__", CONV_MEM, API_DRIVER, HIP_UNSUPPORTED)),
+        ("cuMemFree", ("hipFree", CONV_MEM, API_DRIVER)),
         ("cuMemFree_v2", ("hipFree", CONV_MEM, API_DRIVER)),
         ("cuMemFreeHost", ("hipHostFree", CONV_MEM, API_DRIVER)),
         (
@@ -3163,6 +3182,10 @@ CUDA_IDENTIFIER_MAP = collections.OrderedDict(
         (
             "cuPointerGetAttribute",
             ("hipPointerGetAttribute", CONV_MEM, API_DRIVER, HIP_UNSUPPORTED),
+        ),
+        (
+            "cuMemGetAddressRange_v2",
+            ("hipMemGetAddressRange", CONV_MEM, API_DRIVER),
         ),
         (
             "cuPointerGetAttributes",
@@ -4938,6 +4961,22 @@ CUDA_IDENTIFIER_MAP = collections.OrderedDict(
             "cudaDeviceGetCacheConfig",
             ("hipDeviceGetCacheConfig", CONV_CACHE, API_RUNTIME),
         ),
+        (
+            "cudaFuncAttributes",
+            ("hipFuncAttributes", CONV_TYPE, API_RUNTIME),
+        ),
+        (
+            "cudaFuncAttributeMaxDynamicSharedMemorySize",
+            ("hipFuncAttributeMaxDynamicSharedMemorySize", CONV_TYPE, API_RUNTIME),
+        ),
+        (
+            "cudaFuncAttributePreferredSharedMemoryCarveout",
+            ("hipFuncAttributePreferredSharedMemoryCarveout", CONV_TYPE, API_RUNTIME),
+        ),
+        (
+            "cudaFuncSetAttribute",
+            ("hipFuncSetAttribute", CONV_EXEC, API_RUNTIME),
+        ),
         ("cudaFuncSetCacheConfig", ("hipFuncSetCacheConfig", CONV_CACHE, API_RUNTIME)),
         (
             "cudaFuncCachePreferNone",
@@ -4977,6 +5016,10 @@ CUDA_IDENTIFIER_MAP = collections.OrderedDict(
             ("hipConfigureCall", CONV_EXEC, API_RUNTIME, HIP_UNSUPPORTED),
         ),
         ("cudaLaunch", ("hipLaunch", CONV_EXEC, API_RUNTIME, HIP_UNSUPPORTED)),
+        (
+ 	    "cudaLaunchCooperativeKernel", 
+	    ("hipLaunchCooperativeKernel", CONV_EXEC, API_RUNTIME),
+        ),
         (
             "cudaSetupArgument",
             ("hipSetupArgument", CONV_EXEC, API_RUNTIME, HIP_UNSUPPORTED),
@@ -6481,22 +6524,6 @@ CUDA_IDENTIFIER_MAP = collections.OrderedDict(
         ("cublasDtrsm", ("rocblas_dtrsm", CONV_MATH_FUNC, API_BLAS)),
         ("cublasCtrsm", ("rocblas_ctrsm", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED)),
         ("cublasZtrsm", ("rocblas_ztrsm", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED)),
-        (
-            "cublasStrsmBatched",
-            ("rocblas_strsm_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
-        ),
-        (
-            "cublasDtrsmBatched",
-            ("rocblas_dtrsm_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
-        ),
-        (
-            "cublasCtrsmBatched",
-            ("rocblas_ctrsm_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
-        ),
-        (
-            "cublasZtrsmBatched",
-            ("rocblas_ztrsm_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
-        ),
         ("cublasStrmm", ("rocblas_strmm", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED)),
         ("cublasDtrmm", ("rocblas_dtrmm", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED)),
         ("cublasCtrmm", ("rocblas_ctrmm", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED)),
@@ -6507,35 +6534,51 @@ CUDA_IDENTIFIER_MAP = collections.OrderedDict(
         ("cublasZgeam", ("rocblas_zgeam", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED)),
         (
             "cublasSgetrfBatched",
-            ("rocblas_sgetrf_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
+            ("hipblasSgetrfBatched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
         ),
         (
             "cublasDgetrfBatched",
-            ("rocblas_dgetrf_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
+            ("hipblasDgetrfBatched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
         ),
         (
             "cublasCgetrfBatched",
-            ("rocblas_cgetrf_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
+            ("hipblasCgetrfBatched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
         ),
         (
             "cublasZgetrfBatched",
-            ("rocblas_zgetrf_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
+            ("hipblasZgetrfBatched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
+        ),
+        (
+            "cublasSgetriBatched",
+            ("hipblasSgetriBatched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
+        ),
+        (
+            "cublasDgetriBatched",
+            ("hipblasDgetriBatched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
+        ),
+        (
+            "cublasCgetriBatched",
+            ("hipblasCgetriBatched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
+        ),
+        (
+            "cublasZgetriBatched",
+            ("hipblasZgetriBatched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
         ),
         (
             "cublasSgetrsBatched",
-            ("rocblas_sgetrs_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
+            ("hipblasSgetrsBatched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
         ),
         (
             "cublasDgetrsBatched",
-            ("rocblas_dgetrs_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
+            ("hipblasDgetrsBatched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
         ),
         (
             "cublasCgetrsBatched",
-            ("rocblas_cgetrs_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
+            ("hipblasCgetrsBatched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
         ),
         (
             "cublasZgetrsBatched",
-            ("rocblas_zgetrs_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
+            ("hipblasZgetrsBatched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
         ),
         (
             "cublasStrsmBatched",
@@ -6571,19 +6614,19 @@ CUDA_IDENTIFIER_MAP = collections.OrderedDict(
         ),
         (
             "cublasSgeqrfBatched",
-            ("rocblas_sgeqrf_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
+            ("hipblasSgeqrfBatched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
         ),
         (
             "cublasDgeqrfBatched",
-            ("rocblas_dgeqrf_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
+            ("hipblasDgeqrfBatched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
         ),
         (
             "cublasCgeqrfBatched",
-            ("rocblas_cgeqrf_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
+            ("hipblasDgeqrfBatched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
         ),
         (
             "cublasZgeqrfBatched",
-            ("rocblas_zgeqrf_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
+            ("hipblasZgeqrfBatched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
         ),
         (
             "cublasSgelsBatched",
@@ -7763,6 +7806,10 @@ CUDA_IDENTIFIER_MAP = collections.OrderedDict(
         ("nvrtcGetPTX", ("hiprtcGetCode", CONV_JIT, API_RTC)),
         ("nvrtcGetPTXSize", ("hiprtcGetCodeSize", CONV_JIT, API_RTC)),
         ("thrust::cuda", ("thrust::hip", CONV_MATH_FUNC, API_BLAS)),
+        (
+            "cudaCpuDeviceId",
+            ("hipCpuDeviceId", CONV_TYPE, API_RUNTIME, HIP_UNSUPPORTED),
+        ),
         # The caffe2 directory does a string match; pytorch does a word-boundary match.
         # Patterns such as 'cub::' will not match for pytorch.
         # We list all current uses of cub symbols for this reason.
@@ -7794,6 +7841,15 @@ CUDA_IDENTIFIER_MAP = collections.OrderedDict(
         ("nvtxRangePop", ("roctxRangePop", CONV_OTHER, API_ROCTX)),
         ("nvtxRangeStartA", ("roctxRangeStartA", CONV_OTHER, API_ROCTX)),
         ("nvtxRangeEnd", ("roctxRangeStop", CONV_OTHER, API_ROCTX)),
+        ("nvmlReturn_t", ("rsmi_status_t", CONV_OTHER, API_ROCMSMI)),
+        ("NVML_SUCCESS", ("RSMI_STATUS_SUCCESS", CONV_OTHER, API_ROCMSMI)),
+        ("NVML_P2P_CAPS_INDEX_READ", ("RSMI_STATUS_SUCCESS", CONV_OTHER, API_ROCMSMI)),
+        ("NVML_P2P_STATUS_OK", ("RSMI_STATUS_SUCCESS", CONV_OTHER, API_ROCMSMI)),
+        ("NVML_ERROR_INSUFFICIENT_SIZE", ("RSMI_STATUS_INSUFFICIENT_SIZE", CONV_OTHER, API_ROCMSMI)),
+        ("nvmlDevice_t", ("uint32_t", CONV_OTHER, API_ROCMSMI)),
+        ("nvmlGpuP2PStatus_t", ("bool", CONV_OTHER, API_ROCMSMI)),
+        ("nvmlProcessInfo_t", ("rsmi_process_info_t", CONV_OTHER, API_ROCMSMI)),
+        ("nvmlGpuP2PCapsIndex_t", ("uint32_t", CONV_OTHER, API_ROCMSMI)),
     ]
 )
 
@@ -7965,7 +8021,11 @@ CUDA_SPARSE_MAP = collections.OrderedDict(
         ("CUSPARSE_MM_ALG_DEFAULT", ("HIPSPARSE_MM_ALG_DEFAULT", CONV_NUMERIC_LITERAL, API_SPARSE)),
         ("CUSPARSE_SPMM_COO_ALG1", ("HIPSPARSE_SPMM_COO_ALG1", CONV_NUMERIC_LITERAL, API_SPARSE)),
         ("CUSPARSE_SPMM_COO_ALG2", ("HIPSPARSE_SPMM_COO_ALG2", CONV_NUMERIC_LITERAL, API_SPARSE)),
+        ("CUSPARSE_COOMM_ALG1", ("HIPSPARSE_COOMM_ALG1", CONV_NUMERIC_LITERAL, API_SPARSE)),
+        ("CUSPARSE_COOMM_ALG2", ("HIPSPARSE_COOMM_ALG2", CONV_NUMERIC_LITERAL, API_SPARSE)),
+        ("CUSPARSE_COOMM_ALG3", ("HIPSPARSE_COOMM_ALG3", CONV_NUMERIC_LITERAL, API_SPARSE)),
         ("CUSPARSE_COOMV_ALG", ("HIPSPARSE_COOMV_ALG", CONV_NUMERIC_LITERAL, API_SPARSE)),
+        ("CUSPARSE_CSRMM_ALG1", ("HIPSPARSE_CSRMM_ALG1", CONV_NUMERIC_LITERAL, API_SPARSE)),
         ("CUSPARSE_SPMM_CSR_ALG1", ("HIPSPARSE_CSRMM_ALG1", CONV_NUMERIC_LITERAL, API_SPARSE)),
         ("CUSPARSE_SPGEMM_DEFAULT", ("HIPSPARSE_SPGEMM_DEFAULT", CONV_NUMERIC_LITERAL, API_SPARSE)),
         ("CUSPARSE_SDDMM_ALG_DEFAULT", ("HIPSPARSE_SDDMM_ALG_DEFAULT", CONV_NUMERIC_LITERAL, API_SPARSE)),
@@ -8041,6 +8101,192 @@ CUDA_SPARSE_MAP = collections.OrderedDict(
             "CUSPARSE_MATRIX_TYPE_GENERAL",
             ("HIPSPARSE_MATRIX_TYPE_GENERAL", CONV_NUMERIC_LITERAL, API_SPARSE),
         ),
+    ]
+)
+
+CUDA_SOLVER_MAP = collections.OrderedDict(
+    [
+        ("cuComplex", ("hipComplex", CONV_TYPE, API_SOLVER)),
+        ("cuDoubleComplex", ("hipDoubleComplex", CONV_TYPE, API_SOLVER)),
+        ("cublasOperation_t", ("hipsolverOperation_t", CONV_TYPE, API_SOLVER)),
+        ("CUBLAS_OP_N", ("HIPSOLVER_OP_N", CONV_NUMERIC_LITERAL, API_SOLVER)),
+        (
+            "CUBLAS_OP_T",
+            ("HIPSOLVER_OP_T", CONV_NUMERIC_LITERAL, API_SOLVER),
+        ),
+        (
+            "CUBLAS_OP_C",
+            ("HIPSOLVER_OP_C", CONV_NUMERIC_LITERAL, API_SOLVER),
+        ),
+        ("cublasFillMode_t", ("hipsolverFillMode_t", CONV_TYPE, API_SOLVER)),
+        (
+            "CUBLAS_FILL_MODE_LOWER",
+            ("HIPSOLVER_FILL_MODE_LOWER", CONV_NUMERIC_LITERAL, API_SOLVER),
+        ),
+        (
+            "CUBLAS_FILL_MODE_UPPER",
+            ("HIPSOLVER_FILL_MODE_UPPER", CONV_NUMERIC_LITERAL, API_SOLVER),
+        ),
+        ("cublasSideMode_t", ("hipsolverSideMode_t", CONV_TYPE, API_SOLVER)),
+        ("CUBLAS_SIDE_LEFT", ("HIPSOLVER_SIDE_LEFT", CONV_NUMERIC_LITERAL, API_SOLVER)),
+        ("CUBLAS_SIDE_RIGHT", ("HIPSOLVER_SIDE_RIGHT", CONV_NUMERIC_LITERAL, API_SOLVER)),
+
+        ("cusolverEigMode_t", ("hipsolverEigMode_t", CONV_TYPE, API_SOLVER)),
+        ("CUSOLVER_EIG_MODE_VECTOR", ("HIPSOLVER_EIG_MODE_VECTOR", CONV_NUMERIC_LITERAL, API_SOLVER)),
+        ("CUSOLVER_EIG_MODE_NOVECTOR", ("HIPSOLVER_EIG_MODE_NOVECTOR", CONV_NUMERIC_LITERAL, API_SOLVER)),
+
+        ("syevjInfo_t", ("hipsolverSyevjInfo_t", CONV_TYPE, API_SOLVER)),
+        ("cusolverDnCreateSyevjInfo", ("hipsolverDnCreateSyevjInfo", CONV_MATH_FUNC, API_SOLVER)),
+        ("cusolverDnXsyevjSetSortEig", ("hipsolverDnXsyevjSetSortEig", CONV_MATH_FUNC, API_SOLVER)),
+        ("cusolverDnDestroySyevjInfo", ("hipsolverDnDestroySyevjInfo", CONV_MATH_FUNC, API_SOLVER)),
+
+        ("gesvdjInfo_t", ("hipsolverGesvdjInfo_t", CONV_TYPE, API_SOLVER)),
+        ("cusolverDnCreateGesvdjInfo", ("hipsolverDnCreateGesvdjInfo", CONV_MATH_FUNC, API_SOLVER)),
+        ("cusolverDnXgesvdjSetSortEig", ("hipsolverDnXgesvdjSetSortEig", CONV_MATH_FUNC, API_SOLVER)),
+        ("cusolverDnDestroyGesvdjInfo", ("hipsolverDnDestroyGesvdjInfo", CONV_MATH_FUNC, API_SOLVER)),
+
+        ("cusolverDnHandle_t", ("hipsolverDnHandle_t", CONV_TYPE, API_SOLVER)),
+        ("cusolverDnCreate", ("hipsolverDnCreate", CONV_MATH_FUNC, API_SOLVER)),
+        ("cusolverDnSetStream", ("hipsolverDnSetStream", CONV_MATH_FUNC, API_SOLVER)),
+        ("cusolverDnDestroy", ("hipsolverDnDestroy", CONV_MATH_FUNC, API_SOLVER)),
+
+        # from aten/src/ATen/native/hip/linalg/HIPSolver.cpp
+        ('cusolverDnParams_t', ('hipsolverDnParams_t', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCgeqrf', ('hipsolverDnCgeqrf', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCgeqrf_bufferSize', ('hipsolverDnCgeqrf_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCgesvd', ('hipsolverDnCgesvd', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCgesvd_bufferSize', ('hipsolverDnCgesvd_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCgesvdj', ('hipsolverDnCgesvdj', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCgesvdjBatched', ('hipsolverDnCgesvdjBatched', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCgesvdjBatched_bufferSize', ('hipsolverDnCgesvdjBatched_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCgesvdj_bufferSize', ('hipsolverDnCgesvdj_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCgetrf', ('hipsolverDnCgetrf', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCgetrf_bufferSize', ('hipsolverDnCgetrf_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCgetrs', ('hipsolverDnCgetrs', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCheevd', ('hipsolverDnCheevd', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCheevd_bufferSize', ('hipsolverDnCheevd_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCheevj', ('hipsolverDnCheevj', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCheevjBatched', ('hipsolverDnCheevjBatched', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCheevjBatched_bufferSize', ('hipsolverDnCheevjBatched_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCheevj_bufferSize', ('hipsolverDnCheevj_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCpotrf', ('hipsolverDnCpotrf', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCpotrfBatched', ('hipsolverDnCpotrfBatched', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCpotrf_bufferSize', ('hipsolverDnCpotrf_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCpotrs', ('hipsolverDnCpotrs', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCpotrsBatched', ('hipsolverDnCpotrsBatched', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCungqr', ('hipsolverDnCungqr', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCungqr_bufferSize', ('hipsolverDnCungqr_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCunmqr', ('hipsolverDnCunmqr', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCunmqr_bufferSize', ('hipsolverDnCunmqr_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDgeqrf', ('hipsolverDnDgeqrf', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDgeqrf_bufferSize', ('hipsolverDnDgeqrf_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDgesvd', ('hipsolverDnDgesvd', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDgesvd_bufferSize', ('hipsolverDnDgesvd_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDgesvdj', ('hipsolverDnDgesvdj', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDgesvdjBatched', ('hipsolverDnDgesvdjBatched', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDgesvdjBatched_bufferSize', ('hipsolverDnDgesvdjBatched_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDgesvdj_bufferSize', ('hipsolverDnDgesvdj_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDgetrf', ('hipsolverDnDgetrf', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDgetrf_bufferSize', ('hipsolverDnDgetrf_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDgetrs', ('hipsolverDnDgetrs', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDorgqr', ('hipsolverDnDorgqr', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDorgqr_bufferSize', ('hipsolverDnDorgqr_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDormqr', ('hipsolverDnDormqr', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDormqr_bufferSize', ('hipsolverDnDormqr_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDpotrf', ('hipsolverDnDpotrf', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDpotrfBatched', ('hipsolverDnDpotrfBatched', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDpotrf_bufferSize', ('hipsolverDnDpotrf_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDpotrs', ('hipsolverDnDpotrs', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDpotrsBatched', ('hipsolverDnDpotrsBatched', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDsyevd', ('hipsolverDnDsyevd', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDsyevd_bufferSize', ('hipsolverDnDsyevd_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDsyevj', ('hipsolverDnDsyevj', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDsyevjBatched', ('hipsolverDnDsyevjBatched', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDsyevjBatched_bufferSize', ('hipsolverDnDsyevjBatched_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDsyevj_bufferSize', ('hipsolverDnDsyevj_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSgeqrf', ('hipsolverDnSgeqrf', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSgeqrf_bufferSize', ('hipsolverDnSgeqrf_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSgesvd', ('hipsolverDnSgesvd', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSgesvd_bufferSize', ('hipsolverDnSgesvd_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSgesvdj', ('hipsolverDnSgesvdj', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSgesvdjBatched', ('hipsolverDnSgesvdjBatched', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSgesvdjBatched_bufferSize', ('hipsolverDnSgesvdjBatched_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSgesvdj_bufferSize', ('hipsolverDnSgesvdj_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSgetrf', ('hipsolverDnSgetrf', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSgetrf_bufferSize', ('hipsolverDnSgetrf_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSgetrs', ('hipsolverDnSgetrs', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSorgqr', ('hipsolverDnSorgqr', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSorgqr_bufferSize', ('hipsolverDnSorgqr_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSormqr', ('hipsolverDnSormqr', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSormqr_bufferSize', ('hipsolverDnSormqr_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSpotrf', ('hipsolverDnSpotrf', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSpotrfBatched', ('hipsolverDnSpotrfBatched', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSpotrf_bufferSize', ('hipsolverDnSpotrf_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSpotrs', ('hipsolverDnSpotrs', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSpotrsBatched', ('hipsolverDnSpotrsBatched', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSsyevd', ('hipsolverDnSsyevd', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSsyevd_bufferSize', ('hipsolverDnSsyevd_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSsyevj', ('hipsolverDnSsyevj', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSsyevjBatched', ('hipsolverDnSsyevjBatched', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSsyevjBatched_bufferSize', ('hipsolverDnSsyevjBatched_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSsyevj_bufferSize', ('hipsolverDnSsyevj_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXgeqrf', ('hipsolverDnXgeqrf', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXgeqrf_bufferSize', ('hipsolverDnXgeqrf_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXpotrf', ('hipsolverDnXpotrf', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXpotrf_bufferSize', ('hipsolverDnXpotrf_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXpotrs', ('hipsolverDnXpotrs', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXsyevd', ('hipsolverDnXsyevd', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXsyevd_bufferSize', ('hipsolverDnXsyevd_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZgeqrf', ('hipsolverDnZgeqrf', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZgeqrf_bufferSize', ('hipsolverDnZgeqrf_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZgesvd', ('hipsolverDnZgesvd', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZgesvd_bufferSize', ('hipsolverDnZgesvd_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZgesvdj', ('hipsolverDnZgesvdj', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZgesvdjBatched', ('hipsolverDnZgesvdjBatched', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZgesvdjBatched_bufferSize', ('hipsolverDnZgesvdjBatched_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZgesvdj_bufferSize', ('hipsolverDnZgesvdj_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZgetrf', ('hipsolverDnZgetrf', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZgetrf_bufferSize', ('hipsolverDnZgetrf_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZgetrs', ('hipsolverDnZgetrs', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZheevd', ('hipsolverDnZheevd', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZheevd_bufferSize', ('hipsolverDnZheevd_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZheevj', ('hipsolverDnZheevj', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZheevjBatched', ('hipsolverDnZheevjBatched', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZheevjBatched_bufferSize', ('hipsolverDnZheevjBatched_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZheevj_bufferSize', ('hipsolverDnZheevj_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZpotrf', ('hipsolverDnZpotrf', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZpotrfBatched', ('hipsolverDnZpotrfBatched', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZpotrf_bufferSize', ('hipsolverDnZpotrf_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZpotrs', ('hipsolverDnZpotrs', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZpotrsBatched', ('hipsolverDnZpotrsBatched', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZungqr', ('hipsolverDnZungqr', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZungqr_bufferSize', ('hipsolverDnZungqr_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZunmqr', ('hipsolverDnZunmqr', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZunmqr_bufferSize', ('hipsolverDnZunmqr_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+
+        # sytrf
+        ('cusolverDnDsytrf_bufferSize', ('hipsolverDnDsytrf_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSsytrf_bufferSize', ('hipsolverDnSsytrf_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZsytrf_bufferSize', ('hipsolverDnZsytrf_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCsytrf_bufferSize', ('hipsolverDnCsytrf_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDsytrf', ('hipsolverDnDsytrf', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSsytrf', ('hipsolverDnSsytrf', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZsytrf', ('hipsolverDnZsytrf', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCsytrf', ('hipsolverDnCsytrf', CONV_MATH_FUNC, API_SOLVER)),
+
+        # gesdva strided
+        ('cusolverDnSgesvdaStridedBatched_bufferSize', ('hipsolverDnSgesvdaStridedBatched_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDgesvdaStridedBatched_bufferSize', ('hipsolverDnDgesvdaStridedBatched_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCgesvdaStridedBatched_bufferSize', ('hipsolverDnCgesvdaStridedBatched_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZgesvdaStridedBatched_bufferSize', ('hipsolverDnZgesvdaStridedBatched_bufferSize', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnSgesvdaStridedBatched', ('hipsolverDnSgesvdaStridedBatched', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnDgesvdaStridedBatched', ('hipsolverDnDgesvdaStridedBatched', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnCgesvdaStridedBatched', ('hipsolverDnCgesvdaStridedBatched', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnZgesvdaStridedBatched', ('hipsolverDnZgesvdaStridedBatched', CONV_MATH_FUNC, API_SOLVER)),
+
+        # gesvdj SetXXX
+        ('cusolverDnXgesvdjSetTolerance', ('hipsolverDnXgesvdjSetTolerance', CONV_MATH_FUNC, API_SOLVER)),
+        ('cusolverDnXgesvdjSetMaxSweeps', ('hipsolverDnXgesvdjSetMaxSweeps', CONV_MATH_FUNC, API_SOLVER)),
     ]
 )
 
@@ -8156,6 +8402,10 @@ PYTORCH_SPECIFIC_MAPPINGS = collections.OrderedDict(
         (
             "setCurrentCUDAStream",
             ("setCurrentHIPStreamMasqueradingAsCUDA", API_PYTORCH),
+        ),
+        (
+            "ATen/cudnn/Handle.h",
+            ("ATen/miopen/Handle.h", API_PYTORCH),
         ),
         # TODO: Undo this special-case; see the header for motivation behind this
         # hack.  It's VERY important this is only applied to PyTorch HIPify.
@@ -8344,6 +8594,7 @@ CUDA_TO_HIP_MAPPINGS = [
     CUDA_TYPE_NAME_MAP,
     CUDA_INCLUDE_MAP,
     CUDA_SPARSE_MAP,
+    CUDA_SOLVER_MAP,
     C10_MAPPINGS,
     PYTORCH_SPECIFIC_MAPPINGS,
     CAFFE2_SPECIFIC_MAPPINGS,

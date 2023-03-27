@@ -66,6 +66,7 @@ install_ubuntu() {
     software-properties-common \
     wget \
     sudo \
+    unzip \
     vim \
     jq \
     libtool \
@@ -134,8 +135,8 @@ install_centos() {
     make \
     sudo \
     wget \
-    vim \
     unzip \
+    vim \
     gdb
 
   if [[ $OS_VERSION == 9 ]]

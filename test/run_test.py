@@ -248,10 +248,7 @@ WINDOWS_BLOCKLIST = [
 ] + FSDP_TEST
 
 ROCM_BLOCKLIST = [
-    "distributed/rpc/test_faulty_agent",
-    "distributed/rpc/test_tensorpipe_agent",
     "distributed/rpc/test_share_memory",
-    "distributed/rpc/cuda/test_tensorpipe_agent",
     "distributed/_shard/checkpoint/test_checkpoint"
     "distributed/_shard/checkpoint/test_file_system_checkpoint"
     "distributed/_shard/sharding_spec/test_sharding_spec",
@@ -276,6 +273,12 @@ ROCM_BLOCKLIST = [
     "test_cuda_nvml_based_avail",
     "test_jit_cuda_fuser", # Skipped until NVFuser enabled - https://ontrack-internal.amd.com/browse/SWDEV-361875
     "test_openmp",
+    "inductor/test_minifier",  #inductor is supported in ROCm pytorch 2.x onwards
+    "inductor/test_perf",
+    "inductor/test_select_algorithm",
+    "inductor/test_smoke",
+    "inductor/test_torchinductor",
+    "inductor/test_torchinductor_opinfo",
 ]
 
 RUN_PARALLEL_BLOCKLIST = [
