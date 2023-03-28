@@ -12,7 +12,6 @@
 #include <c10/util/Exception.h>
 #include <c10/cuda/CUDAException.h>
 
-
 namespace c10 {
 
 class CuDNNError : public c10::Error {
