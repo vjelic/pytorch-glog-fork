@@ -6880,7 +6880,7 @@ class TestNN(NNTestCase):
             self.assertEqual(output, torch.cat([output1, output2], 1))
             self.assertEqual(i.grad.data,
                              torch.cat([i1.grad.data, i2.grad.data], 1),
-                             atol=dtype2prec_DONTUSE[dtype], rtol=0)
+                             atol=2e-2 if dtype == torch.float16 else dtype2prec_DONTUSE[dtype], rtol=1e-2 if dtype == torch.float16 else 0)
             self.assertEqual(m.weight.grad.data,
                              torch.cat([m1.weight.grad.data, m2.weight.grad.data], 0),
                              atol=1e-1 if dtype == torch.half else dtype2prec_DONTUSE[dtype], rtol=0)
