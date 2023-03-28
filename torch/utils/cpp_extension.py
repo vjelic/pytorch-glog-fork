@@ -165,7 +165,6 @@ CUDA was not found on the system, please set the CUDA_HOME or the CUDA_PATH
 environment variable or add NVCC to your system PATH. The extension compilation will fail.
 '''
 ROCM_HOME = _find_rocm_home()
-MIOPEN_HOME = _join_rocm_home('miopen') if ROCM_HOME else None
 IS_HIP_EXTENSION = True if ((ROCM_HOME is not None) and (torch.version.hip is not None)) else False
 ROCM_VERSION = None
 if torch.version.hip is not None:
@@ -986,8 +985,6 @@ def include_paths(cuda: bool = False) -> List[str]:
     if cuda and IS_HIP_EXTENSION:
         paths.append(os.path.join(lib_include, 'THH'))
         paths.append(_join_rocm_home('include'))
-        if MIOPEN_HOME is not None:
-            paths.append(os.path.join(MIOPEN_HOME, 'include'))
     elif cuda:
         cuda_home_include = _join_cuda_home('include')
         # if we have the Debian/Ubuntu packages for cuda, we get /usr as cuda home.
@@ -1644,13 +1641,13 @@ def _get_rocm_arch_flags(cflags: Optional[List[str]] = None) -> List[str]:
     # (from `extra_compile_args`)
     if cflags is not None:
         for flag in cflags:
-            if 'amdgpu-target' in flag:
+            if 'amdgpu-target' in flag or 'offload-arch' in flag:
                 return ['-fno-gpu-rdc']
     # Use same defaults from file cmake/public/LoadHIP.cmake.
     # Must keep in sync if defaults change.
     # Allow env var to override, just like during initial cmake build.
     archs = os.environ.get('PYTORCH_ROCM_ARCH', 'gfx900;gfx906;gfx908;gfx90a')
-    flags = ['--amdgpu-target=%s' % arch for arch in archs.split(';')]
+    flags = ['--offload-arch=%s' % arch for arch in archs.split(';')]
     flags += ['-fno-gpu-rdc']
     return flags
 
