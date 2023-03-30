@@ -75,6 +75,8 @@ DOCKERFILE="${OS}/Dockerfile"
 # When using ubuntu - 22.04, start from Ubuntu docker image, instead of nvidia/cuda docker image.
 if [[ "$image" == *cuda* && "$UBUNTU_VERSION" != "22.04" ]]; then
   DOCKERFILE="${OS}-cuda/Dockerfile"
+elif [[ "$image" == *rocm*asan* ]]; then
+  DOCKERFILE="${OS}-rocm-asan/Dockerfile"
 elif [[ "$image" == *rocm* ]]; then
   DOCKERFILE="${OS}-rocm/Dockerfile"
 fi
@@ -282,6 +284,14 @@ case "$image" in
     VISION=yes
     ROCM_VERSION=5.4
     ;;
+  pytorch-linux-focal-rocm5.5-asan-py3.8)
+    ANACONDA_PYTHON_VERSION=3.8
+    GCC_VERSION=9
+    PROTOBUF=yes
+    DB=yes
+    VISION=yes
+    ROCM_VERSION=5.5
+    ;;
   pytorch-linux-focal-py3.7-gcc7)
     ANACONDA_PYTHON_VERSION=3.7
     CMAKE_VERSION=3.16.9  # Required for precompiled header support
@@ -366,8 +376,8 @@ fi
 # Build image
 # TODO: build-arg THRIFT is not turned on for any image, remove it once we confirm
 # it's no longer needed.
+       #--no-cache \
 docker build \
-       --no-cache \
        --progress=plain \
        --build-arg "TRAVIS_DL_URL_PREFIX=${TRAVIS_DL_URL_PREFIX}" \
        --build-arg "BUILD_ENVIRONMENT=${image}" \
