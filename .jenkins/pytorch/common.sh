@@ -37,8 +37,14 @@ if [[ "${TEST_CONFIG:-}" == *xla* ]] || \
    [[ "$BUILD_ENVIRONMENT" == *linux-bionic* ]] || \
    [[ "$BUILD_ENVIRONMENT" == *linux-focal* ]]; then
   if ! which conda; then
-    echo "Expected ${BUILD_ENVIRONMENT} to use conda, but 'which conda' returns empty"
-    exit 1
+    echo "Expected ${BUILD_ENVIRONMENT} to use conda, but 'which conda' returns empty, trying pip"
+    if ! which pip; then
+      echo "Expected ${BUILD_ENVIRONMENT} to fall back to pip, but 'which pip' returns empty"
+      exit 1
+    else
+      pip install cmake
+      export PATH="${HOME}/.local/bin:${PATH}"
+    fi
   else
     conda install -q -y cmake
   fi
