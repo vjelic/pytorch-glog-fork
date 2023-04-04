@@ -7,7 +7,7 @@ install_magma() {
     git clone https://bitbucket.org/icl/magma.git
     pushd magma
     # fix for magma_queue memory leak issue
-    git checkout c62d700d880c7283b33fb1d615d62fc9c7f7ca21
+    git checkout 28592a7170e4b3707ed92644bf4a689ed600c27f
     cp make.inc-examples/make.inc.hip-gcc-mkl make.inc
     echo 'LIBDIR += -L$(MKLROOT)/lib' >> make.inc
     echo 'LIB += -Wl,--enable-new-dtags -Wl,--rpath,/opt/rocm/lib -Wl,--rpath,$(MKLROOT)/lib -Wl,--rpath,/opt/rocm/magma/lib' >> make.inc
