@@ -31,8 +31,8 @@
 
 #if defined(USE_ROCM)
 
-// hipSparse const API added in v2.3.6
-#if HIPSPARSE_VERSION >= 200306
+// hipSparse const API added in v2.4.0
+#if HIPSPARSE_VERSION >= 200400
 #define AT_USE_HIPSPARSE_CONST_DESCRIPTORS() 1
 #define AT_USE_HIPSPARSE_GENERIC_52_API() 0
 #define AT_USE_HIPSPARSE_GENERIC_API() 1
@@ -53,7 +53,7 @@
 #define AT_USE_HIPSPARSE_GENERIC_API() 0
 #endif
 
-#endif // HIPSPARSE_VERSION >= 20306
+#endif // HIPSPARSE_VERSION >= 200400
 #endif // USE_ROCM
 
 // cuSparse Generic API spsv function was added in CUDA 11.3.0
