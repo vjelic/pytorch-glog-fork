@@ -1498,6 +1498,9 @@ make_fallback(aten.zeros.names)
 # fails accuracy on test_torch.py, and explicit fallback required to avoid warn=True on implicit
 make_fallback(aten.exponential.default, warn=False)
 
+# ROCm specific fallback, perf issues are observed when registered
+make_fallback(aten.miopen_batch_norm, warn=False)
+
 
 @register_lowering(aten.clone)
 def clone(x, *, memory_format=0):
