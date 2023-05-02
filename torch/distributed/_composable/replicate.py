@@ -22,7 +22,6 @@ def replicate(
         >>> module = nn.Linear(3, 3)
         >>> replicate(module)
     """
-    torch._C._log_api_usage_once("torch.distributed.replicate")
     _ReplicateState().mark_modules(module, **kwargs)
     return module
 

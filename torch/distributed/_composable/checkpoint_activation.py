@@ -212,7 +212,6 @@ def checkpoint(module: nn.Module, *, use_reentrant: bool = True) -> nn.Module:
         >>> model(torch.zeros(2, 10)).sum().backward()
 
     """
-    torch._C._log_api_usage_once("torch.distributed.checkpoint")
 
     def forward_pre_hook(module: nn.Module, inputs: Tuple[Any, ...]) -> None:
         if checkpoint.state(module).enable_hook:
