@@ -10,7 +10,6 @@ from typing import (
     cast,
 )
 import copy
-import warnings
 from functools import reduce
 import weakref
 
@@ -28,9 +27,6 @@ from torch.distributed._shard.sharding_spec.api import (
 from torch.distributed._shard.sharding_spec._internals import (
     check_tensor,
     validate_non_overlapping_shards_metadata,
-)
-from torch.distributed._shard._utils import (
-    DEPRECATE_MSG,
 )
 
 from .metadata import TensorProperties, ShardedTensorMetadata
@@ -844,8 +840,6 @@ class ShardedTensor(ShardedTensorBase):
                  We fully rely on the user to ensure local tensor is sharded based on the
                  sharding spec.
         """
-        warnings.warn(DEPRECATE_MSG)
-
         if not local_tensor.is_contiguous():
             raise ValueError('local_tensor is not a contiguous Tensor.')
 
@@ -1012,8 +1006,6 @@ class ShardedTensor(ShardedTensorBase):
             tensor([[3], [3], [5], [5], [7], [7], [9], [9]]) # Rank 2
             tensor([[4], [4], [6], [6], [8], [8], [10], [10]]) # Rank 3
         """
-        warnings.warn(DEPRECATE_MSG)
-
         if (
             not isinstance(resharding_spec, shard_spec.ChunkShardingSpec) or
             not isinstance(self._sharding_spec, shard_spec.ChunkShardingSpec)
@@ -1082,7 +1074,6 @@ class ShardedTensor(ShardedTensorBase):
                 f"torch function '{func.__name__}', with args: {args} and "
                 f"kwargs: {kwargs} not supported for ShardedTensor!")
 
-        warnings.warn(DEPRECATE_MSG)
         # Find ShardedTensor instance to get process_group and sharding_spec.
         st_instance = None
 
