@@ -406,15 +406,13 @@ class QuantizedLSTM(QuantizedRNNBase):
         return output, self.permute_hidden(hidden, unsorted_indices)
 
     @torch.jit.script_method
-    def forward_packed(
-        self, input: PackedSequence, hx: Optional[Tuple[Tensor, Tensor]] = None
-    ) -> Tuple[PackedSequence, Tuple[Tensor, Tensor]]:
-        input_, batch_sizes, sorted_indices, unsorted_indices = input
-        max_batch_size = int(batch_sizes[0])
+    def forward_packed(self, input: PackedSequence, hx: Optional[Tuple[Tensor, Tensor]] = None
+                       ) -> Tuple[PackedSequence, Tuple[Tensor, Tensor]]:
+        input, batch_sizes, sorted_indices, unsorted_indices = input
+        max_batch_size = batch_sizes[0]
+        max_batch_size = int(max_batch_size)
 
-        output, hidden = self.forward_impl(
-            input_, hx, batch_sizes, max_batch_size, sorted_indices
-        )
+        output, hidden = self.forward_impl(input, hx, batch_sizes, max_batch_size, sorted_indices)
 
         output = PackedSequence(output, batch_sizes, sorted_indices, unsorted_indices)
         return output, self.permute_hidden(hidden, unsorted_indices)
@@ -492,12 +490,11 @@ class QuantizedGRU(QuantizedRNNBase):
 
     @torch.jit.script_method
     def forward_packed(self, input: PackedSequence, hx: Optional[Tensor] = None) -> Tuple[PackedSequence, Tensor]:
-        input_, batch_sizes, sorted_indices, unsorted_indices = input
-        max_batch_size = int(batch_sizes[0])
+        input, batch_sizes, sorted_indices, unsorted_indices = input
+        max_batch_size = batch_sizes[0]
+        max_batch_size = int(max_batch_size)
 
-        output, hidden = self.forward_impl(
-            input_, hx, batch_sizes, max_batch_size, sorted_indices
-        )
+        output, hidden = self.forward_impl(input, hx, batch_sizes, max_batch_size, sorted_indices)
 
         output = PackedSequence(output, batch_sizes, sorted_indices, unsorted_indices)
         return output, self.permute_hidden(hidden, unsorted_indices)

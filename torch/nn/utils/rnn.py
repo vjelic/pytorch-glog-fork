@@ -1,21 +1,24 @@
+from collections import namedtuple
 import warnings
-from typing import Iterable, List, NamedTuple, Tuple, Union
 
 import torch
 from torch import Tensor
 from ... import _VF
 from ..._jit_internal import Optional
 
+from typing import List, Tuple, Union, Iterable
+
 
 __all__ = ['PackedSequence', 'invert_permutation', 'pack_padded_sequence', 'pad_packed_sequence', 'pad_sequence',
            'unpad_sequence', 'pack_sequence', 'unpack_sequence']
 
+PackedSequence_ = namedtuple('PackedSequence_',
+                             ['data', 'batch_sizes', 'sorted_indices', 'unsorted_indices'])
 
-class PackedSequence_(NamedTuple):
-    data: torch.Tensor
-    batch_sizes: torch.Tensor
-    sorted_indices: Optional[torch.Tensor]
-    unsorted_indices: Optional[torch.Tensor]
+# type annotation for PackedSequence_ to make it compatible with TorchScript
+PackedSequence_.__annotations__ = {'data': torch.Tensor, 'batch_sizes': torch.Tensor,
+                                   'sorted_indices': Optional[torch.Tensor],
+                                   'unsorted_indices': Optional[torch.Tensor]}
 
 
 def bind(optional, fn):

@@ -1,23 +1,10 @@
-from typing import (
-    Any,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    TypeVar,
-    Union,
-    NamedTuple,
-    overload,
-)
-
+from collections import namedtuple
+from typing import Any, List, Optional, overload, Union, TypeVar, Tuple, Sequence
 from torch import Tensor
-from torch.types import _device, _dtype
+from torch.types import _dtype, _device
 
-class PackedSequence_(NamedTuple):
-    data: Tensor
-    batch_sizes: Tensor
-    sorted_indices: Optional[Tensor]
-    unsorted_indices: Optional[Tensor]
+PackedSequence_ = namedtuple('PackedSequence_', ['data', 'batch_sizes', 'sorted_indices', 'unsorted_indices'])
+
 
 def bind(optional: Any, fn: Any): ...
 
