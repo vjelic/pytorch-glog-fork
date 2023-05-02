@@ -583,6 +583,8 @@ void loopnestRandomization(int64_t seed, LoopNest& l) {
         }
 
         case COMPRESS_ALL_BUFFERS: {
+          auto buffers = BufFinder::find(l.root_stmt());
+
           message = "compressAllBuffers(l.root_stmt());\n";
           randomization_helper::printHistory(n_transform, message);
           l.compressAllBuffers(l.root_stmt());
