@@ -638,7 +638,6 @@ class NativeFunction:
         raw_dispatch = e.pop("dispatch", None)
         assert raw_dispatch is None or isinstance(raw_dispatch, dict), e
         dispatch: Dict[DispatchKey, BackendMetadata] = {}
-        num_dispatch_keys: int = 0
         if raw_dispatch is not None:
             assert not manual_kernel_registration, (
                 "cannot specify both manual_kernel_registration and dispatch; with "
@@ -651,8 +650,6 @@ class NativeFunction:
                 assert isinstance(ks, str), e
                 for k in ks.split(","):
                     dispatch_key = DispatchKey.parse(k.strip())
-                    num_dispatch_keys += 1
-
                     if ignore_keys and dispatch_key in ignore_keys:
                         continue
                     assert dispatch_key in dispatch_keys, (
@@ -680,12 +677,7 @@ class NativeFunction:
                     ):
                         redundant_composite_implicit_autograd = True
 
-            # We count the number of dispatch keys which have not been ignored to prevent a dispatch table
-            # in which all backend keys are ignored but necessarily kept, remaining compositeimplicit,
-            # from being treated as redundant.
-            assert not (
-                num_dispatch_keys == 1 and redundant_composite_implicit_autograd
-            ), (
+            assert not (len(dispatch) == 1 and redundant_composite_implicit_autograd), (
                 "unnecessary dispatch table for this function; just delete the dispatch "
                 "key entirely"
             )
@@ -695,7 +687,6 @@ class NativeFunction:
                 structured_delegate
                 or dispatch.keys() != {DispatchKey.CompositeImplicitAutograd}
                 or dispatch[DispatchKey.CompositeImplicitAutograd].supports_symint()
-                or num_dispatch_keys != 1
             ), (
                 f"unexpected name for singleton CompositeImplicitAutograd dispatch entry: expected {cpp.name(func)} "
                 f"but got {dispatch[DispatchKey.CompositeImplicitAutograd]}.  Rename your implementation to the expected "
