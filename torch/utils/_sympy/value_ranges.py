@@ -360,11 +360,6 @@ class ValueRangeAnalysis:
 
     @classmethod
     def pow(cls, a, b):
-        def is_integer(val):
-            return isinstance(val, int) or (
-                hasattr(val, "is_integer") and val.is_integer
-            )
-
         a = ValueRanges.wrap(a)
         b = ValueRanges.wrap(b)
         if a.is_singleton() and b.is_singleton():
@@ -372,7 +367,7 @@ class ValueRangeAnalysis:
             if r == sympy.zoo:
                 return ValueRanges.unknown()
             return ValueRanges.wrap(r)
-        elif b.is_singleton() and is_integer(b.lower) and b.lower >= 0:
+        elif b.is_singleton() and b.lower >= 0 and isinstance(b.lower, int):
             i = ValueRanges.wrap(1)
             for _ in range(b.lower):
                 i = cls.mul(i, a)
