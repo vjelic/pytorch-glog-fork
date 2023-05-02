@@ -5,7 +5,7 @@ import inspect
 from typing import Dict, List
 
 from .. import variables
-from ..bytecode_transformation import create_call_function, create_instruction
+from ..bytecode_transformation import create_instruction
 from ..eval_frame import skip_code
 from ..exc import unimplemented
 from ..source import AttrSource, GlobalWeakRefSource
@@ -35,10 +35,12 @@ class ConstDictVariable(VariableTracker):
     def reconstruct(self, codegen):
         for key, value in self.items.items():
             if istensor(key):
-                codegen.append_output(
-                    codegen.create_load_global(global_key_name(key), True, add=True)
+                codegen.extend_output(
+                    [
+                        codegen.create_load_global(global_key_name(key), add=True),
+                        create_instruction("CALL_FUNCTION", 0),
+                    ]
                 )
-                codegen.extend_output(create_call_function(0, False))
             else:
                 codegen.append_output(codegen.create_load_const(key))
             codegen(self.items[key])
@@ -365,7 +367,10 @@ class DataClassVariable(ConstDictVariable):
         keys = tuple(self.items.keys())
         for key in keys:
             codegen(self.items[key])
-        return codegen.create_call_function_kw(len(keys), keys, True)
+        return [
+            codegen.create_load_const(keys),
+            create_instruction("CALL_FUNCTION_KW", len(keys)),
+        ]
 
     def call_method(
         self,
