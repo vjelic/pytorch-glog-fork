@@ -11,7 +11,7 @@ ARG BASE_IMAGE=ubuntu:18.04
 ARG PYTHON_VERSION=3.8
 
 FROM ${BASE_IMAGE} as dev-base
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         ca-certificates \
         ccache \
@@ -82,16 +82,15 @@ ARG TRITON_VERSION
 ARG TARGETPLATFORM
 ARG CUDA_VERSION
 LABEL com.nvidia.volumes.needed="nvidia_driver"
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
         libjpeg-dev \
-        libpng-dev \
-        && rm -rf /var/lib/apt/lists/*
+        libpng-dev
 COPY --from=conda-installs /opt/conda /opt/conda
 RUN if test -n "${TRITON_VERSION}" -a "${TARGETPLATFORM}" != "linux/arm64"; then \
-        DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends gcc; \
-        rm -rf /var/lib/apt/lists/*; \
+        apt install -y --no-install-recommends gcc; \
     fi
+RUN rm -rf /var/lib/apt/lists/*
 ENV PATH /opt/conda/bin:$PATH
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
