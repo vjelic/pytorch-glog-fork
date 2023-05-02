@@ -3898,15 +3898,9 @@ try:
         return TensorBox.create(ir.Wait.create(input))
 
     @register_lowering(aten.all_reduce)
-    def allreduce(input, reduce_op, tag, ranks, group_size):
+    def allreduce(input, reduce_op, tag, ranks, stride):
         return TensorBox.create(
-            ir.AllReduce.create(input, reduce_op, tag, ranks, group_size)
-        )
-
-    @register_lowering(aten.all_gather_into_tensor)
-    def all_gather_into_tensor(shard, tag, ranks, group_size):
-        return TensorBox.create(
-            ir.AllGatherIntoTensor.create(shard, tag, ranks, group_size)
+            ir.AllReduce.create(input, reduce_op, tag, ranks, stride)
         )
 
 except ImportError:
