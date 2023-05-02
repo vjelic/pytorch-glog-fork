@@ -41,7 +41,7 @@ class ShardedOptimizer(optim.Optimizer):
         self.state = self._optim.state
 
     def zero_grad(self, set_to_none: bool = True):  # type: ignore[override]
-        r"""Resets the gradients of all optimized :class:`torch.Tensor` s.
+        r"""Sets the gradients of all optimized :class:`torch.Tensor` s to zero.
 
         Args:
             set_to_none (bool): instead of setting to zero, set the grads to None.

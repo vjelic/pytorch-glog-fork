@@ -2331,7 +2331,7 @@ class Module:
         return self
 
     def zero_grad(self, set_to_none: bool = True) -> None:
-        r"""Resets gradients of all model parameters. See similar function
+        r"""Sets gradients of all model parameters to zero. See similar function
         under :class:`torch.optim.Optimizer` for more context.
 
         Args:
