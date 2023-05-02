@@ -5,7 +5,6 @@
 #import <torch/csrc/jit/backends/coreml/objc/PTMCoreMLModelWrapper.h>
 #import <torch/csrc/jit/backends/coreml/objc/PTMCoreMLTensorSpec.h>
 #import <torch/script.h>
-#import <fmt/format.h>
 
 #import <CoreML/CoreML.h>
 
@@ -18,7 +17,7 @@
 // This is a utility macro that can be used to throw an exception when a CoreML
 // API function produces a NSError. The exception will contain a message with
 // useful info extracted from the NSError.
-#define COREML_THROW_IF_ERROR(error, preamble, inputShapesStr)                   \
+#define COREML_THROW_IF_ERROR(error, preamble)                                   \
   do {                                                                           \
     if C10_LIKELY(error) {                                                       \
       throw c10::Error(                                                          \
@@ -29,8 +28,7 @@
               " Localized_description: ", error.localizedDescription.UTF8String, \
               " Domain: ", error.domain.UTF8String,                              \
               " Code: ", error.code,                                             \
-              " User Info: ", error.userInfo.description.UTF8String,             \
-              " Input Shapes: ", inputShapesStr));                               \
+              " User Info: ", error.userInfo.description.UTF8String));           \
     }                                                                            \
   } while (false)
 
@@ -47,26 +45,6 @@ struct CoreMLConfig {
   std::string backend = "CPU";
   bool allow_low_precision = true;
 };
-
-std::string tensorListToShapesStr(GenericList tensors) {
-  std::string str("[");
-  for (const auto featureIdx : c10::irange(tensors.size())) {
-    if (featureIdx > 0) {
-      str = fmt::format("{}, ", str);
-    }
-    str = fmt::format("{}[", str);
-    auto shape = tensors.get(featureIdx).toTensor().sizes();
-    for (const auto shapeIdx : c10::irange(shape.size())) {
-      if (shapeIdx > 0) {
-        str = fmt::format("{}, ", str);
-      }
-      str = fmt::format("{}{}", str, shape[shapeIdx]);
-    }
-    str = fmt::format("{}]", str);
-  }
-  str = fmt::format("{}]", str);
-  return str;
-}
 
 bool type_validity(const std::vector<TensorSpec>& specs) {
   for (const TensorSpec& spec : specs) {
@@ -191,7 +169,7 @@ class CoreMLBackend: public torch::jit::PyTorchBackendInterface {
     NSError *error;
     id<MLFeatureProvider> outputsProvider = [executor forward:&error];
     if (!outputsProvider) {
-      COREML_THROW_IF_ERROR(error, "Error running CoreML inference", tensorListToShapesStr(inputs));
+      COREML_THROW_IF_ERROR(error, "Error running CoreML inference");
     }
 
     return pack_outputs(model_wrapper->outputs, outputsProvider);
