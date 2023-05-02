@@ -18,7 +18,7 @@ from torch.testing import make_tensor
 from torch.testing._internal.common_dtype import (
     _dispatch_dtypes, floating_types, floating_types_and, complex_types, floating_and_complex_types,
     floating_and_complex_types_and, all_types_and_complex_and, all_types_and, all_types_and_complex, integral_types_and,
-    all_types, empty_types, complex_types_and, integral_types
+    all_types, empty_types, complex_types_and, integral_types, floating_types_and_half
 )
 from torch.testing._internal.common_device_type import \
     (onlyCPU, onlyCUDA, onlyNativeDeviceTypes, disablecuDNN, skipCUDAIfNoMagma, skipCUDAIfNoMagmaAndNoCusolver,
@@ -12338,7 +12338,7 @@ op_db: List[OpInfo] = [
            supports_fwgrad_bwgrad=True,
            supports_forward_ad=True,
            dtypes=floating_types_and(torch.uint8, torch.bfloat16),
-           dtypesIfCUDA=floating_types_and(torch.half, torch.bfloat16, torch.uint8),
+           dtypesIfCUDA=floating_types_and(torch.half, torch.uint8),
            sample_inputs_func=partial(sample_inputs_interpolate, 'nearest'),
            skips=(
                # RuntimeError: false
@@ -12354,7 +12354,7 @@ op_db: List[OpInfo] = [
            supports_fwgrad_bwgrad=True,
            supports_forward_ad=True,
            dtypes=floating_types_and(torch.bfloat16),
-           dtypesIfCUDA=floating_types_and(torch.half, torch.bfloat16),
+           dtypesIfCUDA=floating_types_and(torch.half),
            sample_inputs_func=partial(sample_inputs_interpolate, 'linear'),
            skips=(
                # RuntimeError: false
@@ -12370,7 +12370,7 @@ op_db: List[OpInfo] = [
            supports_autograd=True,
            supports_forward_ad=True,
            dtypes=floating_types_and(torch.uint8, torch.bfloat16),
-           dtypesIfCUDA=floating_types_and(torch.half, torch.bfloat16),
+           dtypesIfCUDA=floating_types_and(torch.half),
            gradcheck_nondet_tol=GRADCHECK_NONDET_TOL,
            sample_inputs_func=partial(sample_inputs_interpolate, 'bilinear'),
            skips=(
@@ -12387,7 +12387,7 @@ op_db: List[OpInfo] = [
            supports_forward_ad=True,
            supports_fwgrad_bwgrad=True,
            dtypes=floating_types_and(torch.bfloat16),
-           dtypesIfCUDA=floating_types_and(torch.half, torch.bfloat16),
+           dtypesIfCUDA=floating_types_and(torch.half),
            sample_inputs_func=partial(sample_inputs_interpolate, 'bicubic'),
            gradcheck_nondet_tol=GRADCHECK_NONDET_TOL,
            skips=(
@@ -12404,7 +12404,7 @@ op_db: List[OpInfo] = [
            supports_forward_ad=True,
            supports_fwgrad_bwgrad=True,
            dtypes=floating_types_and(torch.bfloat16),
-           dtypesIfCUDA=floating_types_and(torch.half, torch.bfloat16),
+           dtypesIfCUDA=floating_types_and(torch.half),
            gradcheck_nondet_tol=GRADCHECK_NONDET_TOL,
            sample_inputs_func=partial(sample_inputs_interpolate, 'trilinear'),
            skips=(
@@ -12436,7 +12436,7 @@ op_db: List[OpInfo] = [
            supports_forward_ad=True,
            supports_fwgrad_bwgrad=True,
            dtypes=floating_types_and(torch.uint8, torch.bfloat16),
-           dtypesIfCUDA=floating_types_and(torch.half, torch.bfloat16),
+           dtypesIfCUDA=floating_types_and(torch.half),
            gradcheck_nondet_tol=GRADCHECK_NONDET_TOL,
            sample_inputs_func=partial(sample_inputs_upsample, 'bilinear'),
            skips=(
@@ -12453,7 +12453,7 @@ op_db: List[OpInfo] = [
            supports_forward_ad=True,
            supports_fwgrad_bwgrad=True,
            dtypes=floating_types_and(torch.uint8),
-           dtypesIfCUDA=floating_types_and(torch.half, torch.bfloat16),
+           dtypesIfCUDA=floating_types_and_half(),
            gradcheck_nondet_tol=GRADCHECK_NONDET_TOL,
            sample_inputs_func=partial(sample_inputs_upsample_aten, 'bilinear'),
            supports_out=False,
@@ -12480,7 +12480,7 @@ op_db: List[OpInfo] = [
            supports_forward_ad=True,
            supports_fwgrad_bwgrad=True,
            dtypes=floating_types_and(torch.uint8, torch.bfloat16),
-           dtypesIfCUDA=floating_types_and(torch.half, torch.uint8, torch.bfloat16),
+           dtypesIfCUDA=floating_types_and(torch.half, torch.uint8),
            gradcheck_nondet_tol=GRADCHECK_NONDET_TOL,
            sample_inputs_func=partial(sample_inputs_upsample, 'nearest'),
            skips=(
