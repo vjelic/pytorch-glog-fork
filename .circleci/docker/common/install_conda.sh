@@ -6,7 +6,11 @@ set -ex
 if [ -n "$ANACONDA_PYTHON_VERSION" ]; then
   BASE_URL="https://repo.anaconda.com/miniconda"
 
-  MAJOR_PYTHON_VERSION=$(echo "$ANACONDA_PYTHON_VERSION" | cut -d . -f 1)
+  if [ "$ANACONDA_PYTHON_VERSION" != '3.7' ]; then
+    MAJOR_PYTHON_VERSION=$(echo "$ANACONDA_PYTHON_VERSION" | cut -d . -f 1)
+  else
+    MAJOR_PYTHON_VERSION="$ANACONDA_PYTHON_VERSION"
+  fi
 
   case "$MAJOR_PYTHON_VERSION" in
     2)
@@ -14,6 +18,9 @@ if [ -n "$ANACONDA_PYTHON_VERSION" ]; then
     ;;
     3)
       CONDA_FILE="Miniconda3-latest-Linux-x86_64.sh"
+    ;;
+    3.7)
+      CONDA_FILE="Miniconda3-py37_23.1.0-1-Linux-x86_64.sh"
     ;;
     *)
       echo "Unsupported ANACONDA_PYTHON_VERSION: $ANACONDA_PYTHON_VERSION"
