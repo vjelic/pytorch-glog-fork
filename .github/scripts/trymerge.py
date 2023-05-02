@@ -774,10 +774,10 @@ class GitHubPR:
     def get_changed_files(self) -> List[str]:
         if self.changed_files is None:
             info = self.info
-            unique_changed_files = set()
+            self.changed_files = []
             # Do not try to fetch more than 10K files
             for _ in range(100):
-                unique_changed_files.update([x["path"] for x in info["files"]["nodes"]])
+                self.changed_files += [x["path"] for x in info["files"]["nodes"]]
                 if not info["files"]["pageInfo"]["hasNextPage"]:
                     break
                 rc = gh_graphql(GH_GET_PR_NEXT_FILES_QUERY,
@@ -786,7 +786,6 @@ class GitHubPR:
                                 number=self.pr_num,
                                 cursor=info["files"]["pageInfo"]["endCursor"])
                 info = rc["data"]["repository"]["pullRequest"]
-            self.changed_files = list(unique_changed_files)
 
         if len(self.changed_files) != self.get_changed_files_count():
             raise RuntimeError("Changed file count mismatch")
