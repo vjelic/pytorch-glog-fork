@@ -6,15 +6,12 @@ import torchgen.api.cpp as aten_cpp
 from torchgen.api.types import Binding, CType
 from torchgen.model import FunctionSchema, NativeFunction
 
-from .types import contextArg
-
 
 @dataclass(frozen=True)
 class ExecutorchCppSignature:
     """
-    This signature is merely a CppSignature with Executorch types (optionally contains
-    RuntimeContext as well). The inline definition of CppSignature is generated in Functions.h
-    and it's used by unboxing functions.
+    This signature is merely a CppSignature with Executorch types. The inline definition
+    of CppSignature is generated in Functions.h and it's used by unboxing functions.
     """
 
     # The schema this signature is derived from
@@ -28,8 +25,8 @@ class ExecutorchCppSignature:
     # and need to avoid naming collisions.
     prefix: str = ""
 
-    def arguments(self, *, include_context: bool = True) -> List[Binding]:
-        return ([contextArg] if include_context else []) + et_cpp.arguments(
+    def arguments(self) -> List[Binding]:
+        return et_cpp.arguments(
             self.func.arguments,
             faithful=True,  # always faithful, out argument at the end
             method=False,  # method not supported
@@ -42,10 +39,8 @@ class ExecutorchCppSignature:
             faithful_name_for_out_overloads=True,
         )
 
-    def decl(self, name: Optional[str] = None, *, include_context: bool = True) -> str:
-        args_str = ", ".join(
-            a.decl() for a in self.arguments(include_context=include_context)
-        )
+    def decl(self, name: Optional[str] = None) -> str:
+        args_str = ", ".join(a.decl() for a in self.arguments())
         if name is None:
             name = self.name()
         return f"{self.returns_type().cpp_type()} {name}({args_str})"

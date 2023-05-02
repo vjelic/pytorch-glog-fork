@@ -4,14 +4,13 @@
 
 #include <c10/util/ArrayRef.h>
 #include "Evalue.h"
-#include "RuntimeContext.h"
 #include <functional>
 #include <map>
 
 namespace torch {
 namespace executor {
 
-using OpFunction = std::function<void(RuntimeContext&, EValue**)>;
+using OpFunction = std::function<void(EValue**)>;
 
 template<typename T>
 using ArrayRef = at::ArrayRef<T>;
