@@ -25,9 +25,14 @@ log = logging.getLogger(__name__)
 class GuardOnDataDependentSymNode(RuntimeError):
     pass
 
-import sympy
-from sympy.printing.str import StrPrinter
-from sympy.core.logic import fuzzy_and, fuzzy_or
+try:
+    import sympy  # type: ignore[import]
+    from sympy.printing.precedence import precedence  # type: ignore[import] # noqa: F401
+    from sympy.printing.str import StrPrinter  # type: ignore[import]
+    from sympy.core.logic import fuzzy_and, fuzzy_or  # type: ignore[import]
+    HAS_SYMPY = True
+except ImportError:
+    HAS_SYMPY = False
 
 aten = torch._ops.ops.aten  # type: ignore[has-type]
 
@@ -403,7 +408,7 @@ class SymNode:
         return self.guard_bool("", 0)
 
 
-if True:  # TODO: unindent
+if HAS_SYMPY:
     # Overloaded to be compatible with regular Python.
     # https://github.com/pytorch/pytorch/issues/90900
     class Pow(sympy.Function):
@@ -881,7 +886,7 @@ def _lru_cache(fn, maxsize=None):
     return wrapper
 
 
-if True:  # TODO: unindent
+if HAS_SYMPY:
     # This stub exists so we can easily add metadata to sympy symbols
     # NB: This inherits from Dummy, not Symbol, because Symbols with the same
     # name get interned.  This is bad for us as we want the metadata
@@ -1034,6 +1039,9 @@ class ShapeEnv:
     # simplified
     def create_symbol(self, val: int, source: Source) -> "sympy.Expr":
         assert isinstance(source, Source), f"{type(source)} {source}"
+
+        if not HAS_SYMPY:
+            raise RuntimeError("Need sympy installed to create symbolic shapes")
 
         if val < 0:
             from torch._dynamo.source import NegateSource
