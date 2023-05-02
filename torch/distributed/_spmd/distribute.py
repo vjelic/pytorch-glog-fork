@@ -211,9 +211,7 @@ def _build_dummy_add_graph(
     assert len(placeholders) == 2
     assert len(call_functions) == 1
     node_to_obj[placeholders[0]] = dt
-    node_to_obj[placeholders[1]] = DTensor.from_local(
-        zero, dt.device_mesh, [Replicate()], run_check=False
-    )
+    node_to_obj[placeholders[1]] = zero
 
     traced_dispatch = _get_dtensor_dispatch_graph(
         call_functions[0], node_to_obj
