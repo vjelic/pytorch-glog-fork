@@ -1700,9 +1700,7 @@ def aot_wrapper_dedupe(
         ok = True
 
         for i, a in enumerate(flat_args):
-            if not isinstance(a, torch.Tensor):
-                leaf_flat_args.append(a)
-            elif a not in args_set:
+            if a not in args_set:
                 args_set.add(a)
                 leaf_flat_args.append(a)
             elif not fw_metadata.input_info[i].mutates_data and not fw_metadata.input_info[i].mutates_metadata:
