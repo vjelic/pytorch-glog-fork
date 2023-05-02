@@ -131,7 +131,7 @@ class cpp:
         # "g++-11",
         # "g++-10",
         # "clang++",
-        os.environ.get("CXX", "g++"),
+        "g++",
         # "g++.par",
     )
     # Allow kernel performance profiling via PyTorch profiler
