@@ -6,6 +6,7 @@ from typing import Any, Callable, cast, Dict, Iterator, no_type_check, Tuple
 import torch
 import torch.distributed as dist
 import torch.distributed.algorithms._checkpoint.checkpoint_wrapper as checkpoint_wrapper
+import torch.distributed.fsdp._traversal_utils as traversal_utils
 
 import torch.nn as nn
 import torch.nn.functional as F
@@ -126,7 +127,7 @@ def _common_pre_state_dict_hook(
     _lazy_init(fsdp_state, module)
     # TODO: change to this call after pre_state_dict_hook is in `nn.Module`.
     if fsdp_state._is_root:
-        _clear_grads_if_needed(fsdp_state._all_handles)
+        _clear_grads_if_needed(traversal_utils._get_fsdp_handles(module))
 
 
 def _common_unshard_pre_state_dict_hook(
