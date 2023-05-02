@@ -1867,9 +1867,7 @@ class TestRefsOpsInfo(TestCase):
         elif inplace:
             self.assertNotIn(op, self.ref_db_names, msg=f"{op} is an in-place operation and should not have an OpInfo")
         else:
-            # Intentionally don't use assertIn to avoid printing the
-            # (very large) container
-            self.assertTrue(op in self.ref_db_names, msg="{op} not in ref_db_names")
+            self.assertIn(op, self.ref_db_names)
 
     @parametrize("op", ref_ops_names)
     def test_refs_are_in_decomp_table(self, op):
