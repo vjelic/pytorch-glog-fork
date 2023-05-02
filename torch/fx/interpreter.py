@@ -457,7 +457,7 @@ class Transformer(Interpreter):
             kwargs (Dict): Dict of keyword arguments for this invocation
         """
         assert isinstance(target, str)
-        return self.tracer.create_proxy("get_attr", target, args, kwargs)
+        return Proxy(self.new_graph.get_attr(target), self.tracer)
 
     @compatibility(is_backward_compatible=True)
     def call_module(self, target : 'Target', args : Tuple[Argument, ...], kwargs : Dict[str, Any]) -> Any:
