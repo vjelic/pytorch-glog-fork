@@ -453,14 +453,10 @@ Tensor pow_backward_exponent(
   } else {
     cond = at::logical_and(self == 0, exponent >= 0);
   }
-  auto promoted_dtype = at::result_type(self, exponent);
-  // `.to()` is no-op if dtype is same.
-  auto self_ = self.to(promoted_dtype);
-
   auto out =
       grad *
       at::where(
-          cond, at::zeros({}, grad.options()), (result * self_.log()).conj());
+          cond, at::zeros({}, grad.options()), (result * self.log()).conj());
   return handle_r_to_c(exponent, std::move(out));
 }
 
@@ -470,9 +466,6 @@ Tensor pow_backward_exponent(
     const Tensor& exponent,
     Tensor result) {
   auto grad_lambda = [](Tensor a, Scalar b) { return (a * b.log()).conj(); };
-  auto base_ = exponent.is_complex() && !base.isComplex()
-      ? base.toComplexDouble()
-      : base;
   if (base.equal(0.0)) {
     auto cond = [](auto exp) {
       if (exp.is_complex()) {
@@ -484,10 +477,10 @@ Tensor pow_backward_exponent(
     auto out = grad *
         at::where(cond(exponent),
                   at::zeros({}, grad.options()),
-                  grad_lambda(std::move(result), base_));
+                  grad_lambda(std::move(result), base));
     return handle_r_to_c(exponent, std::move(out));
   } else {
-    auto out = grad * grad_lambda(std::move(result), base_);
+    auto out = grad * grad_lambda(std::move(result), base);
     return handle_r_to_c(exponent, std::move(out));
   }
 }
