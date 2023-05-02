@@ -208,13 +208,13 @@ class NNModuleVariable(VariableTracker):
                 # unroll Sequential()
                 assert not kwargs
                 (arg,) = args
-                for child_name, submod in mod.named_children():
+                for idx, submod in enumerate(mod):
                     tx.call_function(
                         tx.output.register_attr_or_module(
                             submod,
                             self.module_key,
-                            child_name,
-                            source=NNModuleSource(AttrSource(self.source, child_name)),
+                            idx,
+                            source=NNModuleSource(GetItemSource(self.source, idx)),
                             **options,
                         ),
                         [arg],
