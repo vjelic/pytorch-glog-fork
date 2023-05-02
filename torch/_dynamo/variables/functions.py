@@ -3,7 +3,6 @@ import enum
 import functools
 import inspect
 import itertools
-import sys
 import types
 from typing import Dict, List
 
@@ -473,6 +472,5 @@ class NestedUserFunctionVariable(BaseUserFunctionVariable):
             flags |= 0x08
             codegen(self.closure)
         codegen(self.code)
-        if sys.version_info < (3, 11):
-            codegen(self.fn_name)
+        codegen(self.fn_name)
         return [create_instruction("MAKE_FUNCTION", flags)]
