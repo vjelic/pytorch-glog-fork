@@ -3,7 +3,7 @@ from inspect import signature
 from .common_op_utils import _basic_validation
 
 """
-Common utilities to register ops on ShardedTensor
+Common utilities to register ops on ShardedTensor, ReplicatedTensor
 and PartialTensor.
 """
 
