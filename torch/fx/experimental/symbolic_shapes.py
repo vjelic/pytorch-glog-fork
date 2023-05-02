@@ -1063,9 +1063,7 @@ TLS = threading.local()
 
 
 class ShapeEnv:
-    def __init__(self, allow_scalar_outputs=True):
-        # Not directly used by ShapeEnv; indirectly used by FakeTensor
-        self.allow_scalar_outputs = allow_scalar_outputs
+    def __init__(self):
         self.guards: List[ShapeGuard] = []
         # Maps symbolic ints to their original concrete values
         # Currently populated from tensors
