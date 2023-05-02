@@ -77,7 +77,6 @@ from .misc import (
     AutogradFunctionContextVariable,
     AutogradFunctionVariable,
     ComptimeVariable,
-    CUDAStreamVariable,
     GetAttrVariable,
     InspectSignatureVariable,
     LambdaVariable,
@@ -433,13 +432,6 @@ class VariableBuilder:
             return TorchVariable(
                 value,
                 guards=make_guards(GuardBuilder.FUNCTION_MATCH),
-            )
-        elif isinstance(value, torch.cuda.streams.Stream):
-            return CUDAStreamVariable(
-                None,
-                value,
-                source=self.source,
-                guards=self.make_guards(GuardBuilder.ID_MATCH),
             )
         elif issubclass(type(value), type):
             # TODO(whc) the following seems preferable but breaks some tests, debug
@@ -979,6 +971,8 @@ def wrap_fx_proxy_cls(
         proxy.node.meta["example_value"] = example_value
         return SymNodeVariable(proxy, example_value, **options)
     elif proxy.node.target in [torch.cuda.streams.Stream, torch.cuda.current_stream]:
+        from . import CUDAStreamVariable
+
         proxy.node.meta["example_value"] = example_value
         return CUDAStreamVariable(proxy, example_value, **options)
     else:
