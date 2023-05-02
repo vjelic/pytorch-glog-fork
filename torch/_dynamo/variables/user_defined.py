@@ -13,12 +13,7 @@ from .. import variables
 from ..exc import unimplemented
 from ..guards import GuardBuilder
 from ..source import AttrSource, ODictGetItemSource, RandomValueSource
-from ..utils import (
-    get_custom_getattr,
-    is_namedtuple_cls,
-    namedtuple_fields,
-    object_has_getattribute,
-)
+from ..utils import is_namedtuple_cls, namedtuple_fields
 from .base import MutableLocal, VariableTracker
 from .misc import NullContextVariable
 
@@ -269,11 +264,24 @@ class UserDefinedObjectVariable(UserDefinedVariable):
         return super().call_function(tx, args, kwargs)
 
     def _check_for_getattribute(self):
-        if object_has_getattribute(self.value):
-            unimplemented("UserDefinedObjectVariable with custom __getattribute__")
+        try:
+            if isinstance(
+                inspect.getattr_static(type(self.value), "__getattribute__"),
+                types.FunctionType,
+            ):
+                unimplemented("UserDefinedObjectVariable with custom __getattribute__")
+        except AttributeError:
+            pass
 
     def _check_for_getattr(self):
-        return get_custom_getattr(self.value)
+        try:
+            getattr_fn = inspect.getattr_static(type(self.value), "__getattr__")
+        except AttributeError:
+            getattr_fn = None
+        if getattr_fn is torch.nn.Module.__getattr__:
+            # ignore this case of getattr
+            getattr_fn = None
+        return getattr_fn
 
     def _getattr_static(self, name):
         if (
