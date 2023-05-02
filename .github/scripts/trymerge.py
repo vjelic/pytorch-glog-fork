@@ -598,12 +598,10 @@ def add_workflow_conclusions(
                 else:
                     checkruns = None
 
-    all_edges = checksuites["edges"].copy()
+    add_conclusions(checksuites["edges"])
     while bool(checksuites["pageInfo"]["hasNextPage"]):
         checksuites = get_next_checksuites(checksuites)
-        all_edges.extend(checksuites["edges"])
-
-    add_conclusions(all_edges)
+        add_conclusions(checksuites["edges"])
 
     # Flatten the dictionaries.  If there exists jobs in the workflow run, put
     # the jobs in but don't put the workflow in.  We care more about the jobs in
