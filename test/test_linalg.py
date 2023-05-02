@@ -2489,18 +2489,18 @@ class TestLinalg(TestCase):
         A = make_arg((3, 3))
         with self.assertRaisesRegex(RuntimeError, "ill-defined"):
             U, _, Vh = torch.linalg.svd(A, full_matrices=False)
-            (U + Vh).sum().abs().backward()
+            (U + Vh).sum().backward()
 
         A = make_arg((3, 3))
         with self.assertRaisesRegex(RuntimeError, "ill-defined"):
             V = torch.linalg.eig(A).eigenvectors
-            V.sum().abs().backward()
+            V.sum().backward()
 
         A = make_arg((3, 3))
         A = A + A.mH
         with self.assertRaisesRegex(RuntimeError, "ill-defined"):
             Q = torch.linalg.eigh(A).eigenvectors
-            Q.sum().abs().backward()
+            Q.sum().backward()
 
     @skipCUDAIfNoCusolverAndNoHipsolver  # MAGMA backend doesn't work in this case
     @precisionOverride({torch.float: 1e-4, torch.cfloat: 1e-4})

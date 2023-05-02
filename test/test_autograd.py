@@ -6455,7 +6455,7 @@ for shape in [(1,), ()]:
                         with self.assertRaisesRegex(RuntimeError, err_msg):
                             fn(a, b)
                     else:
-                        fn(a, b).abs().backward()
+                        fn(a, b).backward()
 
                     expected_called = 1
                     expected_ga_nz = True
@@ -6809,14 +6809,11 @@ for shape in [(1,), ()]:
 
     def test_named_tensor_for_complex_views(self):
         names = ["batch", "height", "width", "complex"]
-        z = torch.ones((2, 1, 2, 2), requires_grad=True)
+        z = torch.ones((5, 12, 14, 2), requires_grad=True)
         z_named = z.refine_names(*names)
         z_complex = torch.view_as_complex(z_named.rename(None)).refine_names(*names[:-1])
-        z_complex.sum().abs().backward()
-        expected = torch.ones_like(z_complex).rename(None)
-        abs_1_1j = abs(1 + 1j)
-        expected.fill_(complex(abs_1_1j / 2, abs_1_1j / 2))
-        self.assertEqual(z.grad, torch.view_as_real(expected))
+        z_complex.sum().backward()
+        self.assertEqual(z.grad, torch.view_as_real(torch.ones_like(z_complex).rename(None)))
 
     def test_custom_function_return_view_in_nograd(self):
         class Alias(Function):
@@ -8925,15 +8922,15 @@ class TestAutogradDeviceType(TestCase):
 
         # sparse first
         x = torch.randn(size, dtype=dtype, device=device, requires_grad=True)
-        (fn.apply(x, sparse_grad1) + fn.apply(x, dense_grad) + fn.apply(x, sparse_grad2)).sum().abs().backward()
+        (fn.apply(x, sparse_grad1) + fn.apply(x, dense_grad) + fn.apply(x, sparse_grad2)).sum().backward()
         self.assertEqual(x.grad, dense_grad + sparse_grad1 + sparse_grad2)
         # dense first
         x = torch.randn(size, dtype=dtype, device=device, requires_grad=True)
-        (fn.apply(x, dense_grad) + fn.apply(x, sparse_grad1) + fn.apply(x, sparse_grad2)).sum().abs().backward()
+        (fn.apply(x, dense_grad) + fn.apply(x, sparse_grad1) + fn.apply(x, sparse_grad2)).sum().backward()
         self.assertEqual(x.grad, dense_grad + sparse_grad1 + sparse_grad2)
         # sparse only
         x = torch.randn(size, dtype=dtype, device=device, requires_grad=True)
-        (fn.apply(x, sparse_grad1) + fn.apply(x, sparse_grad2)).sum().abs().backward()
+        (fn.apply(x, sparse_grad1) + fn.apply(x, sparse_grad2)).sum().backward()
         self.assertEqual(x.grad, sparse_grad1 + sparse_grad2)
 
     # autograd tests via common_method_invocations don't allow input tensors to
@@ -9640,10 +9637,8 @@ class TestAutogradDeviceType(TestCase):
 
         def do_test():
             out_c.copy_(inp_r)
-            out_c_inter = out_c.sum()
-            out_c_inter.abs().backward()
-            with torch.no_grad():
-                self.assertEqual(inp_r.grad, torch.ones_like(inp_r) * torch.sgn(out_c_inter).real)
+            out_c.sum().backward()
+            self.assertEqual(inp_r.grad, torch.ones_like(inp_r))
 
         self.assertNotWarn(do_test)
 
@@ -9652,10 +9647,8 @@ class TestAutogradDeviceType(TestCase):
             inp_r = torch.randn(3, 2, dtype=torch.double, device=device,
                                 requires_grad=True)
             out = inp_r.to(torch.complex128)
-            out_inter = out.sum()
-            out_inter.abs().backward()
-            with torch.no_grad():
-                self.assertEqual(inp_r.grad, torch.ones_like(inp_r) * torch.sgn(out_inter).real)
+            out.sum().backward()
+            self.assertEqual(inp_r.grad, torch.ones_like(inp_r))
 
         self.assertNotWarn(do_test)
 
@@ -9678,17 +9671,6 @@ class TestAutogradDeviceType(TestCase):
 
         with self.assertWarnsRegex(UserWarning, "Warn from backward"):
             b.backward()
-
-    def test_complex_scalar_backward(self, device):
-        a = torch.zeros(1, device=device, requires_grad=True)
-        b = a * 0.5j
-
-        msg = "grad can be implicitly created only for real scalar outputs"
-        with self.assertRaisesRegex(RuntimeError, msg):
-            b.backward()
-
-        with self.assertRaisesRegex(RuntimeError, msg):
-            torch.autograd.grad(b, a)
 
     def test_pow_real_negative_base_complex_exponent(self, device):
         # OpInfo doesn't naturally support input of mixed types, hence this test here.
@@ -9837,14 +9819,14 @@ class TestAllowMutationOnSaved(TestCase):
             b = a.conj()
             out = (b**2).sum()
             a.sin_()
-            out.abs().backward()
+            out.backward()
 
             a = torch.tensor([1 + 1j], requires_grad=True).clone()
             b = a.conj()
             out = (b**2).sum()
             # in this case, it is no longer a view it seems
             b.sin_()
-            out.abs().backward()
+            out.backward()
 
     def test_with_out_variant(self):
         with torch.autograd.graph.allow_mutation_on_saved_tensors() as ctx:

@@ -369,10 +369,9 @@ class TestGradTransform(TestCase):
             assert not x.is_conj()
             y = x.conj()
             assert y.is_conj()
-            return y.abs()
+            return y
         res = grad(foo)(x)
-        with torch.no_grad():
-            self.assertEqual(res, torch.ones_like(res) * torch.sgn(x))
+        self.assertEqual(res, torch.ones_like(res))
 
     def test_composed_with_autograd(self, device):
         x = torch.randn([], requires_grad=True, device=device)

@@ -37,10 +37,6 @@ variable_list _make_grads(
         TORCH_CHECK(
             output.numel() == 1,
             "grad can be implicitly created only for scalar outputs");
-        TORCH_CHECK(
-            c10::isFloatingType(output.scalar_type()),
-            "grad can be computed only for real scalar outputs but got ",
-            output.scalar_type());
         new_grads.emplace_back(
             at::ones_like(output, LEGACY_CONTIGUOUS_MEMORY_FORMAT));
       }
@@ -61,10 +57,6 @@ variable_list _make_grads(
           TORCH_CHECK(
               output.numel() == 1,
               "grad can be implicitly created only for scalar outputs");
-          TORCH_CHECK(
-              c10::isFloatingType(output.scalar_type()),
-              "grad can be computed only for real scalar outputs but got ",
-              output.scalar_type());
           new_grads.emplace_back(
               at::ones_like(output, LEGACY_CONTIGUOUS_MEMORY_FORMAT));
         }

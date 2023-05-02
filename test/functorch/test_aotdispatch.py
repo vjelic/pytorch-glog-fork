@@ -2549,10 +2549,10 @@ def _test_aot_autograd_forwards_backwards_helper(self, f, compiled_f, args):
             flat_out, _ = pytree.tree_flatten(out)
             sm = 0
             for i in flat_out:
-                sm += i.sum().abs()
+                sm += i.sum()
             sm.backward()
         else:
-            out.sum().abs().backward()
+            out.sum().backward()
 
     def reset_grads():
         def f(x):
