@@ -1,7 +1,6 @@
 #pragma once
 
 #include <ATen/core/ivalue.h>
-#include <c10/core/SymInt.h>
 #include <c10/util/flat_hash_map.h>
 #include <c10/util/irange.h>
 #include <torch/csrc/autograd/function.h>
@@ -164,7 +163,7 @@ struct TORCH_API VariableInfo {
   at::Layout layout = at::Layout::Strided;
   at::Device device = at::kCPU;
   at::ScalarType scalar_type = at::kFloat;
-  std::vector<c10::SymInt> size;
+  std::vector<int64_t> size;
   bool requires_grad;
   bool is_empty;
 };
