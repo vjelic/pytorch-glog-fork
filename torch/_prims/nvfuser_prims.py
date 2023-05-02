@@ -281,10 +281,7 @@ def _view_nvfuser(
     a_shape,
     new_shape,
 ):
-    try:
-        return fd.ops.view(a, a_shape, new_shape)
-    except AttributeError:
-        return fd.ops.reshape(a, a_shape, new_shape)
+    return fd.ops.view(a, a_shape, new_shape)
 
 
 def _sum_nvfuser(
