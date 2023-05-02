@@ -1551,7 +1551,6 @@ class OneCycleLR(LRScheduler):
         >>> for epoch in range(10):
         >>>     for batch in data_loader:
         >>>         train_batch(...)
-        >>>         optimizer.step()
         >>>         scheduler.step()
 
 
