@@ -3,7 +3,6 @@
 Opset 9 is supported by ONNX release 1.4.1
 release on 01/23/19
 """
-from __future__ import annotations
 
 import builtins
 import functools
@@ -3406,9 +3405,9 @@ def _unsupported_dropout(name: str):
 
 
 @_onnx_symbolic("aten::norm")
-@symbolic_helper.parse_args("v", "t", "is", "i", "v")
+@symbolic_helper.parse_args("v", "t", "is", "i")
 @_beartype.beartype
-def norm(g: jit_utils.GraphContext, self, p, dim, keepdim, dtype=None):
+def norm(g: jit_utils.GraphContext, self, p, dim, keepdim):
     if p == 1:
         f = _reduce_op_symbolic("ReduceL1")
     elif p == 2:
@@ -3417,11 +3416,7 @@ def norm(g: jit_utils.GraphContext, self, p, dim, keepdim, dtype=None):
         raise errors.SymbolicValueError(
             "ONNX export only p-norms with p of 1 or 2", self
         )
-    result = f(g, self, dim=dim, keepdim=keepdim)
-    if dtype is not None:
-        dtype = symbolic_helper._get_const(dtype, "i", "dtype")
-        result = g.op("Cast", result, to_i=_type_utils.JitScalarType(dtype).onnx_type())
-    return result
+    return f(g, self, dim=dim, keepdim=keepdim)
 
 
 @_onnx_symbolic("aten::conv_tbc")
