@@ -90,7 +90,7 @@ def validate_ir(node_or_nodes):
             (
                 TensorBox,
                 RandSeedBuffer,
-                sympy.Symbol,
+                torch.fx.experimental.symbolic_shapes.Symbol,
                 Expr,
             ),
         ), f"Found {type(node)}, which is not a supported top level IR node. See [Note: Inductor IR]"
