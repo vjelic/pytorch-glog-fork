@@ -149,12 +149,9 @@ class TritonTemplateKernel(TritonKernel):
         Hook called from template code to get the size of an arg.
         Will add needed args to pass it in if it is dynamic.
         """
+        assert isinstance(name, str)
         assert isinstance(index, int)
-        if name is None:
-            val = self.output_node.get_size()[index]
-        else:
-            assert isinstance(name, str)
-            val = self.named_input_nodes[name].get_size()[index]
+        val = self.named_input_nodes[name].get_size()[index]
         return texpr(self.rename_indexing(val))
 
     def stride(self, name, index):
@@ -162,12 +159,9 @@ class TritonTemplateKernel(TritonKernel):
         Hook called from template code to get the stride of an arg.
         Will add needed args to pass it in if it is dynamic.
         """
+        assert isinstance(name, str)
         assert isinstance(index, int)
-        if name is None:
-            val = self.output_node.get_stride()[index]
-        else:
-            assert isinstance(name, str)
-            val = self.named_input_nodes[name].get_stride()[index]
+        val = self.named_input_nodes[name].get_stride()[index]
         return texpr(self.rename_indexing(val))
 
     def store_output(self, indices, val, mask):
@@ -448,11 +442,7 @@ class TritonTemplate:
             return kernel, render
 
         return TritonTemplateCaller(
-            kernel_hash_name,
-            input_nodes,
-            layout,
-            make_kernel_render,
-            extra.strip("-").replace("-", ", "),
+            kernel_hash_name, input_nodes, layout, make_kernel_render
         )
 
     @staticmethod
@@ -468,14 +458,13 @@ class TritonTemplate:
 
 
 class ExternKernelChoice:
-    def __init__(self, kernel, cpp_kernel=None, *, name=None, has_out_variant=True):
+    def __init__(self, kernel, cpp_kernel=None, *, name=None):
         super().__init__()
         name = name or kernel.__name__
         assert callable(kernel)
         assert not hasattr(extern_kernels, name), "duplicate extern kernel"
         self.name = name
         self.cpp_kernel = cpp_kernel
-        self.has_out_variant = has_out_variant
         setattr(extern_kernels, name, kernel)
 
     def to_callable(self):
@@ -499,9 +488,7 @@ class ExternKernelChoice:
         return code_hash("-".join(parts))
 
     def bind(self, input_nodes, layout, **kwargs):
-        return ExternKernelCaller(
-            self, input_nodes, layout, kwargs, has_out_variant=self.has_out_variant
-        )
+        return ExternKernelCaller(self, input_nodes, layout, kwargs)
 
 
 class ChoiceCaller:
@@ -511,33 +498,14 @@ class ChoiceCaller:
         self.layout = layout
         self.input_nodes = input_nodes
 
-    def benchmark(self, *args, out):
-        algo = self.to_callable()
-        return do_bench(lambda: algo(*args, out=out))
-
-    def call_name(self):
-        raise NotImplementedError()
-
-    def to_callable(self):
-        raise NotImplementedError()
-
-    def hash_key(self):
-        raise NotImplementedError()
-
-    def output_node(self):
-        raise NotImplementedError()
-
 
 class TritonTemplateCaller(ChoiceCaller):
-    def __init__(self, name, input_nodes, layout, make_kernel_render, debug_extra):
+    def __init__(self, name, input_nodes, layout, make_kernel_render):
         super().__init__(name, input_nodes, layout)
         self.make_kernel_render = make_kernel_render
-        self.debug_extra = debug_extra
 
     def __str__(self):
-        return (
-            f"TritonTemplateCaller({self.to_callable().__file__}, {self.debug_extra})"
-        )
+        return f"TritonTemplateCaller({self.to_callable().__file__})"
 
     def call_name(self):
         return f"template_kernels.{self.name}"
@@ -564,34 +532,10 @@ class TritonTemplateCaller(ChoiceCaller):
 
 
 class ExternKernelCaller(ChoiceCaller):
-    def __init__(
-        self,
-        choice: ExternKernelChoice,
-        input_nodes,
-        layout,
-        kwargs=None,
-        *,
-        has_out_variant=True,
-    ):
+    def __init__(self, choice: ExternKernelChoice, input_nodes, layout, kwargs=None):
         super().__init__(choice.name, input_nodes, layout)
         self.choice = choice
         self.kwargs = kwargs or {}
-        self.has_out_variant = has_out_variant
-
-    def __str__(self):
-        return f"ExternKernelCaller({self.choice.call_name()})"
-
-    def benchmark(self, *args, out):
-        if self.has_out_variant:
-            return super().benchmark(*args, out=out)
-        else:
-            algo = self.to_callable()
-            out_new = algo(*args)
-            torch._C._dynamo.guards.assert_size_stride(
-                out_new, tuple(out.size()), tuple(out.stride())
-            )
-            out.copy_(out_new)  # for correctness checking
-            return do_bench(lambda: algo(*args))
 
     def to_callable(self):
         fn = self.choice.to_callable()
@@ -613,12 +557,8 @@ class ExternKernelCaller(ChoiceCaller):
         )
 
     def output_node(self):
-        if self.has_out_variant:
-            cls = ir.ExternKernelOut
-        else:
-            cls = ir.ExternKernelAlloc
         return ir.TensorBox.create(
-            cls(
+            ir.ExternKernelOut(
                 layout=self.layout,
                 inputs=self.input_nodes,
                 kernel=self.choice.call_name(),
@@ -626,13 +566,6 @@ class ExternKernelCaller(ChoiceCaller):
                 kwargs=self.kwargs,
             )
         )
-
-
-class ErrorFromChoice(RuntimeError):
-    def __init__(self, msg, choice: ChoiceCaller, inputs_str):
-        msg += f"\nFrom choice {choice}\n{inputs_str}"
-        super().__init__(msg)
-        self.choice = choice
 
 
 class AlgorithmSelectorCache(PersistentCache):
@@ -644,25 +577,30 @@ class AlgorithmSelectorCache(PersistentCache):
         if len(choices) == 1:
             return choices[0].output_node()
 
-        @functools.lru_cache(None)
-        def make_benchmark_fn():
-            return self.make_benchmark_fn(choices, input_nodes, layout)
-
         def autotune(choice):
-            benchmark_fn = make_benchmark_fn()
+            counters["inductor"]["choice_caller_benchmarked"] += 1
+            benchmark_fn = self.make_benchmark_fn(choices, input_nodes, layout)
             try:
                 timing = benchmark_fn(
-                    choice,
+                    choice.to_callable(), isinstance(choice, ExternKernelCaller)
                 )
             except RuntimeError as e:
-                msg = str(e)
-                if "invalid argument" in msg:
-                    msg += "\n\nThis may mean this GPU is too small for max_autotune mode.\n\n"
-                    log.warning(msg)
-                    return float("inf")
-                elif "illegal memory access" in msg:
-                    msg += "\n\nEither error in template or triton bug.\n"
-                raise ErrorFromChoice(msg, choice, benchmark_fn.debug_str())
+                if "invalid argument" in str(e):
+                    msg = textwrap.dedent(
+                        f"""
+                        {e}
+
+                        From choice: {choice}
+
+                        This may mean this GPU is too small for max_autotune mode.
+                        """
+                    ).strip()
+                    if VERIFY:
+                        raise RuntimeError(msg)
+                    else:
+                        log.warning(msg)
+                else:
+                    raise
             except AssertionError as e:
                 raise AssertionError(f"Incorrect result from choice {choice}\n\n{e}")
             return timing
@@ -675,10 +613,7 @@ class AlgorithmSelectorCache(PersistentCache):
         )
         if timings == {} or choices[0] not in timings:
             return choices[0].output_node()
-
-        if make_benchmark_fn.cache_info().currsize:
-            counters["inductor"]["select_algorithm_autotune"] += 1
-            self.log_results(choices[0].name, input_nodes, timings)
+        self.log_results(choices[0].name, input_nodes, timings)
         return builtins.min(timings, key=timings.__getitem__).output_node()
 
     @classmethod
@@ -703,38 +638,20 @@ class AlgorithmSelectorCache(PersistentCache):
             out, out.size(), out.stride(), V.graph.sizevars.size_hint(layout.offset)
         )
         if VERIFY:
-            choices[0].benchmark(*example_inputs_extern, out=out_extern)
+            choices[0].to_callable()(*example_inputs_extern, out=out_extern)
             expected = out_extern.clone()
 
-        def benchmark(choice):
+        def benchmark(algo, is_extern):
             out.zero_()
-            if isinstance(choice, ExternKernelCaller):
-                # aten kernels want the offset baked in for sliced tensors
-                result = choice.benchmark(*example_inputs_extern, out=out_extern)
+            if is_extern:
+                result = do_bench(lambda: algo(*example_inputs_extern, out=out_extern))
             else:
-                # triton templates want the base pointer for sliced tensors
-                result = choice.benchmark(*example_inputs, out=out)
+                result = do_bench(lambda: algo(*example_inputs, out=out))
             if VERIFY:
                 torch.testing.assert_close(out_extern, expected, **VERIFY)
             torch.cuda.synchronize()  # shake out any CUDA errors
             return min(result)
 
-        def debug_str():
-            def tensor_repr(x):
-                return (
-                    f"torch.empty_strided({tuple(x.size())!r}, {tuple(x.stride())!r}, "
-                    f"dtype={x.dtype!r}, device={x.device.type!r})"
-                )
-
-            lines = [
-                "inputs = [",
-            ]
-            for x in example_inputs:
-                lines.append(f"    {tensor_repr(x)},")
-            lines += ["]", f"out = {tensor_repr(out)}", ""]
-            return "\n".join(lines)
-
-        benchmark.debug_str = debug_str
         return benchmark
 
     @staticmethod

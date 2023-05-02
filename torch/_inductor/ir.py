@@ -332,11 +332,9 @@ class IRNode:
         self.origins = set(self._current_origins)
 
     def common_repr(self):
-        origins = f"origins={getattr(self, 'origins', '')}"
-        if len(origins) > 64:
-            # this can get *very* long
-            origins = f"{origins[:61]}..."
-        return [origins]
+        return (
+            [f"origins={self.origins}"] if hasattr(self, "origins") else ["no origins?"]
+        )
 
     def str_helper(self, lines):
         lines = lines + self.common_repr()
