@@ -183,20 +183,18 @@ class CoreMLBackend: public torch::jit::PyTorchBackendInterface {
   }
 
   GenericList execute(IValue handle, GenericList inputs) override {
-    @autoreleasepool {
-      const auto model_wrapper = c10::static_intrusive_pointer_cast<MLModelWrapper>(handle.toCapsule());
+    const auto model_wrapper = c10::static_intrusive_pointer_cast<MLModelWrapper>(handle.toCapsule());
 
-      PTMCoreMLExecutor *executor = model_wrapper->executor;
-      [executor setInputs:inputs];
+    PTMCoreMLExecutor *executor = model_wrapper->executor;
+    [executor setInputs:inputs];
 
-      NSError *error;
-      id<MLFeatureProvider> outputsProvider = [executor forward:&error];
-      if (!outputsProvider) {
-        COREML_THROW_IF_ERROR(error, "Error running CoreML inference", tensorListToShapesStr(inputs));
-      }
-
-      return pack_outputs(model_wrapper->outputs, outputsProvider);
+    NSError *error;
+    id<MLFeatureProvider> outputsProvider = [executor forward:&error];
+    if (!outputsProvider) {
+      COREML_THROW_IF_ERROR(error, "Error running CoreML inference", tensorListToShapesStr(inputs));
     }
+
+    return pack_outputs(model_wrapper->outputs, outputsProvider);
   }
 
   bool is_available() override {
