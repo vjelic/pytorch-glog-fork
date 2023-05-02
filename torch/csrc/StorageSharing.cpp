@@ -26,7 +26,6 @@
 #endif
 
 #include <ATen/MapAllocator.h>
-#include <ATen/StorageUtils.h>
 #include <torch/csrc/utils/python_numbers.h>
 #include <atomic>
 #include <string>
@@ -114,7 +113,7 @@ static PyObject* THPStorage_shareFilename(PyObject* _self, PyObject* noargs) {
     {
       // Copying into shared memory can be slow, so release the GIL
       pybind11::gil_scoped_release no_gil;
-      at::storage_copy(new_storage, _self_aten);
+      storage_copy(new_storage, _self_aten);
     }
 
     std::swap(*storage, *new_storage.unsafeGetStorageImpl());
@@ -174,6 +173,21 @@ static PyObject* THPStorage_newSharedFilename(
   END_HANDLE_TH_ERRORS
 }
 
+static c10::intrusive_ptr<c10::StorageImpl> THPStorage_newFdStorage(
+    ptrdiff_t size) {
+  int flags = at::ALLOCATOR_MAPPED_SHAREDMEM | at::ALLOCATOR_MAPPED_EXCLUSIVE |
+      at::ALLOCATOR_MAPPED_KEEPFD | at::ALLOCATOR_MAPPED_UNLINK;
+  std::string handle = at::NewProcessWideShmHandle();
+  auto sptr = at::MapAllocator::makeDataPtr(
+      handle, flags, size * sizeof(uint8_t), nullptr);
+  return c10::make_intrusive<at::StorageImpl>(
+      c10::StorageImpl::use_byte_size_t(),
+      size,
+      std::move(sptr),
+      /*allocator=*/nullptr,
+      /*resizable=*/false);
+}
+
 static PyObject* THPStorage_pyNewFdStorage(PyObject* _unused, PyObject* args) {
   HANDLE_TH_ERRORS
   // NOLINTNEXTLINE(cppcoreguidelines-init-variables)
@@ -181,7 +195,7 @@ static PyObject* THPStorage_pyNewFdStorage(PyObject* _unused, PyObject* args) {
   if (!PyArg_ParseTuple(args, "L", &size)) {
     return nullptr;
   }
-  return THPStorage_New(at::new_shm_fd_storage(size));
+  return THPStorage_New(THPStorage_newFdStorage(size));
   END_HANDLE_TH_ERRORS
 }
 
@@ -198,12 +212,12 @@ static PyObject* THPStorage_shareFd(PyObject* _self, PyObject* noargs) {
   if ((ctx = at::MapAllocator::fromDataPtr(storage->data_ptr()))) {
     // done
   } else {
-    at::Storage new_storage(at::new_shm_fd_storage(storage->nbytes()));
+    at::Storage new_storage(THPStorage_newFdStorage(storage->nbytes()));
     at::Storage _self_aten = torch::createStorage(_self);
     {
       // Copying into shared memory can be slow, so release the GIL
       pybind11::gil_scoped_release no_gil;
-      at::storage_copy(new_storage, _self_aten);
+      storage_copy(new_storage, _self_aten);
     }
 
     std::swap(*storage, *new_storage.unsafeGetStorageImpl());
