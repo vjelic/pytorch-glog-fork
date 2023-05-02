@@ -346,7 +346,7 @@ Tensor nansum_mps(
 Tensor trace_mps_out(const Tensor& self) {
   Tensor output_t = at::native::empty_mps(
                     {},
-                    get_dtype_from_self(self, c10::nullopt, true),
+                    self.scalar_type(),
                     c10::nullopt,
                     kMPS,
                     c10::nullopt,
