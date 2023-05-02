@@ -33,9 +33,6 @@ torch.cuda
     stream
     synchronize
     utilization
-    temperature
-    power_draw
-    clock_rate
     OutOfMemoryError
 
 Random Number Generator
