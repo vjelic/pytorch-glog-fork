@@ -91,7 +91,21 @@ inline uint64_t THPUtils_unpackUInt64(PyObject* obj) {
   return (uint64_t)value;
 }
 
-bool THPUtils_checkIndex(PyObject* obj);
+inline bool THPUtils_checkIndex(PyObject* obj) {
+  if (PyBool_Check(obj)) {
+    return false;
+  }
+  if (THPUtils_checkLong(obj)) {
+    return true;
+  }
+  torch::jit::tracer::NoWarn no_warn_guard;
+  auto index = THPObjectPtr(PyNumber_Index(obj));
+  if (!index) {
+    PyErr_Clear();
+    return false;
+  }
+  return true;
+}
 
 inline int64_t THPUtils_unpackIndex(PyObject* obj) {
   if (!THPUtils_checkLong(obj)) {
