@@ -213,7 +213,7 @@ def load_sharded_optimizer_state_dict(
     >>> # Save
     >>> with FSDP.state_dict_type(model, StateDictType.SHARDED_STATE_DICT):
     >>>     state_dict = {
-    >>>         "optimizer": FSDP.optim_state_dict(model, optim),
+    >>>         "optimizer": FSDP.sharded_optim_state_dict(model, optim, optim_params),
     >>>         "model": model.state_dict()
     >>>     }
     >>>     dist_cp.save_state_dict(
@@ -241,7 +241,7 @@ def load_sharded_optimizer_state_dict(
     >>>         storage_reader=dist_cp.FileSystemReader("checkpoint"),
     >>>     )
     >>>
-    >>>     flattened_osd = FSDP.optim_state_dict_to_load(
+    >>>     flattened_osd = FSDP.flatten_sharded_optim_state_dict(
     >>>        optim_state["optimizer"], model, optim
     >>>     )
     >>>
