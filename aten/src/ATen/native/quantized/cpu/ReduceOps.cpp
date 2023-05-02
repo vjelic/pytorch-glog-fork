@@ -194,18 +194,18 @@ Tensor& mean_out_quantized_cpu(
 inline bool is_std_inner_dim_fast_path(
     const Tensor& self,
     OptionalIntArrayRef dim,
-    const c10::optional<Scalar>& correction) {
+    optional<int64_t> unbiased) {
   // Do not enter fast path if there are too few elements
   IntArrayRef dims = dim.has_value() ? dim.value() : IntArrayRef();
   auto all_dims = std::vector<int64_t>(self.dim());
   std::iota(all_dims.begin(), all_dims.end(), 0);
   dims = dims.empty() ? all_dims : dims;
-  bool has_correction = !correction.value_or(1).equal(0);
+  bool is_unbiased = unbiased.has_value() ? unbiased.value() : false;
   int64_t num_ele = 1;
   for (auto d : dims) {
     num_ele *= self.size(d);
   }
-  if (num_ele == 1 && has_correction) {
+  if (num_ele == 1 && is_unbiased) {
     return false;
   }
   return is_innnermost_dim(self, dims);
@@ -214,19 +214,19 @@ inline bool is_std_inner_dim_fast_path(
 Tensor& std_out_quantized_cpu(
     const Tensor& self,
     OptionalIntArrayRef dim,
-    const c10::optional<Scalar>& correction,
+    optional<int64_t> unbiased,
     bool keepdim,
     Tensor& result) {
   // Fast path
   if (self.is_contiguous(c10::MemoryFormat::Contiguous) &&
-      is_std_inner_dim_fast_path(self, dim, correction)) {
-    qstd_inner_dim_stub(self.device().type(), self, dim, correction, keepdim, result);
+      is_std_inner_dim_fast_path(self, dim, unbiased)) {
+    qstd_inner_dim_stub(self.device().type(), self, dim, unbiased, keepdim, result);
     return result;
   }
 
   // Reference path
   auto self_dequantized = self.dequantize();
-  auto result_dequantized = at::std(self_dequantized, dim, correction, keepdim);
+  auto result_dequantized = at::std(self_dequantized, dim, unbiased, keepdim);
   result = at::quantize_per_tensor(
       result_dequantized,
       self.q_scale(),
@@ -238,30 +238,30 @@ Tensor& std_out_quantized_cpu(
 Tensor std_quantized_cpu(
     const Tensor& self,
     OptionalIntArrayRef dim,
-    const c10::optional<Scalar>& correction,
+    optional<int64_t> unbiased,
     bool keepdim) {
   Tensor result;
-  std_out_quantized_cpu(self, dim, correction, keepdim, result);
+  std_out_quantized_cpu(self, dim, unbiased, keepdim, result);
   return result;
 }
 
 Tensor std_quantized_cpu(
     const Tensor& self,
     DimnameList dim,
-    const c10::optional<Scalar>& correction,
+    optional<int64_t> unbiased,
     bool keepdim) {
   return std_quantized_cpu(
-      self, dimnames_to_positions(self, dim), correction, keepdim);
+      self, dimnames_to_positions(self, dim), unbiased, keepdim);
 }
 
 Tensor& std_out_quantized_cpu(
     Tensor& result,
     const Tensor& self,
     DimnameList dim,
-    const c10::optional<Scalar>& correction,
+    optional<int64_t> unbiased,
     bool keepdim) {
   return std_out_quantized_cpu(
-      self, dimnames_to_positions(self, dim), correction, keepdim, result);
+      self, dimnames_to_positions(self, dim), unbiased, keepdim, result);
 }
 
 } // namespace native

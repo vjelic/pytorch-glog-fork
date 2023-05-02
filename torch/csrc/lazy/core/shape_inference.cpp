@@ -400,7 +400,7 @@ std::vector<Shape> compute_shape_std(
 std::vector<Shape> compute_shape_std(
     const at::Tensor& self,
     at::OptionalIntArrayRef dim,
-    const c10::optional<at::Scalar>& correction,
+    c10::optional<int64_t> correction,
     bool keepdim) {
   if (dim.has_value()) {
     auto shape = at::native::shape_from_dim_mask(

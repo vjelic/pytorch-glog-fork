@@ -1569,12 +1569,13 @@ Tensor var_backward(
     Tensor grad,
     const Tensor& self,
     at::OptionalIntArrayRef dim_opt,
-    const c10::optional<at::Scalar>& correction_opt,
+    c10::optional<int64_t> correction_opt,
     bool keepdim) {
-  const auto correction = correction_opt.value_or(1).toSymFloat();
+  auto correction = correction_opt.value_or(1);
   if (self.dim() == 0 || !dim_opt.has_value()) {
-    const auto dof = c10::SymFloat(self.sym_numel()) - correction;
-    if (dof <= 0) {
+    // To apease ASAN
+    auto n = self.numel();
+    if (n == correction) {
       // when n == correction, 2 / (n - correction) is infinity
       // when self == self.mean(), we return NaN because infinity * 0 = NaN
       // otherwise, we return infinity because infinity * c = infinity, for all
@@ -1585,16 +1586,18 @@ Tensor var_backward(
                  std::numeric_limits<double>::quiet_NaN(),
                  std::numeric_limits<double>::infinity());
     } else {
-      return (c10::SymFloat(2.0) / dof) * grad * (self - self.mean());
+      return (c10::SymFloat(2.0) /
+              c10::SymFloat(self.sym_numel() - correction)) *
+          grad * (self - self.mean());
     }
   }
   auto dim = dim_opt.value();
   if (!keepdim && self.dim() > 1) {
     grad = unsqueeze_multiple(grad, dim, self.sym_sizes().size());
   }
-  const c10::SymFloat rnumel(_safe_size(self.sym_sizes(), dim));
+  const c10::SymInt dof = _safe_size(self.sym_sizes(), dim) - correction;
   // NOLINTNEXTLINE(bugprone-narrowing-conversions,cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-narrowing-conversions)
-  return (c10::SymFloat(2.0) / (rnumel - correction)) * grad *
+  return (c10::SymFloat(2.0) / c10::SymFloat(dof)) * grad *
       (self - self.mean(dim, /*keepdim=*/true));
 }
 
@@ -1603,10 +1606,10 @@ Tensor std_backward(
     const Tensor& grad,
     const Tensor& self,
     at::OptionalIntArrayRef dim,
-    const c10::optional<c10::Scalar>& correction_opt,
+    c10::optional<int64_t> correction,
     bool keepdim) {
   auto grad_var = (grad / (result * 2)).masked_fill_(result == 0, 0);
-  return var_backward(std::move(grad_var), self, dim, correction_opt, keepdim);
+  return var_backward(std::move(grad_var), self, dim, correction, keepdim);
 }
 
 Tensor var_mean_backward(
@@ -1614,11 +1617,12 @@ Tensor var_mean_backward(
     const Tensor& gmean,
     const Tensor& self,
     at::OptionalIntArrayRef dim_opt,
-    const c10::optional<c10::Scalar>& correction_opt,
+    c10::optional<int64_t> correction_opt,
     bool keepdim) {
+  auto correction = correction_opt.value_or(1);
   Tensor gself;
   if (gvar.defined()) {
-    gself = var_backward(gvar, self, dim_opt, correction_opt, keepdim);
+    gself = var_backward(gvar, self, dim_opt, correction, keepdim);
   }
   if (gmean.defined()) {
     auto aux = mean_backward(
@@ -1638,11 +1642,12 @@ Tensor std_mean_backward(
     const Tensor& self,
     const Tensor& std,
     at::OptionalIntArrayRef dim_opt,
-    const c10::optional<c10::Scalar>& correction_opt,
+    c10::optional<int64_t> correction_opt,
     bool keepdim) {
+  auto correction = correction_opt.value_or(1);
   Tensor gself;
   if (gstd.defined()) {
-    gself = std_backward(std, gstd, self, dim_opt, correction_opt, keepdim);
+    gself = std_backward(std, gstd, self, dim_opt, correction, keepdim);
   }
   if (gmean.defined()) {
     auto aux = mean_backward(

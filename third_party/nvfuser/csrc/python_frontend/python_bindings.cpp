@@ -1269,7 +1269,7 @@ void initNvFuserPythonBindings(PyObject* module) {
       [](nvfuser::FusionDefinition::Operators& self,
          nvfuser::Tensor arg,
          std::vector<int>& axes,
-         double correction,
+         int64_t correction,
          bool keepdim) -> nvfuser::Tensor {
         FUSER_PERF_SCOPE("Operators.var");
         nvfuser::FusionDefinition* fd = self.fusion_definition;
@@ -1292,7 +1292,7 @@ void initNvFuserPythonBindings(PyObject* module) {
       [](nvfuser::FusionDefinition::Operators& self,
          nvfuser::Tensor arg,
          std::vector<int>& axes,
-         double correction,
+         int64_t correction,
          bool keepdim) -> decltype(auto) {
         FUSER_PERF_SCOPE("Operators.var_mean");
         nvfuser::FusionDefinition* fd = self.fusion_definition;
