@@ -11,7 +11,6 @@ import torch
 import torch.cuda
 
 from torch.distributed.pipeline.sync.microbatch import Batch, check, gather, scatter
-from torch.testing._internal.common_utils import run_tests
 
 
 def test_batch_atomic():
@@ -141,7 +140,3 @@ def test_scatter_multiple_tensors():
     assert list(b)[0].size() == (1, 1)
     assert list(a)[1].size() == (2, 2)
     assert list(b)[1].size() == (2, 2)
-
-
-if __name__ == "__main__":
-    run_tests()

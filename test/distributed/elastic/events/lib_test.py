@@ -9,6 +9,7 @@
 
 import json
 import logging
+import unittest
 from dataclasses import asdict
 from unittest.mock import patch
 
@@ -20,10 +21,10 @@ from torch.distributed.elastic.events import (
     _get_or_create_logger,
     construct_and_record_rdzv_event,
 )
-from torch.testing._internal.common_utils import run_tests, TestCase
+from torch.testing._internal.common_utils import run_tests
 
 
-class EventLibTest(TestCase):
+class EventLibTest(unittest.TestCase):
     def assert_event(self, actual_event, expected_event):
         self.assertEqual(actual_event.name, expected_event.name)
         self.assertEqual(actual_event.source, expected_event.source)
@@ -58,7 +59,7 @@ class EventLibTest(TestCase):
         deser_event = Event.deserialize(json_event)
         self.assert_event(event, deser_event)
 
-class RdzvEventLibTest(TestCase):
+class RdzvEventLibTest(unittest.TestCase):
     @patch("torch.distributed.elastic.events.record_rdzv_event")
     @patch("torch.distributed.elastic.events.get_logging_handler")
     def test_construct_and_record_rdzv_event(self, get_mock, record_mock):

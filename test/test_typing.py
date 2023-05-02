@@ -10,8 +10,6 @@ from typing import IO, Dict, List, Optional
 
 import pytest
 
-from torch.testing._internal.common_utils import run_tests
-
 try:
     from mypy import api
 except ImportError:
@@ -234,5 +232,5 @@ def _test_reveal(path: str, reveal: str, expected_reveal: str, lineno: int) -> N
         raise AssertionError(_REVEAL_MSG.format(lineno, expected_reveal, reveal))
 
 
-if __name__ == "__main__":
-    run_tests()
+if __name__ == '__main__':
+    pytest.main([__file__])

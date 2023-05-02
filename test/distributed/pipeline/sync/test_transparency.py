@@ -10,7 +10,6 @@ import torch
 from torch import nn
 
 from torch.distributed.pipeline.sync import Pipe
-from torch.testing._internal.common_utils import run_tests
 
 
 def test_simple_linears(setup_rpc):
@@ -44,7 +43,3 @@ def test_simple_linears(setup_rpc):
 
     # Both grads should be identical.
     assert torch.allclose(grad_with_pipe, grad_without_pipe)
-
-
-if __name__ == "__main__":
-    run_tests()
