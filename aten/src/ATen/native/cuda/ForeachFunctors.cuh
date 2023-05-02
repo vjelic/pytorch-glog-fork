@@ -1,7 +1,6 @@
 #pragma once
 #include <ATen/native/ForeachUtils.h>
 #include <ATen/native/cuda/MultiTensorApply.cuh>
-#include <ATen/native/cuda/Pow.cuh>
 #include <ATen/OpMathType.h>
 
 namespace at { namespace native {
@@ -545,20 +544,6 @@ struct TernaryOpScalarFunctor {
         store_args(args[res_arg_index], r_args[0], i_start, chunk_size, n);
       }
     }
-  }
-};
-
-template <typename T>
-struct power_functor {
-  C10_DEVICE T operator()(const T& a, const T& b) const {
-    return at::native::pow_(a, b);
-  }
-};
-
-template <typename T>
-struct reverse_power_functor {
-  C10_DEVICE T operator()(const T& a, const T& b) const {
-    return at::native::pow_(b, a);
   }
 };
 
