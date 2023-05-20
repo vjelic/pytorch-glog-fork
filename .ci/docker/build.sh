@@ -264,7 +264,7 @@ case "$image" in
       NINJA_VERSION=1.9.0
       # Need conda cmake to detect conda mkl and build with mkl support
       CONDA_CMAKE=yes
-      RITON=yes
+      TRITON=yes
     fi
     if [[ "$image" == *centos7* ]]; then
       NINJA_VERSION=1.10.2
