@@ -6578,22 +6578,6 @@ CUDA_IDENTIFIER_MAP = collections.OrderedDict(
             ("hipblasZgetriBatched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
         ),
         (
-            "cublasSgetriBatched",
-            ("rocblas_sgetri_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
-        ),
-        (
-            "cublasDgetriBatched",
-            ("rocblas_dgetri_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
-        ),
-        (
-            "cublasCgetriBatched",
-            ("rocblas_cgetri_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
-        ),
-        (
-            "cublasZgetriBatched",
-            ("rocblas_zgetri_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
-        ),
-        (
             "cublasSgetrsBatched",
             ("hipblasSgetrsBatched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
         ),
@@ -6656,22 +6640,6 @@ CUDA_IDENTIFIER_MAP = collections.OrderedDict(
         (
             "cublasZgeqrfBatched",
             ("hipblasZgeqrfBatched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
-        ),
-        (
-            "cublasSgelsBatched",
-            ("rocblas_sgels_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
-        ),
-        (
-            "cublasDgelsBatched",
-            ("rocblas_dgels_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
-        ),
-        (
-            "cublasCgelsBatched",
-            ("rocblas_cgels_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
-        ),
-        (
-            "cublasZgelsBatched",
-            ("rocblas_zgels_batched", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
         ),
         ("cublasSdgmm", ("rocblas_sdgmm", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED)),
         ("cublasDdgmm", ("rocblas_ddgmm", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED)),
