@@ -902,7 +902,7 @@ template void gemm_and_bias(
 
 #endif // defined(USE_ROCM) || (defined(CUDA_VERSION) && CUDA_VERSION >= 11000 && !defined(_MSC_VER))
 
-#if // !defined(USE_ROCM)
+#if !defined(USE_ROCM)
 void int8_gemm(
     bool transpose_mat1,
     bool transpose_mat2,
