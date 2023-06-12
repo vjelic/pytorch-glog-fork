@@ -10038,7 +10038,11 @@ op_db: List[OpInfo] = [
            # See https://github.com/pytorch/pytorch/pull/78358
            check_batched_forward_grad=False,
            supports_out=False,
-           sample_inputs_func=sample_inputs_combinations),
+           sample_inputs_func=sample_inputs_combinations,
+           # Compiler issue on ROCm
+           DecorateInfo(unittest.skip('Skipped!'), 'TestCommon', 'test_non_standard_bool_values',
+                        dtypes=[torch.bool], active_if=TEST_WITH_ROCM),
+    ),
     OpInfo('cartesian_prod',
            op=torch.cartesian_prod,
            dtypes=all_types_and_complex_and(torch.bool, torch.float16, torch.bfloat16),
@@ -10464,6 +10468,9 @@ op_db: List[OpInfo] = [
            # See https://github.com/pytorch/pytorch/pull/78358
            check_batched_forward_grad=False,
            skips=(
+               # Compiler issue on ROCm
+               DecorateInfo(unittest.skip('Skipped!'), 'TestCommon', 'test_non_standard_bool_values',
+                            dtypes=[torch.bool], active_if=TEST_WITH_ROCM),
            )),
     BinaryUfuncInfo('div',
                     aliases=('divide',),
@@ -15271,7 +15278,11 @@ op_db: List[OpInfo] = [
            check_batched_forward_grad=False,
            skips=(
                # lambda impl
-               DecorateInfo(unittest.expectedFailure, "TestNormalizeOperators", "test_normalize_operator_exhaustive"),),
+               DecorateInfo(unittest.expectedFailure, "TestNormalizeOperators", "test_normalize_operator_exhaustive"),
+               # Compiler issue on ROCm
+               DecorateInfo(unittest.skip("Skipped!"), 'TestCommon', 'test_non_standard_bool_values',
+                            dtypes=[torch.bool], active_if=TEST_WITH_ROCM),
+           ),
            sample_inputs_func=sample_inputs_column_stack,),
     OpInfo('pinverse',
            op=torch.pinverse,
@@ -16363,6 +16374,9 @@ op_db: List[OpInfo] = [
                # see https://github.com/pytorch/pytorch/issues/99806
                # RuntimeError: The size of tensor a (25) must match the size of tensor b (0) at non-singleton dimension 0.
                DecorateInfo(unittest.expectedFailure, 'TestBwdGradients', 'test_fn_gradgrad'),
+               # Compiler issue on ROCm
+               DecorateInfo(unittest.skip("Skipped!"), 'TestCommon', 'test_non_standard_bool_values',
+                            dtypes=[torch.bool], active_if=TEST_WITH_ROCM),
            )),
     OpInfo('unbind',
            dtypes=all_types_and_complex_and(torch.complex32, torch.bool, torch.float16, torch.bfloat16),
@@ -16393,7 +16407,11 @@ op_db: List[OpInfo] = [
            supports_fwgrad_bwgrad=True,
            # See https://github.com/pytorch/pytorch/pull/78358
            check_batched_forward_grad=False,
-           ),
+           skips=(
+               # Compiler issue on ROCm
+               DecorateInfo(unittest.skip('Skipped!'), 'TestCommon', 'test_non_standard_bool_values',
+                            dtypes=[torch.bool], active_if=TEST_WITH_ROCM),
+           )),
     OpInfo('unfold',
            op=lambda x, *args: x.unfold(*args),
            dtypes=all_types_and_complex_and(torch.bool, torch.float16, torch.bfloat16, torch.chalf),
