@@ -792,7 +792,7 @@ void gemm_and_bias(
       preference.descriptor(),
       CUBLASLT_MATMUL_PREF_MIN_ALIGNMENT_D_BYTES,
       &d_alignment, sizeof(d_alignment)));
-#endif !defined(USE_ROCM)
+#endif // !defined(USE_ROCM)
 
   auto workspace = at::empty(
       {static_cast<int64_t>(workspaceSize)},
