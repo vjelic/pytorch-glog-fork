@@ -561,6 +561,9 @@ def run_test(
             )
         unittest_args = [arg for arg in unittest_args if "--reruns" not in arg]
 
+    if options.save_xml:
+        unittest_args += ['--save-xml', options.save_xml]
+
     # Extra arguments are not supported with pytest
     executable = get_executable_command(options, is_cpp_test=is_cpp_test)
     if not executable:
