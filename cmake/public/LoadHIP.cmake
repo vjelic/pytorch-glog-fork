@@ -328,5 +328,7 @@ if(HIP_FOUND)
   # roctx is part of roctracer
   find_library(ROCM_ROCTX_LIB roctx64 HINTS ${ROCTRACER_PATH}/lib)
   # hipblaslt doesn't yet have a cmake package
-  find_library(PYTORCH_HIPBLASLT_LIBRARIES hipblaslt HINTS ${ROCM_PATH}/lib)
+  if(ROCM_VERSION_DEV VERSION_GREATER_EQUAL "5.6.0")
+    find_library(PYTORCH_HIPBLASLT_LIBRARIES hipblaslt HINTS ${ROCM_PATH}/lib)
+  endif()
 endif()
