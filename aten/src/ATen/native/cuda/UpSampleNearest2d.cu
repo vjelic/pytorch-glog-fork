@@ -300,9 +300,11 @@ static void upsample_nearest2d_out_cuda_template(
     // This is unlikely to happen.
     // TODO: kernel implementation could stride on spatial dimension. We probably
     //       need to overhaul the kernel.
+#if !defined(USE_ROCM)
     TORCH_CHECK(
         grid_x <= maxGridSize[0] && grid_y <= maxGridSize[1],
         "input tensor has spatial dimension larger than the kernel capacity");
+#endif
 
     cudaStream_t stream = at::cuda::getCurrentCUDAStream();
     AT_DISPATCH_FLOATING_TYPES_AND3(ScalarType::Half, ScalarType::BFloat16, ScalarType::Byte, input.scalar_type(), "upsample_nearest2d_out_frame", [&] {
