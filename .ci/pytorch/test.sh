@@ -846,7 +846,7 @@ elif [[ "${BUILD_ENVIRONMENT}" == *libtorch* ]]; then
   echo "no-op at the moment"
 elif [[ "$TEST_CONFIG" == distributed ]]; then
   install_filelock
-  #install_triton
+  install_triton
   test_distributed
   # Only run RPC C++ tests on the first shard
   if [[ "${SHARD_NUMBER}" == 1 ]]; then
@@ -857,19 +857,19 @@ elif [[ "$TEST_CONFIG" == deploy ]]; then
   test_torch_deploy
 elif [[ "${TEST_CONFIG}" == *inductor_distributed* ]]; then
   install_filelock
-  #install_triton
+  install_triton
   install_huggingface
   test_inductor_distributed
 elif [[ "${TEST_CONFIG}" == *dynamo* && "${SHARD_NUMBER}" == 1 && $NUM_TEST_SHARDS -gt 1 ]]; then
   test_without_numpy
   install_torchvision
-  #install_triton
+  install_triton
   test_dynamo_shard 1
   test_aten
 elif [[ "${TEST_CONFIG}" == *dynamo* && "${SHARD_NUMBER}" == 2 && $NUM_TEST_SHARDS -gt 1 ]]; then
   install_torchvision
   install_filelock
-  #install_triton
+  install_triton
   test_dynamo_shard 2
 elif [[ "${TEST_CONFIG}" == *aot_eager_all* ]]; then
   install_torchtext
@@ -917,7 +917,7 @@ elif [[ "${TEST_CONFIG}" == *aot_eager_torchbench* ]]; then
 elif [[ "${TEST_CONFIG}" == *inductor_huggingface* ]]; then
   install_torchvision
   install_filelock
-  #install_triton
+  install_triton
   install_huggingface
   if [[ "${TEST_CONFIG}" == *inductor_huggingface_perf* ]]; then
     test_inductor_huggingface_perf
@@ -927,7 +927,7 @@ elif [[ "${TEST_CONFIG}" == *inductor_huggingface* ]]; then
 elif [[ "${TEST_CONFIG}" == *inductor_timm* && $NUM_TEST_SHARDS -gt 1 ]]; then
   install_torchvision
   install_filelock
-  #install_triton
+  install_triton
   install_timm
   id=$((SHARD_NUMBER-1))
   if [[ "${TEST_CONFIG}" == *inductor_timm_perf* && $NUM_TEST_SHARDS -gt 1 ]]; then
@@ -939,7 +939,7 @@ elif [[ "${TEST_CONFIG}" == *inductor_torchbench* ]]; then
   install_torchtext
   install_torchvision
   install_filelock
-  #install_triton
+  install_triton
   if [[ "${TEST_CONFIG}" == *inductor_torchbench_perf* ]]; then
     checkout_install_torchbench
     test_inductor_torchbench_perf
@@ -953,18 +953,18 @@ elif [[ "${TEST_CONFIG}" == *inductor_torchbench* ]]; then
 elif [[ "${TEST_CONFIG}" == *inductor* && "${SHARD_NUMBER}" == 1 ]]; then
   install_torchvision
   install_filelock
-  #install_triton
+  install_triton
   test_inductor
   test_inductor_distributed
 elif [[ "${SHARD_NUMBER}" == 1 && $NUM_TEST_SHARDS -gt 1 ]]; then
   test_without_numpy
   install_torchvision
-  #install_triton
+  install_triton
   test_python_shard 1
   test_aten
 elif [[ "${SHARD_NUMBER}" == 2 && $NUM_TEST_SHARDS -gt 1 ]]; then
   install_torchvision
-  #install_triton
+  install_triton
   test_python_shard 2
   test_libtorch
   test_aot_compilation
@@ -974,7 +974,7 @@ elif [[ "${SHARD_NUMBER}" == 2 && $NUM_TEST_SHARDS -gt 1 ]]; then
 elif [[ "${SHARD_NUMBER}" -gt 2 ]]; then
   # Handle arbitrary number of shards
   install_torchvision
-  #install_triton
+  install_triton
   test_python_shard "$SHARD_NUMBER"
 elif [[ "${BUILD_ENVIRONMENT}" == *vulkan* ]]; then
   test_vulkan
@@ -992,7 +992,7 @@ elif [[ "${TEST_CONFIG}" == *functorch* ]]; then
   test_functorch
 else
   install_torchvision
-  #install_triton
+  install_triton
   install_monkeytype
   test_python
   test_aten
