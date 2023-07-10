@@ -90,9 +90,7 @@ includes = [
     "aten/src/ATen/native/nested/cuda/*",
     "aten/src/ATen/native/sparse/cuda/*",
     "aten/src/ATen/native/quantized/cuda/*",
-    # "aten/src/ATen/native/transformers/cuda/*",
-    "aten/src/ATen/native/transformers/cuda/flash_attn/*",
-    "aten/src/ATen/native/transformers/cuda/mem_eff_attention/*",
+    "aten/src/ATen/native/transformers/cuda/*",
     "aten/src/THC/*",
     "aten/src/ATen/test/*",
     # CMakeLists.txt isn't processed by default, but there are a few
@@ -131,6 +129,8 @@ ignores = [
     # generated files we shouldn't frob
     "torch/lib/tmp_install/*",
     "torch/include/*",
+    "aten/src/ATen/native/transformers/cuda/flash_attn/*",
+    "aten/src/ATen/native/transformers/cuda/mem_eff_attention/*",
 ]
 
 ignores = [os.path.join(proj_dir, ignore) for ignore in ignores]
