@@ -58,6 +58,8 @@ install_ubuntu() {
                    rocm-utils \
                    rocm-libs \
                    rccl \
+                   composablekernel-dev \
+                   rocmlir-dev \
                    rocprofiler-dev \
                    roctracer-dev
 
@@ -129,6 +131,8 @@ install_centos() {
                    rocm-utils \
                    rocm-libs \
                    rccl \
+                   composablekernel-devel \
+                   rocmlir-devel \
                    rocprofiler-dev \
                    roctracer-dev
 
