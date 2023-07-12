@@ -1,6 +1,10 @@
 #define TORCH_ASSERT_ONLY_METHOD_OPERATORS
 #include <ATen/native/layer_norm.h>
 
+#include <iostream>
+#include <chrono>
+#include <thread>
+
 #include <type_traits>
 
 #include <thrust/tuple.h>
@@ -1152,6 +1156,9 @@ void LayerNormBackwardKernelImplInternal(
   file a support request to support bigger batches");
   TORCH_CHECK(N <= std::numeric_limits<int>::max(), "Normalized shape should have less than INT_MAX elements, \
   file a support request to support bigger normalized shapes");
+  
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+
   const T* dY_data = dY.template data_ptr<T>();
   const T* X_data = X.template data_ptr<T>();
   const T_ACC* mean_data = mean.template data_ptr<T_ACC>();
