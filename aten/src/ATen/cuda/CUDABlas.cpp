@@ -4,11 +4,13 @@
 
 #include <ATen/ATen.h>
 #include <ATen/cuda/CUDABlas.h>
+#include <ATen/cuda/CUDAEvent.h>
 #include <ATen/cuda/Exceptions.h>
 #include <c10/cuda/CUDAFunctions.h>
 #include <c10/macros/Export.h>
 #include <c10/util/irange.h>
 
+#include <iostream>
 
 #if (!defined(USE_ROCM) && !defined(_MSC_VER)) || (defined(USE_ROCM) && ROCM_VERSION >= 50600)
 #include <cublasLt.h>
@@ -695,6 +697,34 @@ class CuBlasLtMatmulPreference : public CuBlasLtDescriptor<
     descriptor_.reset(raw_descriptor);
   }
 };
+
+struct MatMulConfig {
+  bool transpose_mat1;
+  bool transpose_mat2;
+  int m;
+  int n;
+  int k;
+  int mat1_ld;
+  int mat2_ld;
+  cudaDataType_t dtype;
+
+  friend auto operator<(const MatMulConfig& left, const MatMulConfig& right) -> bool {
+    return std::tie(left.transpose_mat1, left.transpose_mat2,
+                    left.m, left.n, left.k,
+                    left.mat1_ld, left.mat2_ld, left.dtype)
+           < std::tie(right.transpose_mat1, right.transpose_mat2,
+                      right.m, right.n, right.k,
+                      right.mat1_ld, right.mat2_ld, right.dtype);
+  }
+};
+std::map<MatMulConfig, hipblasLtMatmulHeuristicResult_t> heuristic_map;
+
+at::cuda::CUDAEvent start = at::cuda::CUDAEvent(cudaEventDefault);
+at::cuda::CUDAEvent stop = at::cuda::CUDAEvent(cudaEventDefault);
+int request_solutions = 10;
+int warmup_iters = 1;
+int bench_iters = 1;
+float zero = 0.0;
 } // namespace
 
 template <typename Dtype>
@@ -811,11 +841,32 @@ void gemm_and_bias(
       {static_cast<int64_t>(workspaceSize)},
       at::device({at::kCUDA, at::cuda::current_device()}).dtype(at::kByte));
 
-  cublasLtMatmulHeuristicResult_t heuristicResult = {};
   int returnedResult = 0;
   cublasLtHandle_t ltHandle =
       reinterpret_cast<cublasLtHandle_t>(at::cuda::getCurrentCUDABlasHandle());
-  TORCH_CUDABLAS_CHECK(cublasLtMatmulAlgoGetHeuristic(
+  // cublasLtMatmulHeuristicResult_t heuristicResult = {};
+  // TORCH_CUDABLAS_CHECK(cublasLtMatmulAlgoGetHeuristic(
+  //     ltHandle,
+  //     computeDesc.descriptor(),
+  //     Adesc.descriptor(),
+  //     Bdesc.descriptor(),
+  //     Cdesc.descriptor(),
+  //     Cdesc.descriptor(),
+  //     preference.descriptor(),
+  //     1,
+  //     &heuristicResult,
+  //     &returnedResult));
+  // if (returnedResult == 0) {
+  //   TORCH_CUDABLAS_CHECK(CUBLAS_STATUS_NOT_SUPPORTED);
+  // }
+
+  auto gemm_key { MatMulConfig { transpose_mat1, transpose_mat2, m, n, k, mat1_ld, mat2_ld, abcType } };
+  if (heuristic_map.count(gemm_key) <= 0) {
+    std::cout << (transpose_mat1 == 0 ? "N" : "T") << (transpose_mat2 == 0 ? "N" : "T") 
+              << " (" << m << ", " << n << ", " << k << "), dtype: " << abcType
+              << ", (lda, ldb): (" << mat1_ld << ", " << mat2_ld << "), " << std::endl;
+    std::vector<cublasLtMatmulHeuristicResult_t> heuristicResult(request_solutions);
+    TORCH_CUDABLAS_CHECK(cublasLtMatmulAlgoGetHeuristic(
       ltHandle,
       computeDesc.descriptor(),
       Adesc.descriptor(),
@@ -823,30 +874,109 @@ void gemm_and_bias(
       Cdesc.descriptor(),
       Cdesc.descriptor(),
       preference.descriptor(),
-      1,
-      &heuristicResult,
+      request_solutions,
+      heuristicResult.data(),
       &returnedResult));
-  if (returnedResult == 0) {
-    TORCH_CUDABLAS_CHECK(CUBLAS_STATUS_NOT_SUPPORTED);
+    if (returnedResult == 0) {
+      TORCH_CUDABLAS_CHECK(CUBLAS_STATUS_NOT_SUPPORTED);
+    }
+    if(returnedResult != request_solutions) {
+      std::cout << "less solution found! request: " << request_solutions
+                << ", found: " << returnedResult << std::endl;
+    }
+
+    if (returnedResult == 1) {
+      heuristic_map[gemm_key] = heuristicResult[0];
+    } else {
+      // benchmark requested solutions and pick best one
+      int bestIndex { -1 };
+      double bestMs { std::numeric_limits<double>::max() };
+      for (int sol { 0 }; sol < returnedResult; ++sol) {
+        // warm up
+        for (int iter { 0 }; iter < warmup_iters; ++iter) {
+          TORCH_CUDABLAS_CHECK(cublasLtMatmul(
+            ltHandle,
+            computeDesc.descriptor(),
+            &alpha_val,
+            mat1_ptr,
+            Adesc.descriptor(),
+            mat2_ptr,
+            Bdesc.descriptor(),
+            &zero, // In case beta != 0, these runs can overwrite the values in c
+                   // since c and d are the same
+            result_ptr,
+            Cdesc.descriptor(),
+            result_ptr,
+            Cdesc.descriptor(),
+            &heuristicResult[sol].algo,
+            workspace.data_ptr(),
+            workspaceSize,
+            at::cuda::getCurrentCUDAStream()));
+        }
+        // performance measuring
+        double eventMs;
+        // cudaEventCreate(&start);
+        // cudaEventCreate(&stop);
+        // cudaEventRecord(start, at::cuda::getCurrentCUDAStream());
+        start.record(at::cuda::getCurrentCUDAStream());
+        for (int iter { 0 }; iter < bench_iters; ++iter) {
+          TORCH_CUDABLAS_CHECK(cublasLtMatmul(
+            ltHandle,
+            computeDesc.descriptor(),
+            &alpha_val,
+            mat1_ptr,
+            Adesc.descriptor(),
+            mat2_ptr,
+            Bdesc.descriptor(),
+            &zero, // In case beta != 0, these runs can overwrite the values in c
+                   // since c and d are the same
+            result_ptr,
+            Cdesc.descriptor(),
+            result_ptr,
+            Cdesc.descriptor(),
+            &heuristicResult[sol].algo,
+            workspace.data_ptr(),
+            workspaceSize,
+            at::cuda::getCurrentCUDAStream()));
+        }
+        stop.record(at::cuda::getCurrentCUDAStream());
+        stop.synchronize();
+        float temp = start.elapsed_time(stop);
+        eventMs = double(temp);
+        eventMs /= bench_iters;
+
+        std::cout << "    Sol " << sol << ": average time per iter " << std::to_string(eventMs) << " ms";
+        if (bestMs > eventMs) {
+          bestMs = eventMs;
+          bestIndex = sol;
+          std::cout << " *" << std::endl;
+        } else {
+          std::cout << std::endl;
+        }
+      }
+      heuristic_map[gemm_key] = heuristicResult[bestIndex];
+    }
   }
 
-    auto cublasStatus = cublasLtMatmul(
-      ltHandle,
-      computeDesc.descriptor(),
-      &alpha_val,
-      mat1_ptr,
-      Adesc.descriptor(),
-      mat2_ptr,
-      Bdesc.descriptor(),
-      &beta_val,
-      result_ptr,
-      Cdesc.descriptor(),
-      result_ptr,
-      Cdesc.descriptor(),
-      &heuristicResult.algo,
-      workspace.data_ptr(),
-      workspaceSize,
-      at::cuda::getCurrentCUDAStream());
+  auto cublasStatus = cublasLtMatmul(
+    ltHandle,
+    computeDesc.descriptor(),
+    &alpha_val,
+    mat1_ptr,
+    Adesc.descriptor(),
+    mat2_ptr,
+    Bdesc.descriptor(),
+    &beta_val,
+    result_ptr,
+    Cdesc.descriptor(),
+    result_ptr,
+    Cdesc.descriptor(),
+    // &heuristicResult.algo,
+    &heuristic_map[gemm_key].algo
+    workspace.data_ptr(),
+    workspaceSize,
+    at::cuda::getCurrentCUDAStream());
+
   TORCH_CHECK(
 #ifdef USE_ROCM
       cublasStatus == HIPBLAS_STATUS_SUCCESS,
