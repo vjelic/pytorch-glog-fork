@@ -173,7 +173,7 @@ Tensor& addmm_out_cuda_impl(Tensor& result, const Tensor& self, const Tensor& ma
       std::string device_arch = prop->gcnArchName;
       std::string hipblaslt_supported_arch = "gfx90a";
       size_t substring = device_arch.find(hipblaslt_supported_arch);
-      assert(substring != std::string::npos && "Attempting to use HIPBlasLT on a non-supported architecture!");
+      TORCH_CHECK(substring != std::string::npos, "Attempting to use HIPBlasLT on a non-supported architecture!");
       useLtInterface = self.is_contiguous() && self.dim() == 1 &&
         result.dim() == 2 && self.sizes()[0] == mat2_sizes[1] &&
         (scalar_type == at::ScalarType::Double ||
