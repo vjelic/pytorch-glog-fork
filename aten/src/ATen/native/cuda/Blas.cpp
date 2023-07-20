@@ -171,7 +171,7 @@ Tensor& addmm_out_cuda_impl(Tensor& result, const Tensor& self, const Tensor& ma
     if (std::getenv("USE_HIPBLASLT")){
       hipDeviceProp_t* prop = at::cuda::getDeviceProperties(self.device().index());
       std::string device_arch = prop->gcnArchName;
-      std::string hipblaslt_supported_arch = "gfx90a";
+      static const std::string hipblaslt_supported_arch = "gfx90a";
       size_t substring = device_arch.find(hipblaslt_supported_arch);
       TORCH_CHECK(substring != std::string::npos, "Attempting to use HIPBlasLT on a non-supported architecture!");
       useLtInterface = self.is_contiguous() && self.dim() == 1 &&
