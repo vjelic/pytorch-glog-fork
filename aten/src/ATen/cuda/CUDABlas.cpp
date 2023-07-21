@@ -613,7 +613,7 @@ void general_rocm_error_handling(const char* expr_string,
 }
 
 #define TORCH_CUDABLAS_CHECK(EXPR)                              \
-  do{								\
+  do{                                                           \
     auto __err = EXPR;                                          \
     general_rocm_error_handling(#EXPR, __err);                  \
   } while(0)
