@@ -590,7 +590,7 @@ void gemm<at::BFloat16>(CUDABLAS_GEMM_ARGTYPES(at::BFloat16)) {
 namespace {
 
 #if defined(USE_ROCM) && ROCM_VERSION >= 50600
-// hipify maps hipDataType -> hipDataType, but hipblaslt expects hipblasDatatype_t
+// hipify maps cudaDataType_t -> hipDataType, but hipblaslt expects hipblasDatatype_t
 #define hipDataType hipblasDatatype_t
 // hipblaslt returns hipblasStatus_t, but hipify of TORCH_CUDABLAS_CHECK expects rocblas_status
 #define WORKAROUND_TORCH_CUDABLAS_CHECK(EXPR)                         \
@@ -608,7 +608,7 @@ namespace {
 #define HIP_R_32F HIPBLAS_R_32F
 #define HIP_R_64F HIPBLAS_R_64F
 #define CUDA_R_16BF HIPBLAS_R_16B
-// hipify maps rocblas_status to rocblas_status, but we need hipblasStatus_t.
+// hipify maps cublasSt to rocblas_status, but we need hipblasStatus_t.
 #define LT_RET_TYPE hipblasStatus_t
 #else
 #define WORKAROUND_TORCH_CUDABLAS_CHECK(EXPR) TORCH_CUDABLAS_CHECK
