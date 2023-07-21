@@ -122,7 +122,7 @@ enum class Activation {
   GELU,
 };
 
-#if (defined(USE_ROCM) && ROCM_VERSION >= 50600) || (defined(CUDA_VERSION) && CUDA_VERSION >= 11000 && !defined(_MSC_VER))
+#if (defined(USE_ROCM) && ROCM_VERSION >= 50600) || !defined(_MSC_VER)
 cuda::blas::GEMMAndBiasActivationEpilogue activation_to_gemm_and_blas_arg(Activation a) {
   switch (a) {
     case Activation::None:
@@ -168,7 +168,8 @@ Tensor& addmm_out_cuda_impl(Tensor& result, const Tensor& self, const Tensor& ma
   c10::MaybeOwned<Tensor> self_;
   if (&result != &self) {
 #if defined(USE_ROCM) && ROCM_VERSION >= 50600
-    if (std::getenv("USE_HIPBLASLT")){
+    const char* use_hipblaslt_envVar = std::getenv("USE_HIPBLASLT");
+    if (use_hipblaslt_envVar != nullptr && std::atoi(use_hipblaslt_envVar) == 1) {
       hipDeviceProp_t* prop = at::cuda::getDeviceProperties(self.device().index());
       std::string device_arch = prop->gcnArchName;
       static const std::string hipblaslt_supported_arch = "gfx90a";

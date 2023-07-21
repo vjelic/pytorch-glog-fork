@@ -590,17 +590,8 @@ void gemm<at::BFloat16>(CUDABLAS_GEMM_ARGTYPES(at::BFloat16)) {
 namespace {
 
 #if defined(USE_ROCM) && ROCM_VERSION >= 50600
-// hipify maps hipDataType -> hipDataType, but hipblaslt expects hipblasDatatype_t
+// hipify maps cudaDataType_t -> hipDataType, but hipblaslt expects hipblasDatatype_t
 #define hipDataType hipblasDatatype_t
-// hipblaslt returns hipblasStatus_t, but hipify of TORCH_CUDABLAS_CHECK expects rocblas_status
-#define WORKAROUND_TORCH_CUDABLAS_CHECK(EXPR)                         \
-  do {                                                          \
-    hipblasStatus_t __err = EXPR;                               \
-    TORCH_CHECK(__err == HIPBLAS_STATUS_SUCCESS,                \
-                "HIP error: ",                                  \
-                at::cuda::blas::_hipblasGetErrorEnum(__err),    \
-                " when calling `" #EXPR "`");                   \
-  } while (0)
 // hipblaslt expexts hipblasDatatype_t, but it's a mess right now
 #define HIP_R_8I HIPBLAS_R_8I
 #define HIP_R_16F HIPBLAS_R_16F
@@ -608,10 +599,9 @@ namespace {
 #define HIP_R_32F HIPBLAS_R_32F
 #define HIP_R_64F HIPBLAS_R_64F
 #define CUDA_R_16BF HIPBLAS_R_16B
-// hipify maps rocblas_status to rocblas_status, but we need hipblasStatus_t.
+// hipify maps cublasSt to rocblas_status, but we need hipblasStatus_t.
 #define LT_RET_TYPE hipblasStatus_t
 #else
-#define WORKAROUND_TORCH_CUDABLAS_CHECK(EXPR) TORCH_CUDABLAS_CHECK
 #define LT_RET_TYPE cublasSt
 #endif
 
@@ -623,7 +613,11 @@ template <typename T, LT_RET_TYPE (*destructor)(T*)>
 struct CuBlasLtDeleter {
   void operator()(T* x) {
     if (x != nullptr) {
-      WORKAROUND_TORCH_CUDABLAS_CHECK(destructor(x));
+#if defined(USE_ROCM)
+      TORCH_HIPBLAS_CHECK(destructor(x));
+#else
+      TORCH_CUDABLAS_CHECK(destructor(x));
+#endif
     }
   }
 };
@@ -650,8 +644,11 @@ class CuBlasLtMatmulDescriptor : public CuBlasLtDescriptor<
       cublasComputeType_t compute_type,
       cudaDataType_t scale_type) {
     cublasLtMatmulDesc_t raw_descriptor = nullptr;
-    WORKAROUND_TORCH_CUDABLAS_CHECK(
-        cublasLtMatmulDescCreate(&raw_descriptor, compute_type, scale_type));
+#if defined(USE_ROCM)
+    TORCH_HIPBLAS_CHECK(cublasLtMatmulDescCreate(&raw_descriptor, compute_type, scale_type));
+#else
+    TORCH_CUDABLAS_CHECK(cublasLtMatmulDescCreate(&raw_descriptor, compute_type, scale_type));
+#endif
     descriptor_.reset(raw_descriptor);
   }
 };
@@ -666,8 +663,11 @@ class CuBlasLtMatrixLayout : public CuBlasLtDescriptor<
       uint64_t cols,
       int64_t ld) {
     cublasLtMatrixLayout_t raw_descriptor = nullptr;
-    WORKAROUND_TORCH_CUDABLAS_CHECK(
-        cublasLtMatrixLayoutCreate(&raw_descriptor, type, rows, cols, ld));
+#if defined(USE_ROCM)
+    TORCH_HIPBLAS_CHECK(cublasLtMatrixLayoutCreate(&raw_descriptor, type, rows, cols, ld));
+#else
+    TORCH_CUDABLAS_CHECK(cublasLtMatrixLayoutCreate(&raw_descriptor, type, rows, cols, ld));
+#endif
     descriptor_.reset(raw_descriptor);
   }
 };
@@ -678,7 +678,11 @@ class CuBlasLtMatmulPreference : public CuBlasLtDescriptor<
  public:
   CuBlasLtMatmulPreference() {
     cublasLtMatmulPreference_t raw_descriptor = nullptr;
-    WORKAROUND_TORCH_CUDABLAS_CHECK(cublasLtMatmulPreferenceCreate(&raw_descriptor));
+#if defined(USE_ROCM)
+    TORCH_HIPBLAS_CHECK(cublasLtMatmulPreferenceCreate(&raw_descriptor));
+#else
+    TORCH_CUDABLAS_CHECK(cublasLtMatmulPreferenceCreate(&raw_descriptor));
+#endif
     descriptor_.reset(raw_descriptor);
   }
 };
@@ -725,17 +729,33 @@ void gemm_and_bias(
 
   CuBlasLtMatmulDescriptor computeDesc(computeType, scaleType);
   cublasOperation_t transa = transpose_mat1 ? CUBLAS_OP_T : CUBLAS_OP_N;
-  WORKAROUND_TORCH_CUDABLAS_CHECK(cublasLtMatmulDescSetAttribute(
+#if defined(USE_ROCM)
+  TORCH_HIPBLAS_CHECK(cublasLtMatmulDescSetAttribute(
       computeDesc.descriptor(),
       CUBLASLT_MATMUL_DESC_TRANSA,
       &transa,
       sizeof(transa)));
+#else
+  TORCH_CUDABLAS_CHECK(cublasLtMatmulDescSetAttribute(
+      computeDesc.descriptor(),
+      CUBLASLT_MATMUL_DESC_TRANSA,
+      &transa,
+      sizeof(transa)));
+#endif
   cublasOperation_t transb = transpose_mat2 ? CUBLAS_OP_T : CUBLAS_OP_N;
-  WORKAROUND_TORCH_CUDABLAS_CHECK(cublasLtMatmulDescSetAttribute(
+#if defined(USE_ROCM)
+  TORCH_HIPBLAS_CHECK(cublasLtMatmulDescSetAttribute(
       computeDesc.descriptor(),
       CUBLASLT_MATMUL_DESC_TRANSB,
       &transb,
       sizeof(transb)));
+#else
+  TORCH_CUDABLAS_CHECK(cublasLtMatmulDescSetAttribute(
+      computeDesc.descriptor(),
+      CUBLASLT_MATMUL_DESC_TRANSB,
+      &transb,
+      sizeof(transb)));
+#endif
   cublasLtEpilogue_t epilogue = CUBLASLT_EPILOGUE_BIAS;
   if (activation == GEMMAndBiasActivationEpilogue::RELU) {
     epilogue = CUBLASLT_EPILOGUE_RELU_BIAS;
@@ -744,16 +764,29 @@ void gemm_and_bias(
     epilogue = CUBLASLT_EPILOGUE_GELU_BIAS;
 #endif
   }
-  WORKAROUND_TORCH_CUDABLAS_CHECK(cublasLtMatmulDescSetAttribute(
+#if defined(USE_ROCM)
+  TORCH_HIPBLAS_CHECK(cublasLtMatmulDescSetAttribute(
       computeDesc.descriptor(),
       CUBLASLT_MATMUL_DESC_EPILOGUE,
       &epilogue,
       sizeof(epilogue)));
-  WORKAROUND_TORCH_CUDABLAS_CHECK(cublasLtMatmulDescSetAttribute(
+  TORCH_HIPBLAS_CHECK(cublasLtMatmulDescSetAttribute(
       computeDesc.descriptor(),
       CUBLASLT_MATMUL_DESC_BIAS_POINTER,
       &bias,
       sizeof(Dtype*)));
+#else
+  TORCH_CUDABLAS_CHECK(cublasLtMatmulDescSetAttribute(
+      computeDesc.descriptor(),
+      CUBLASLT_MATMUL_DESC_EPILOGUE,
+      &epilogue,
+      sizeof(epilogue)));
+  TORCH_CUDABLAS_CHECK(cublasLtMatmulDescSetAttribute(
+      computeDesc.descriptor(),
+      CUBLASLT_MATMUL_DESC_BIAS_POINTER,
+      &bias,
+      sizeof(Dtype*)));
+#endif
 
   CuBlasLtMatrixLayout Adesc(
       abcType, transpose_mat1 ? k : m, transpose_mat1 ? m : k, mat1_ld);
@@ -765,11 +798,19 @@ void gemm_and_bias(
   // See https://github.com/pytorch/pytorch/issues/73328 for reasoning behind
   // setting this to 1M.
   size_t workspaceSize = _getWorkspaceSize();
-  WORKAROUND_TORCH_CUDABLAS_CHECK(cublasLtMatmulPreferenceSetAttribute(
+#if defined(USE_ROCM)
+  TORCH_HIPBLAS_CHECK(cublasLtMatmulPreferenceSetAttribute(
       preference.descriptor(),
       CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
       &workspaceSize,
       sizeof(workspaceSize)));
+#else
+  TORCH_CUDABLAS_CHECK(cublasLtMatmulPreferenceSetAttribute(
+      preference.descriptor(),
+      CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
+      &workspaceSize,
+      sizeof(workspaceSize)));
+#endif
 
 #if !defined(USE_ROCM)
   uint32_t a_alignment = _getAlignment(reinterpret_cast<uintptr_t>(mat1_ptr));
@@ -802,7 +843,8 @@ void gemm_and_bias(
   int returnedResult = 0;
   cublasLtHandle_t ltHandle =
       reinterpret_cast<cublasLtHandle_t>(at::cuda::getCurrentCUDABlasHandle());
-  WORKAROUND_TORCH_CUDABLAS_CHECK(cublasLtMatmulAlgoGetHeuristic(
+#if defined(USE_ROCM)
+  TORCH_HIPBLAS_CHECK(cublasLtMatmulAlgoGetHeuristic(
       ltHandle,
       computeDesc.descriptor(),
       Adesc.descriptor(),
@@ -813,11 +855,25 @@ void gemm_and_bias(
       1,
       &heuristicResult,
       &returnedResult));
+#else
+  TORCH_CUDABLAS_CHECK(cublasLtMatmulAlgoGetHeuristic(
+      ltHandle,
+      computeDesc.descriptor(),
+      Adesc.descriptor(),
+      Bdesc.descriptor(),
+      Cdesc.descriptor(),
+      Cdesc.descriptor(),
+      preference.descriptor(),
+      1,
+      &heuristicResult,
+      &returnedResult));
+#endif
   if (returnedResult == 0) {
     TORCH_CUDABLAS_CHECK(CUBLAS_STATUS_NOT_SUPPORTED);
   }
 
-  WORKAROUND_TORCH_CUDABLAS_CHECK(cublasLtMatmul(
+#if defined(USE_ROCM)
+  TORCH_HIPBLAS_CHECK(cublasLtMatmul(
       ltHandle,
       computeDesc.descriptor(),
       &alpha_val,
@@ -834,6 +890,51 @@ void gemm_and_bias(
       workspace.data_ptr(),
       workspaceSize,
       at::cuda::getCurrentCUDAStream()));
+#else
+   cublasStatus_t cublasStatus = cublasLtMatmul(
+      ltHandle,
+      computeDesc.descriptor(),
+      &alpha_val,
+      mat1_ptr,
+      Adesc.descriptor(),
+      mat2_ptr,
+      Bdesc.descriptor(),
+      &beta_val,
+      result_ptr,
+      Cdesc.descriptor(),
+      result_ptr,
+      Cdesc.descriptor(),
+      &heuristicResult.algo,
+      workspace.data_ptr(),
+      workspaceSize,
+      at::cuda::getCurrentCUDAStream());
+  TORCH_CHECK(
+      cublasStatus == CUBLAS_STATUS_SUCCESS,
+      "CUDA error: ",
+      at::cuda::blas::_cublasGetErrorEnum(cublasStatus),
+      " when calling cublasLtMatmul with transpose_mat1 ",
+      transpose_mat1,
+      " transpose_mat2 ",
+      transpose_mat2,
+      " m ",
+      m,
+      " n ",
+      n,
+      " k ",
+      k,
+      " mat1_ld ",
+      mat1_ld,
+      " mat2_ld ",
+      mat2_ld,
+      " result_ld ",
+      result_ld,
+      " abcType ",
+      abcType,
+      " computeType ",
+      computeType,
+      " scaleType ",
+      scaleType);
+#endif
 }
 
 template void gemm_and_bias(
