@@ -315,4 +315,8 @@ if [[ "$BUILD_ENVIRONMENT" != *libtorch* && "$BUILD_ENVIRONMENT" != *bazel* ]]; 
   python tools/stats/export_test_times.py
 fi
 
+if [[ "$BUILD_ENVIRONMENT" == *rocm* ]]; then
+  source .ci/pytorch/rocm_extras.sh 
+fi
+
 print_sccache_stats
