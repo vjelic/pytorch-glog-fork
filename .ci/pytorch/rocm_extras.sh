@@ -6,6 +6,7 @@ set -ex
 export CI=1
 export PYTORCH_TEST_WITH_ROCM=1
 export PYTORCH_TESTING_DEVICE_ONLY_FOR="cuda"
+export HSA_FORCE_FINE_GRAIN_PCIE=1
 
 # Manually extract the test times for ROCm since default steps may not find the BUILD_ENVIRONMENT key in the json that's hosted upstream
 wget https://raw.githubusercontent.com/pytorch/test-infra/generated-stats/stats/test-times.json
