@@ -608,6 +608,7 @@ CUDA_INCLUDE_MAP = collections.OrderedDict(
         ("vector_types.h", ("hip/hip_vector_types.h", CONV_INCLUDE, API_RUNTIME)),
         ("cublas.h", ("rocblas.h" if rocm_version < (5, 2, 0) else "rocblas/rocblas.h", CONV_INCLUDE_CUDA_MAIN_H, API_BLAS)),
         ("cublas_v2.h", ("rocblas.h" if rocm_version < (5, 2, 0) else "rocblas/rocblas.h", CONV_INCLUDE_CUDA_MAIN_H, API_BLAS)),
+        ("cublasLt.h", ("hipblaslt.h" if rocm_version >= (5, 6, 0) else "", CONV_INCLUDE_CUDA_MAIN_H, API_BLAS)),
         ("curand.h", ("hiprand/hiprand.h", CONV_INCLUDE_CUDA_MAIN_H, API_RAND)),
         ("curand_kernel.h", ("hiprand/hiprand_kernel.h", CONV_INCLUDE, API_RAND)),
         ("curand_discrete.h", ("hiprand/hiprand_kernel.h", CONV_INCLUDE, API_RAND)),

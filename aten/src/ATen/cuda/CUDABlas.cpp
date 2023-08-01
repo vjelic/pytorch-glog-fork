@@ -10,15 +10,8 @@
 #include <c10/util/irange.h>
 
 
-// cublasLT was introduced in CUDA 10.1 but we enable only for 11.1 that also
-// added bf16 support
-#if defined(CUDA_VERSION) && CUDA_VERSION >= 11000 && !defined(_MSC_VER)
+#if (!defined(USE_ROCM) && !defined(_MSC_VER)) || (defined(USE_ROCM) && ROCM_VERSION >= 50600)
 #include <cublasLt.h>
-#endif
-
-// hipblaslt was introduced in ROCm MAJOR.minor
-#if defined(USE_ROCM) && ROCM_VERSION >= 50600
-#include <hipblaslt.h>
 #endif
 
 #ifdef USE_ROCM
@@ -325,7 +318,7 @@ void bgemm<at::Half>(CUDABLAS_BGEMM_ARGTYPES(at::Half)) {
 #endif // USE_ROCM
 }
 
-#if (defined(USE_ROCM) && ROCM_VERSION >= 50600) || (defined(CUDA_VERSION) && CUDA_VERSION >= 11000)
+#if !defined(USE_ROCM) || ROCM_VERSION >= 50600
 template <>
 void bgemm<at::BFloat16>(CUDABLAS_BGEMM_ARGTYPES(at::BFloat16)) {
   // See Note [Writing Nondeterministic Operations]
@@ -357,7 +350,7 @@ void bgemm<at::BFloat16>(CUDABLAS_BGEMM_ARGTYPES(at::BFloat16)) {
     TORCH_CHECK(false, "CUDA BFloat16 bgemm requires CUDA 11 or later");
 #endif // defined(CUDA_VERSION) && CUDA_VERSION >= 11000
 }
-#endif // (defined(USE_ROCM) && ROCM_VERSION >= 50600) || (defined(CUDA_VERSION) && CUDA_VERSION >= 11000)
+#endif // !defined(USE_ROCM) || ROCM_VERSION >= 50600
 
 template <>
 void gemm<double>(CUDABLAS_GEMM_ARGTYPES(double)) {
@@ -551,7 +544,7 @@ void gemm<at::BFloat16>(CUDABLAS_GEMM_ARGTYPES(at::BFloat16)) {
 }
 #endif
 
-#if defined(CUDA_VERSION) && CUDA_VERSION >= 11000
+#if !defined(USE_ROCM)
 template <>
 void gemm<at::BFloat16>(CUDABLAS_GEMM_ARGTYPES(at::BFloat16)) {
   globalContext().alertCuBLASConfigNotDeterministic();
@@ -562,6 +555,11 @@ void gemm<at::BFloat16>(CUDABLAS_GEMM_ARGTYPES(at::BFloat16)) {
   float fbeta = beta;
   _cublasAdjustLdLevel3(transa, transb, m, n, k, &lda, &ldb, &ldc);
   GEMM_CHECK_ARGVALUES(at::BFloat16);
+  cublasMath_t cublas_flags = CUBLAS_DEFAULT_MATH;
+  if (!at::globalContext().allowBF16ReductionCuBLAS()) {
+    cublas_flags = static_cast<cublasMath_t>(cublas_flags | CUBLAS_MATH_DISALLOW_REDUCED_PRECISION_REDUCTION);
+  }
+  TORCH_CUDABLAS_CHECK(cublasSetMathMode(handle, cublas_flags));
   TORCH_CUDABLAS_CHECK(cublasGemmEx(
       handle,
       opa,
@@ -666,7 +664,8 @@ class CuBlasLtMatmulDescriptor : public CuBlasLtDescriptor<
       cublasComputeType_t compute_type,
       cudaDataType_t scale_type) {
     cublasLtMatmulDesc_t raw_descriptor = nullptr;
-    TORCH_CUDABLAS_CHECK(cublasLtMatmulDescCreate(&raw_descriptor, compute_type, scale_type));
+    TORCH_CUDABLAS_CHECK(
+       cublasLtMatmulDescCreate(&raw_descriptor, compute_type, scale_type));
     descriptor_.reset(raw_descriptor);
   }
 };
