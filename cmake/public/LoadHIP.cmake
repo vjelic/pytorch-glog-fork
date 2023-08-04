@@ -13,9 +13,9 @@ else()
   set(HIP_PATH $ENV{HIP_PATH})
 endif()
 
-if(NOT EXISTS ${HIP_PATH})
-  return()
-endif()
+#if(NOT EXISTS ${HIP_PATH})
+#  return()
+#endif()
 
 # HCC_PATH
 if(NOT DEFINED ENV{HCC_PATH})
@@ -137,7 +137,7 @@ else()
 endif()
 
 # Add HIP to the CMAKE Module Path
-set(CMAKE_MODULE_PATH ${HIP_PATH}/cmake ${CMAKE_MODULE_PATH})
+set(CMAKE_MODULE_PATH ${ROCM_PATH}/lib/cmake/hip ${CMAKE_MODULE_PATH})
 
 macro(find_package_and_print_version PACKAGE_NAME)
   find_package("${PACKAGE_NAME}" ${ARGN})
@@ -149,10 +149,64 @@ find_package_and_print_version(HIP 1.0)
 
 if(HIP_FOUND)
   set(PYTORCH_FOUND_HIP TRUE)
+  set(FOUND_ROCM_VERSION_H FALSE)
+
+  if(EXISTS ${ROCM_PATH}/.info/version-dev)
+    # ROCM < 4.5, we don't have the header api file, use flat file
+    file(READ "${ROCM_PATH}/.info/version-dev" ROCM_VERSION_DEV_RAW)
+    message("\n***** ROCm version from ${ROCM_PATH}/.info/version-dev ****\n")
+  endif()
+
+  set(PROJECT_RANDOM_BINARY_DIR "${PROJECT_BINARY_DIR}")
+  set(file "${PROJECT_BINARY_DIR}/detect_rocm_version.cc")
 
   # Find ROCM version for checks
-  file(READ "${ROCM_PATH}/.info/version-dev" ROCM_VERSION_DEV_RAW)
-  string(REGEX MATCH "^([0-9]+)\.([0-9]+)\.([0-9]+)-.*$" ROCM_VERSION_DEV_MATCH ${ROCM_VERSION_DEV_RAW})
+  # ROCM 5.0 and later will have header api for version management
+  if(EXISTS ${ROCM_INCLUDE_DIRS}/rocm_version.h)
+    set(FOUND_ROCM_VERSION_H TRUE)
+    file(WRITE ${file} ""
+      "#include <rocm_version.h>\n"
+      )
+  elseif(EXISTS ${ROCM_INCLUDE_DIRS}/rocm-core/rocm_version.h)
+    set(FOUND_ROCM_VERSION_H TRUE)
+    file(WRITE ${file} ""
+      "#include <rocm-core/rocm_version.h>\n"
+      )
+  else()
+    message("********************* rocm_version.h couldnt be found ******************\n")
+  endif()
+
+  if(FOUND_ROCM_VERSION_H)
+    file(APPEND ${file} ""
+      "#include <cstdio>\n"
+
+      "#ifndef ROCM_VERSION_PATCH\n"
+      "#define ROCM_VERSION_PATCH 0\n"
+      "#endif\n"
+      "#define STRINGIFYHELPER(x) #x\n"
+      "#define STRINGIFY(x) STRINGIFYHELPER(x)\n"
+      "int main() {\n"
+      "  printf(\"%d.%d.%s\", ROCM_VERSION_MAJOR, ROCM_VERSION_MINOR, STRINGIFY(ROCM_VERSION_PATCH));\n"
+      "  return 0;\n"
+      "}\n"
+      )
+
+    try_run(run_result compile_result ${PROJECT_RANDOM_BINARY_DIR} ${file}
+      CMAKE_FLAGS "-DINCLUDE_DIRECTORIES=${ROCM_INCLUDE_DIRS}"
+      RUN_OUTPUT_VARIABLE rocm_version_from_header
+      COMPILE_OUTPUT_VARIABLE output_var
+      )
+    # We expect the compile to be successful if the include directory exists.
+    if(NOT compile_result)
+      message(FATAL_ERROR "Caffe2: Couldn't determine version from header: " ${output_var})
+    endif()
+    message(STATUS "Caffe2: Header version is: " ${rocm_version_from_header})
+    set(ROCM_VERSION_DEV_RAW ${rocm_version_from_header})
+    message("\n***** ROCm version from rocm_version.h ****\n")
+  endif()
+
+  string(REGEX MATCH "^([0-9]+)\.([0-9]+)\.([0-9]+).*$" ROCM_VERSION_DEV_MATCH ${ROCM_VERSION_DEV_RAW})
+
   if(ROCM_VERSION_DEV_MATCH)
     set(ROCM_VERSION_DEV_MAJOR ${CMAKE_MATCH_1})
     set(ROCM_VERSION_DEV_MINOR ${CMAKE_MATCH_2})
@@ -186,6 +240,23 @@ if(HIP_FOUND)
   set(CMAKE_HCC_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
   set(CMAKE_HCC_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
   ### Remove setting of Flags when FindHIP.CMake PR #558 is accepted.###
+
+  if(ROCM_VERSION_DEV VERSION_GREATER_EQUAL "6.0.0")
+    set(HIP_PATH ${ROCM_PATH})
+    set(ROCRAND_PATH ${ROCM_PATH})
+    set(HIPRAND_PATH ${ROCM_PATH})
+    set(ROCBLAS_PATH ${ROCM_PATH})
+    set(MIOPEN_PATH ${ROCM_PATH})
+    set(ROCFFT_PATH ${ROCM_PATH})
+    set(HIPFFT_PATH ${ROCM_PATH})
+    set(HIPSPARSE_PATH ${ROCM_PATH})
+    set(RCCL_PATH ${ROCM_PATH})
+    set(ROCPRIM_PATH ${ROCM_PATH})
+    set(HIPCUB_PATH ${ROCM_PATH})
+    set(ROCTHRUST_PATH ${ROCM_PATH})
+    set(HIPSOLVER_PATH ${ROCM_PATH})
+    set(ROCTRACER_PATH ${ROCM_PATH})
+  endif()
 
   # As of ROCm 5.1.x, all *.cmake files are under /opt/rocm/lib/cmake/<package>
   if(ROCM_VERSION_DEV VERSION_GREATER_EQUAL "5.1.0")
@@ -221,6 +292,7 @@ if(HIP_FOUND)
     set(hipcub_DIR ${HIPCUB_PATH}/lib/cmake/hipcub)
     set(rocthrust_DIR ${ROCTHRUST_PATH}/lib/cmake/rocthrust)
   endif()
+
 
   find_package_and_print_version(hip REQUIRED)
   find_package_and_print_version(hsa-runtime64 REQUIRED)
