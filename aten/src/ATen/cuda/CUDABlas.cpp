@@ -701,11 +701,11 @@ class CuBlasLtMatmulPreference : public CuBlasLtDescriptor<
 struct MatMulConfig {
   bool transpose_mat1;
   bool transpose_mat2;
-  int m;
-  int n;
-  int k;
-  int mat1_ld;
-  int mat2_ld;
+  int64_t m;
+  int64_t n;
+  int64_t k;
+  int64_t mat1_ld;
+  int64_t mat2_ld;
   cudaDataType_t dtype;
 
   friend auto operator<(const MatMulConfig& left, const MatMulConfig& right) -> bool {
@@ -972,7 +972,7 @@ void gemm_and_bias(
     result_ptr,
     Cdesc.descriptor(),
     // &heuristicResult.algo,
-    &heuristic_map[gemm_key].algo
+    &heuristic_map[gemm_key].algo,
     workspace.data_ptr(),
     workspaceSize,
     at::cuda::getCurrentCUDAStream());
