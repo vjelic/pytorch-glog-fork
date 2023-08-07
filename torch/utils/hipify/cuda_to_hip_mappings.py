@@ -39,7 +39,12 @@ except (FileNotFoundError, PermissionError, NotADirectoryError):
     pass
 
 rocm_version = (0, 0, 0)
-rocm_version_h = f"{rocm_path}/include/rocm_version.h"
+rocm_version_h = f"{rocm_path}/include/rocm-core/rocm_version.h"
+
+# The file could be missing due to 1) ROCm version < 5.0, or 2) no ROCm install.
+if not os.path.isfile(rocm_version_h):
+    rocm_version_h = f"{rocm_path}/include/rocm_version.h"
+
 # The file could be missing due to 1) ROCm version < 5.0, or 2) no ROCm install.
 if os.path.isfile(rocm_version_h):
     RE_MAJOR = re.compile(r"#define\s+ROCM_VERSION_MAJOR\s+(\d+)")
@@ -608,7 +613,7 @@ CUDA_INCLUDE_MAP = collections.OrderedDict(
         ("vector_types.h", ("hip/hip_vector_types.h", CONV_INCLUDE, API_RUNTIME)),
         ("cublas.h", ("rocblas.h" if rocm_version < (5, 2, 0) else "rocblas/rocblas.h", CONV_INCLUDE_CUDA_MAIN_H, API_BLAS)),
         ("cublas_v2.h", ("rocblas.h" if rocm_version < (5, 2, 0) else "rocblas/rocblas.h", CONV_INCLUDE_CUDA_MAIN_H, API_BLAS)),
-        ("cublasLt.h", ("hipblaslt.h" if rocm_version >= (5, 6, 0) else "", CONV_INCLUDE_CUDA_MAIN_H, API_BLAS)),
+        ("cublasLt.h", ("hipblaslt/hipblaslt.h" if rocm_version >= (5, 6, 0) else "", CONV_INCLUDE_CUDA_MAIN_H, API_BLAS)),
         ("curand.h", ("hiprand/hiprand.h", CONV_INCLUDE_CUDA_MAIN_H, API_RAND)),
         ("curand_kernel.h", ("hiprand/hiprand_kernel.h", CONV_INCLUDE, API_RAND)),
         ("curand_discrete.h", ("hiprand/hiprand_kernel.h", CONV_INCLUDE, API_RAND)),
