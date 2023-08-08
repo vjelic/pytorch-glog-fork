@@ -35,4 +35,7 @@ make -f make.gen.hipMAGMA -j $(nproc)
 LANG=C.UTF-8 make lib/libmagma.so -j $(nproc) MKLROOT=/opt/conda/envs/py_$ANACONDA_PYTHON_VERSION
 make testing/testing_dgemm -j $(nproc) MKLROOT=/opt/conda/envs/py_$ANACONDA_PYTHON_VERSION
 popd
-mv magma /opt/rocm
+mkdir /opt/rocm/include/magma
+mv magma/include/* /opt/rocm/include/magma
+mv magma/lib/* /opt/rocm/lib
+rm -rf magma

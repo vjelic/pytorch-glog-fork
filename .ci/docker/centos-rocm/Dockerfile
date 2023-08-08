@@ -82,7 +82,7 @@ ENV PATH /opt/rocm/hcc/bin:$PATH
 ENV PATH /opt/rocm/hip/bin:$PATH
 ENV PATH /opt/rocm/opencl/bin:$PATH
 ENV PATH /opt/rocm/llvm/bin:$PATH
-ENV MAGMA_HOME /opt/rocm/magma
+ENV MAGMA_HOME /opt/rocm
 ENV LANG en_US.utf8
 ENV LC_ALL en_US.utf8
 

@@ -267,6 +267,7 @@ if(HIP_FOUND)
     set(ROCTHRUST_PATH ${ROCM_PATH})
     set(HIPSOLVER_PATH ${ROCM_PATH})
     set(ROCTRACER_PATH ${ROCM_PATH})
+    set(MAGMA_HOME ${ROCM_PATH})
   endif()
 
   # As of ROCm 5.1.x, all *.cmake files are under /opt/rocm/lib/cmake/<package>
