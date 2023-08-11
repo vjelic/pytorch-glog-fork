@@ -8,7 +8,7 @@ set -ex
 
 # "install" hipMAGMA into /opt/rocm/magma by copying after build
 if [[ $(ver $ROCM_VERSION) -ge $(ver 6.0) ]]; then
-  git clone https://bitbucket.org/mpruthvi1/magma.git -b rocm_60
+  git clone https://bitbucket.org/mpruthvi1/magma.git -b rocm_60_hipblas_revert
   pushd magma
 else
   git clone https://bitbucket.org/icl/magma.git
