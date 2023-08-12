@@ -141,7 +141,9 @@ endif()
 message("Building PyTorch for GPU arch: ${PYTORCH_ROCM_ARCH}")
 
 # Add HIP to the CMAKE Module Path
+message("Building PyTorch for GPU arch and rocm path is: ${ROCM_PATH}")
 set(CMAKE_MODULE_PATH ${ROCM_PATH}/lib/cmake/hip ${CMAKE_MODULE_PATH})
+message("Building PyTorch for GPU arch and cmake module path is: ${CMAKE_MODULE_PATH}")
 
 macro(find_package_and_print_version PACKAGE_NAME)
   find_package("${PACKAGE_NAME}" ${ARGN})
@@ -151,6 +153,8 @@ endmacro()
 # Find the HIP Package
 find_package_and_print_version(HIP 1.0)
 
+
+message("Building PyTorch for GPU arch and hip status is: ${HIP_FOUND}")
 if(HIP_FOUND)
   set(PYTORCH_FOUND_HIP TRUE)
   set(FOUND_ROCM_VERSION_H FALSE)
