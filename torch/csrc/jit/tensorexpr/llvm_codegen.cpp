@@ -70,6 +70,12 @@
 
 #include <memory>
 
+// Temp change for - https://ontrack-internal.amd.com/browse/SWDEV-413228
+// Will be merged later to release branch
+#if LLVM_VERSION_MAJOR >= 17
+#define getPointerElementType getStructElementType
+#endif
+
 using namespace torch::jit::tensorexpr;
 
 C10_DEFINE_bool(
