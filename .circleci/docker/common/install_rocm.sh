@@ -1,16 +1,26 @@
 #!/bin/bash
 
+ver() {
+  printf "%3d%03d%03d%03d" $(echo "$1" | tr '.' ' ');
+}
+
 set -ex
 
 install_magma() {
     # "install" hipMAGMA into /opt/rocm/magma by copying after build
-    git clone https://bitbucket.org/icl/magma.git -b magma_ctrl_launch_bounds
-    pushd magma
-    # The branch "magma_ctrl_launch_bounds" is having a fix over the below commit, so keeping the below comment for reference.
-    #git checkout 878b1ce02e9cfe4a829be22c8f911e9c0b6bd88f
-    # Work around non-asii characters in certain magma sources; remove this after upstream magma fixes this.
-    perl -i.bak -pe 's/[^[:ascii:]]//g' sparse/control/magma_zfree.cpp
-    perl -i.bak -pe 's/[^[:ascii:]]//g' sparse/control/magma_zsolverinfo.cpp
+    if [[ $(ver $ROCM_VERSION) -ge $(ver 6.0) ]]; then
+      git clone https://bitbucket.org/mpruthvi1/magma.git -b rocm_60
+      pushd magma
+    else
+      git clone https://bitbucket.org/icl/magma.git -b magma_ctrl_launch_bounds
+      pushd magma
+      # The branch "magma_ctrl_launch_bounds" is having a fix over the below commit, so keeping the below comment for reference.
+      #git checkout 878b1ce02e9cfe4a829be22c8f911e9c0b6bd88f
+      # Work around non-asii characters in certain magma sources; remove this after upstream magma fixes this.
+      perl -i.bak -pe 's/[^[:ascii:]]//g' sparse/control/magma_zfree.cpp
+      perl -i.bak -pe 's/[^[:ascii:]]//g' sparse/control/magma_zsolverinfo.cpp
+    fi
+
     cp make.inc-examples/make.inc.hip-gcc-mkl make.inc
     echo 'LIBDIR += -L$(MKLROOT)/lib' >> make.inc
     echo 'LIB += -Wl,--enable-new-dtags -Wl,--rpath,/opt/rocm/lib -Wl,--rpath,$(MKLROOT)/lib -Wl,--rpath,/opt/rocm/magma/lib' >> make.inc
