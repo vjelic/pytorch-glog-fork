@@ -634,7 +634,7 @@ def run_test(
         ret_code = 0 if ret_code == 5 or ret_code == 4 else ret_code
 
     print_log_file(test_module, log_path, failed=(ret_code != 0))
-    os.remove(log_path)
+    #os.remove(log_path)
     return ret_code
 
 
