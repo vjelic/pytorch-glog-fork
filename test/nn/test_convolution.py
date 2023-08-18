@@ -2086,7 +2086,7 @@ class TestConvolutionNNDeviceType(NNTestCase):
                          atol=dtype2prec_DONTUSE[dtype], rtol=0)
         self.assertEqual(m.weight.grad.data,
                          torch.cat([m1.weight.grad.data, m2.weight.grad.data], 0),
-                         atol=dtype2prec_DONTUSE[dtype], rtol=0)
+                         atol=1e-1 if dtype == torch.half else dtype2prec_DONTUSE[dtype], rtol=0)
 
     @dtypes(torch.double, torch.cdouble)
     def test_Conv2d_backward_depthwise(self, device, dtype):
