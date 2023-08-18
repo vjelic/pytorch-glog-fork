@@ -82,6 +82,10 @@ install_ubuntu() {
   # see: https://github.com/pytorch/pytorch/issues/65931
   apt-get install -y libgnutls30
 
+  if [[ "$UBUNTU_VERSION" == "22.04"* ]]; then
+    apt-get install -y libopenblas-dev
+  fi
+
   # Cleanup package manager
   apt-get autoclean && apt-get clean
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
