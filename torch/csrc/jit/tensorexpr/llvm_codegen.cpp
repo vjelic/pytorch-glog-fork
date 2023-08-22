@@ -597,14 +597,14 @@ void LLVMCodeGenImpl::emitWrapper(const std::vector<llvm::Type*>& params) {
         llvm::ConstantInt::getSigned(IntTy_, i));
     if (params[i]->isPointerTy()) {
       auto arg = irb_.CreatePointerCast(
-          irb_.CreateLoad(argp->getType()->getPointerElementType(), argp),
+          irb_.CreateLoad(argp->getType()->getPointerElementType(0), argp),
           params[i]);
       wrappedArgs.push_back(arg);
     } else {
       auto p = irb_.CreatePointerCast(
-          irb_.CreateLoad(argp->getType()->getPointerElementType(), argp),
+          irb_.CreateLoad(argp->getType()->getPointerElementType(0), argp),
           params[i]->getPointerTo());
-      auto arg = irb_.CreateLoad(p->getType()->getPointerElementType(), p);
+      auto arg = irb_.CreateLoad(p->getType()->getPointerElementType(0), p);
       wrappedArgs.push_back(arg);
     }
   }
@@ -1293,8 +1293,8 @@ llvm::Value* LLVMCodeGenImpl::emitUnmaskedLoad(
     llvm::Value* base,
     llvm::Value* idx) {
   auto addr = irb_.CreateGEP(
-      base->getType()->getScalarType()->getPointerElementType(), base, idx);
-  return irb_.CreateLoad(addr->getType()->getPointerElementType(), addr);
+      base->getType()->getScalarType()->getPointerElementType(0), base, idx);
+  return irb_.CreateLoad(addr->getType()->getPointerElementType(0), addr);
 }
 
 llvm::Value* LLVMCodeGenImpl::emitMaskedLoad(
@@ -1313,8 +1313,8 @@ llvm::Value* LLVMCodeGenImpl::emitMaskedLoad(
   // Do the load
   irb_.SetInsertPoint(condblock);
   auto addr = irb_.CreateGEP(
-      base->getType()->getScalarType()->getPointerElementType(), base, idx);
-  auto load = irb_.CreateLoad(addr->getType()->getPointerElementType(), addr);
+      base->getType()->getScalarType()->getPointerElementType(0), base, idx);
+  auto load = irb_.CreateLoad(addr->getType()->getPointerElementType(0), addr);
   irb_.CreateBr(tailblock);
 
   // Merge the masked and unmasked CFG edges
@@ -1371,7 +1371,7 @@ void LLVMCodeGenImpl::visit(LoadPtr v) {
       auto first_idx = this->value_;
 
       auto addr = irb_.CreateGEP(
-          base->getType()->getScalarType()->getPointerElementType(),
+          base->getType()->getScalarType()->getPointerElementType(0),
           base,
           first_idx);
       auto vaddr = irb_.CreateBitOrPointerCast(
@@ -1434,11 +1434,11 @@ std::vector<llvm::Value*> LLVMCodeGenImpl::unpackFuncArgs(
   std::vector<llvm::Value*> func_args(arg_count);
   llvm::Value* zero = llvm::ConstantInt::get(IntTy_, 0);
   for (const auto i : c10::irange(arg_count)) {
-    llvm::Type* packed_type = packed->getType()->getPointerElementType();
+    llvm::Type* packed_type = packed->getType()->getPointerElementType(0);
     llvm::Value* dst_ptr = irb_.CreateInBoundsGEP(
         packed_type, packed, {zero, llvm::ConstantInt::get(IntTy_, i)});
     func_args[i] =
-        irb_.CreateLoad(dst_ptr->getType()->getPointerElementType(), dst_ptr);
+        irb_.CreateLoad(dst_ptr->getType()->getPointerElementType(0), dst_ptr);
   }
   return func_args;
 }
@@ -1612,7 +1612,7 @@ void LLVMCodeGenImpl::emitUnmaskedStore(
     llvm::Value* idx,
     llvm::Value* val) {
   auto addr = irb_.CreateGEP(
-      base->getType()->getScalarType()->getPointerElementType(), base, idx);
+      base->getType()->getScalarType()->getPointerElementType(0), base, idx);
   irb_.CreateStore(val, addr);
 }
 
@@ -1632,7 +1632,7 @@ void LLVMCodeGenImpl::emitMaskedStore(
   // Do the store
   irb_.SetInsertPoint(condblock);
   auto addr = irb_.CreateGEP(
-      base->getType()->getScalarType()->getPointerElementType(), base, idx);
+      base->getType()->getScalarType()->getPointerElementType(0), base, idx);
   irb_.CreateStore(val, addr);
   irb_.CreateBr(tailblock);
 
@@ -1669,7 +1669,7 @@ void LLVMCodeGenImpl::visit(StorePtr v) {
       auto first_idx = value_;
 
       auto addr = irb_.CreateGEP(
-          base->getType()->getScalarType()->getPointerElementType(),
+          base->getType()->getScalarType()->getPointerElementType(0),
           base,
           first_idx);
       auto vaddr = irb_.CreateBitOrPointerCast(
