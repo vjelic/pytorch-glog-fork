@@ -9,8 +9,10 @@ set -ex
 install_magma() {
     # "install" hipMAGMA into /opt/rocm/magma by copying after build
     if [[ $(ver $ROCM_VERSION) -ge $(ver 6.0) ]]; then
-      git clone https://bitbucket.org/mpruthvi1/magma.git -b rocm_60
+      git clone https://bitbucket.org/mpruthvi1/magma.git -b pyt1_10_rocm6.x
       pushd magma
+      perl -i.bak -pe 's/[^[:ascii:]]//g' sparse/control/magma_zfree.cpp
+      perl -i.bak -pe 's/[^[:ascii:]]//g' sparse/control/magma_zsolverinfo.cpp
     else
       git clone https://bitbucket.org/icl/magma.git -b magma_ctrl_launch_bounds
       pushd magma
