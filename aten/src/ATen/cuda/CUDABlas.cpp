@@ -617,12 +617,12 @@ void general_rocm_error_handling(const char* expr_string,
   } while(0)
 
 // hipblaslt expexts hipblasltDatatype_t, but it's a mess right now
-#define HIP_R_8I HIPBLAS_R_8I
-#define HIP_R_16F HIPBLAS_R_16F
-#define HIP_R_32I HIPBLAS_R_32I
-#define HIP_R_32F HIPBLAS_R_32F
-#define HIP_R_64F HIPBLAS_R_64F
-#define CUDA_R_16BF HIPBLAS_R_16B
+#define HIP_R_8I HIPBLASLT_R_8I
+#define HIP_R_16F HIPBLASLT_R_16F
+#define HIP_R_32I HIPBLASLT_R_32I
+#define HIP_R_32F HIPBLASLT_R_32F
+#define HIP_R_64F HIPBLASLT_R_64F
+#define CUDA_R_16BF HIPBLASLT_R_16B
 // hipify maps cublasSt to rocblas_status, but we need hipblasStatus_t.
 #define LT_RET_TYPE hipblasStatus_t
 #else
