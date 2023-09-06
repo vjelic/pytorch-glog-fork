@@ -73,6 +73,10 @@ if [ -n "$ANACONDA_PYTHON_VERSION" ]; then
     as_jenkins conda install -q -y python="$ANACONDA_PYTHON_VERSION" $*
   }
 
+  conda_install_through_forge() {
+    as_jenkins conda install -c conda-forge -q -y python="$ANACONDA_PYTHON_VERSION" $*
+  }
+
   pip_install() {
     as_jenkins pip install --progress-bar off $*
   }
@@ -103,6 +107,11 @@ if [ -n "$ANACONDA_PYTHON_VERSION" ]; then
 
   # TODO: This isn't working atm
   conda_install nnpack -c killeent
+
+  # Install required libstdc++.so.6 version
+  if [ "$ANACONDA_PYTHON_VERSION" = "3.10" ] || [ "$ANACONDA_PYTHON_VERSION" = "3.9" ] ; then
+    conda_install_through_forge libstdcxx-ng=12
+  fi
 
   # Install some other packages, including those needed for Python test reporting
   pip_install -r /opt/conda/requirements-ci.txt
