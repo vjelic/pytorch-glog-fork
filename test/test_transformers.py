@@ -10,15 +10,7 @@ from torch.nn.parameter import Parameter
 import unittest
 from unittest.mock import patch, MagicMock, ANY
 import math
-# from torch.backends.cuda import sdp_kernel, SDPBackend
-from torch.backends.cuda import SDPBackend
-from torch.backends.cuda import (
-    flash_sdp_enabled,
-    mem_efficient_sdp_enabled,
-    math_sdp_enabled,
-    enable_flash_sdp,
-    enable_mem_efficient_sdp,
-    enable_math_sdp)
+from torch.backends.cuda import sdp_kernel, SDPBackend
 import torch.optim as optim
 from torch.testing._internal.common_dtype import floating_types_and_half
 from torch.testing._internal.common_device_type import instantiate_device_type_tests, onlyCUDA, onlyCPU
@@ -83,10 +75,10 @@ backend_map = {
 }
 
 def get_platform_specific_spda():
-    if TEST_CUDA and SM80OrLater:
-        return [SDPBackend.FLASH_ATTENTION, SDPBackend.EFFICIENT_ATTENTION]
     if TEST_WITH_ROCM:
         return [SDPBackend.FLASH_ATTENTION]
+    if TEST_CUDA and SM80OrLater:
+        return [SDPBackend.FLASH_ATTENTION, SDPBackend.EFFICIENT_ATTENTION]
     if TEST_CUDA:
         return [SDPBackend.EFFICIENT_ATTENTION]
     return []
