@@ -588,8 +588,8 @@ void gemm<at::BFloat16>(CUDABLAS_GEMM_ARGTYPES(at::BFloat16)) {
 namespace {
 
 #if defined(USE_ROCM) && ROCM_VERSION >= 50600
-// hipify maps cudaDataType_t -> hipDataType, but hipblaslt expects hipblasltDatatype_t
-#define hipDataType hipblasltDatatype_t
+// hipify maps cudaDataType_t -> hipDataType, but hipblaslt expects hipblasDatatype_t
+#define hipDataType hipblasDatatype_t
 
 // Have to account for differing return types by the backend libraries
 #undef TORCH_CUDABLAS_CHECK
@@ -616,13 +616,13 @@ void general_rocm_error_handling(const char* expr_string,
     general_rocm_error_handling(#EXPR, __err);                  \
   } while(0)
 
-// hipblaslt expexts hipblasltDatatype_t, but it's a mess right now
-#define HIP_R_8I HIPBLASLT_R_8I
-#define HIP_R_16F HIPBLASLT_R_16F
-#define HIP_R_32I HIPBLASLT_R_32I
-#define HIP_R_32F HIPBLASLT_R_32F
-#define HIP_R_64F HIPBLASLT_R_64F
-#define CUDA_R_16BF HIPBLASLT_R_16B
+// hipblaslt expexts hipblasDatatype_t, but it's a mess right now
+#define HIP_R_8I HIPBLAS_R_8I
+#define HIP_R_16F HIPBLAS_R_16F
+#define HIP_R_32I HIPBLAS_R_32I
+#define HIP_R_32F HIPBLAS_R_32F
+#define HIP_R_64F HIPBLAS_R_64F
+#define CUDA_R_16BF HIPBLAS_R_16B
 // hipify maps cublasSt to rocblas_status, but we need hipblasStatus_t.
 #define LT_RET_TYPE hipblasStatus_t
 #else
