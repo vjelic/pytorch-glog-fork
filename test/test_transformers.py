@@ -74,7 +74,7 @@ backend_map = {
         "enable_math": False, "enable_flash": False, "enable_mem_efficient": True}
 }
 
-def get_platform_specific_spda():
+def get_platform_specific_sdpa():
     if TEST_WITH_ROCM:
         return [SDPBackend.FLASH_ATTENTION]
     if TEST_CUDA and SM80OrLater:
@@ -1092,7 +1092,7 @@ class TestTransformers(NNTestCase):
                         torch.cuda.synchronize()
 
     @unittest.skipIf(
-        SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_spda(), "Platform does not supposrt Memory-Efficient SDPA"
+        SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_sdpa(), "Platform does not supposrt Memory-Efficient SDPA"
     )
     def test_is_causal_gpu(self):
         device = 'cuda'
@@ -1113,7 +1113,7 @@ class TestSDPAFailureModes(NNTestCase):
     _do_cuda_non_default_stream = True
 
     @onlyCUDA
-    @unittest.skipIf(SDPBackend.FLASH_ATTENTION not in get_platform_specific_spda() or (TEST_CUDA and not isSM86or89Device),
+    @unittest.skipIf(SDPBackend.FLASH_ATTENTION not in get_platform_specific_sdpa() or (TEST_CUDA and not isSM86or89Device),
                      "Does not support fused SDPA or not SM86+ hardware on CUDA")
     @parametrize("head_dim", [72, 96, 128])
     def test_memory_efficient_sm86_plus_failure(self, device, head_dim: int):
@@ -1127,7 +1127,7 @@ class TestSDPAFailureModes(NNTestCase):
                 q, k, v, None, 0.0, False))
 
     @onlyCUDA
-    @unittest.skipIf(SDPBackend.FLASH_ATTENTION not in get_platform_specific_spda() or (TEST_CUDA and not isSM86or89Device),
+    @unittest.skipIf(SDPBackend.FLASH_ATTENTION not in get_platform_specific_sdpa() or (TEST_CUDA and not isSM86or89Device),
                      "Does not support fused SDPA or not SM86+ hardware on CUDA")
     @parametrize("head_dim", [72, 96, 128])
     def test_flash_backward_failure_sm86plus(self, device, head_dim: int):
@@ -1167,8 +1167,8 @@ class TestSDPAFailureModes(NNTestCase):
                                    lambda: torch.nn.functional.scaled_dot_product_attention(q, k, v))
 
     @onlyCUDA
-    @unittest.skipIf(not get_platform_specific_spda(), "Does not support fused scaled dot product attention")
-    @parametrize("kernel", get_platform_specific_spda())
+    @unittest.skipIf(not get_platform_specific_sdpa(), "Does not support fused scaled dot product attention")
+    @parametrize("kernel", get_platform_specific_sdpa())
     def test_invalid_fused_inputs_dim_3(self, device, kernel: SDPBackend):
         with sdp_kernel(**backend_map[kernel]):
             # Dim is not 4
@@ -1182,8 +1182,8 @@ class TestSDPAFailureModes(NNTestCase):
                     q, k, v, None, 0.0, False))
 
     @onlyCUDA
-    @unittest.skipIf(not get_platform_specific_spda(), "Does not support fused scaled dot product attention")
-    @parametrize("kernel", get_platform_specific_spda())
+    @unittest.skipIf(not get_platform_specific_sdpa(), "Does not support fused scaled dot product attention")
+    @parametrize("kernel", get_platform_specific_sdpa())
     def test_invalid_fused_inputs_broadcast(self, device, kernel: SDPBackend):
         with sdp_kernel(**backend_map[kernel]):
             #  Fused Kernels don't support broadcasting for dense inputs
@@ -1197,8 +1197,8 @@ class TestSDPAFailureModes(NNTestCase):
                 q, k, v, None, 0.0, False))
 
     @onlyCUDA
-    @unittest.skipIf(not get_platform_specific_spda(), "Does not support fused scaled dot product attention")
-    @parametrize("kernel", get_platform_specific_spda())
+    @unittest.skipIf(not get_platform_specific_sdpa(), "Does not support fused scaled dot product attention")
+    @parametrize("kernel", get_platform_specific_sdpa())
     def test_invalid_fused_inputs_head_dim(self, device, kernel: SDPBackend):
         with sdp_kernel(**backend_map[kernel]):
             # The embed dim per head is not divisible by 8 for flash attention
@@ -1210,8 +1210,8 @@ class TestSDPAFailureModes(NNTestCase):
                 q, k, v, None, 0.0, False))
 
     @onlyCUDA
-    @unittest.skipIf(not get_platform_specific_spda(), "Does not support fused scaled dot product attention")
-    @parametrize("kernel", get_platform_specific_spda())
+    @unittest.skipIf(not get_platform_specific_sdpa(), "Does not support fused scaled dot product attention")
+    @parametrize("kernel", get_platform_specific_sdpa())
     def test_invalid_fused_inputs_invalid_dtype(self, device, kernel: SDPBackend):
         with sdp_kernel(**backend_map[kernel]):
             # Invalid dtype for both Flash Attention and Mem Efficient Attention
@@ -1222,8 +1222,8 @@ class TestSDPAFailureModes(NNTestCase):
                 q, k, v, None, 0.0, False))
 
     @onlyCUDA
-    @unittest.skipIf(not get_platform_specific_spda(), "Does not support fused scaled dot product attention")
-    @parametrize("kernel", get_platform_specific_spda())
+    @unittest.skipIf(not get_platform_specific_sdpa(), "Does not support fused scaled dot product attention")
+    @parametrize("kernel", get_platform_specific_sdpa())
     def test_invalid_fused_inputs_attn_mask_present(self, device, kernel: SDPBackend):
         with sdp_kernel(**backend_map[kernel]):
             # Failures for unsupported SDP args
@@ -1235,7 +1235,7 @@ class TestSDPAFailureModes(NNTestCase):
                 q, k, v, torch.ones_like(q), 0.0, False))
 
     @onlyCUDA
-    @unittest.skipIf(SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_spda(), "Does not support Memory-Efficient SDPA")
+    @unittest.skipIf(SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_sdpa(), "Does not support Memory-Efficient SDPA")
     def test_unaligned_tensors(self, device):
         # The alignment is depdent on arch so we specifiy SM80OrLater
         dtype = torch.float16
@@ -1247,7 +1247,7 @@ class TestSDPAFailureModes(NNTestCase):
                 q, k, v, None, 0.0, False))
 
     @onlyCUDA
-    @unittest.skipIf(SDPBackend.FLASH_ATTENTION not in get_platform_specific_spda(), "Does not support flash attention")
+    @unittest.skipIf(SDPBackend.FLASH_ATTENTION not in get_platform_specific_sdpa(), "Does not support flash attention")
     def test_flash_fail_fp32(self, device):
         dtype = torch.float
         shape = (16, 16, 32, 32)
@@ -1259,7 +1259,7 @@ class TestSDPAFailureModes(NNTestCase):
                     q, k, v, None, 0.0, False))
 
     @onlyCUDA
-    @unittest.skipIf(SDPBackend.FLASH_ATTENTION not in get_platform_specific_spda(), "Does not support flash attention")
+    @unittest.skipIf(SDPBackend.FLASH_ATTENTION not in get_platform_specific_sdpa(), "Does not support flash attention")
     def test_flash_autocast_fp32_float16(self, device):
         dtype = torch.float
         shape = (16, 16, 32, 32)
@@ -1271,7 +1271,7 @@ class TestSDPAFailureModes(NNTestCase):
                     q, k, v, None, 0.0, False)
 
     @onlyCUDA
-    @unittest.skipIf(SDPBackend.FLASH_ATTENTION not in get_platform_specific_spda(), "Does not support flash attention")
+    @unittest.skipIf(SDPBackend.FLASH_ATTENTION not in get_platform_specific_sdpa(), "Does not support flash attention")
     def test_flash_autocast_fp32_bfloat16(self, device):
         dtype = torch.float
         shape = (16, 16, 32, 32)
@@ -1282,7 +1282,7 @@ class TestSDPAFailureModes(NNTestCase):
                 _ = torch.nn.functional.scaled_dot_product_attention(
                     q, k, v, None, 0.0, False)
 
-    @parametrize("kernel", [SDPBackend.MATH] + get_platform_specific_spda())
+    @parametrize("kernel", [SDPBackend.MATH] + get_platform_specific_sdpa())
     def test_invalid_inputs_different_datatypes(self, device, kernel: SDPBackend):
         with sdp_kernel(**backend_map[kernel]):
             # Different datatypes
@@ -1293,7 +1293,7 @@ class TestSDPAFailureModes(NNTestCase):
             self.assertRaises(RuntimeError, lambda: F.scaled_dot_product_attention(query, key, value))
 
     @onlyCUDA
-    @parametrize("kernel", [SDPBackend.MATH] + get_platform_specific_spda())
+    @parametrize("kernel", [SDPBackend.MATH] + get_platform_specific_sdpa())
     def test_invalid_inputs_different_devices(self, device, kernel: SDPBackend):
         # Different devices
         shape = (1, 4, 8, 16)
@@ -1302,7 +1302,7 @@ class TestSDPAFailureModes(NNTestCase):
         value = torch.randn(shape, dtype=torch.float16, device='cpu')
         self.assertRaises(RuntimeError, lambda: F.scaled_dot_product_attention(query, key, value))
 
-    @parametrize("kernel", [SDPBackend.MATH] + get_platform_specific_spda())
+    @parametrize("kernel", [SDPBackend.MATH] + get_platform_specific_sdpa())
     def test_invalid_inputs_1_dimensional_inputs(self, device, kernel: SDPBackend):
         with sdp_kernel(**backend_map[kernel]):
             # 1 dimensional input
@@ -1313,7 +1313,7 @@ class TestSDPAFailureModes(NNTestCase):
             self.assertRaises(RuntimeError, lambda: F.scaled_dot_product_attention(query, key, value))
 
     @onlyCUDA
-    @unittest.skipIf(SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_spda(), "Does not support Memory-Efficient SDPA")
+    @unittest.skipIf(SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_sdpa(), "Does not support Memory-Efficient SDPA")
     def test_fused_kernels_nested_broadcasting_error_cases(self, device):
         # one of k,v needs to be broadcasted and other has non consistent seq_len dim
         rand_nested_tensor = partial(rand_sdpa_tensor, type="nested", device=device, dtype=torch.float32)
@@ -1429,7 +1429,7 @@ class TestSDPA(NNTestCase):
         return S_converted
 
     @onlyCUDA
-    @unittest.skipIf(SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_spda(), "Memory-Efficient Fused SDPA was not built for this system")
+    @unittest.skipIf(SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_sdpa(), "Memory-Efficient Fused SDPA was not built for this system")
     @parametrize("type", ["dense", "nested"])
     @parametrize("is_contiguous", [True, False])
     @parametrize("head_dims_match", [True, False])
@@ -1470,7 +1470,7 @@ class TestSDPA(NNTestCase):
         self.assertEqual(actual[0].contiguous(), math_ref[0].contiguous(), atol=1e-3, rtol=1e-2)
 
     @onlyCUDA
-    @unittest.skipIf(SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_spda(), "Memory-Efficient Fused SDPA was not built for this system")
+    @unittest.skipIf(SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_sdpa(), "Memory-Efficient Fused SDPA was not built for this system")
     @parametrize("type", ["dense", "nested"])
     @parametrize("is_contiguous", [True, False])
     def test_scaled_dot_product_attention_fused_kernels_packed(self, device, type: str, is_contiguous: bool):
@@ -1503,9 +1503,9 @@ class TestSDPA(NNTestCase):
         self.assertEqual(actual.contiguous(), math_ref.contiguous(), atol=2e-3, rtol=1e-2)
 
     @onlyCUDA
-    @unittest.skipIf(not get_platform_specific_spda(), "Fused SDPA was not built for this system")
+    @unittest.skipIf(not get_platform_specific_sdpa(), "Fused SDPA was not built for this system")
     @parametrize("type", ["dense", "nested"])
-    @parametrize("fused_kernel", get_platform_specific_spda())
+    @parametrize("fused_kernel", get_platform_specific_sdpa())
     def test_scaled_dot_product_attention_fused_kernels_packed_accuracy(self, device, type: str, fused_kernel: str):
         if not TEST_WITH_ROCM and (not SM80OrLater) and fused_kernel == SDPBackend.FLASH_ATTENTION:
             return
@@ -1596,7 +1596,7 @@ class TestSDPA(NNTestCase):
                              )
 
     @onlyCUDA
-    @unittest.skipIf(SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_spda(), "Memory-Efficient Fused SDPA was not built for this system")
+    @unittest.skipIf(SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_sdpa(), "Memory-Efficient Fused SDPA was not built for this system")
     @parametrize("contiguous_inputs", [True, False])
     @parametrize("is_causal", [True, False])
     def test_sdp_mem_efficient_grad_against_math(self, device, contiguous_inputs: bool, is_causal: bool):
@@ -1644,7 +1644,7 @@ class TestSDPA(NNTestCase):
         self.assertEqual(qkv.grad, qkv_lp.grad.to(torch.float64), atol=1e-5, rtol=1e-5)
 
     @onlyCUDA
-    @unittest.skipIf(SDPBackend.FLASH_ATTENTION not in get_platform_specific_spda(), "Does not support flash attention")
+    @unittest.skipIf(SDPBackend.FLASH_ATTENTION not in get_platform_specific_sdpa(), "Does not support flash attention")
     @parametrize("contiguous_inputs", [True, False])
     @parametrize("is_causal", [True, False])
     @parametrize("dtype", [torch.float16, torch.bfloat16])
@@ -1707,7 +1707,7 @@ class TestSDPA(NNTestCase):
             assert torch._fused_sdp_choice(q, k, v) == SDPBackend.MATH
 
     @onlyCUDA
-    @unittest.skipIf(SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_spda(), "Memory-Efficient Fused SDPA was not built for this system")
+    @unittest.skipIf(SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_sdpa(), "Memory-Efficient Fused SDPA was not built for this system")
     @parametrize("type", ["dense", "nested"])
     def test_fused_sdp_choice(self, device, type: str):
         if PLATFORM_SUPPORTS_FUSED_SDPA:
@@ -1740,7 +1740,7 @@ class TestSDPA(NNTestCase):
             assert torch._fused_sdp_choice(query, key, value) == SDPBackend.EFFICIENT_ATTENTION
 
     @onlyCUDA
-    @unittest.skipIf(SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_spda(), "Memory-Efficient Fused SDPA was not built for this system")
+    @unittest.skipIf(SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_sdpa(), "Memory-Efficient Fused SDPA was not built for this system")
     @parametrize("warn_only", [True, False])
     def test_sdp_choice_with_determinism(self, device, warn_only):
         batch_size, seq_len, num_heads, head_dim = 1, 64, 8, 64
@@ -1753,7 +1753,7 @@ class TestSDPA(NNTestCase):
                 assert torch._fused_sdp_choice(query, key, value) == SDPBackend.EFFICIENT_ATTENTION
 
     @onlyCUDA
-    @unittest.skipIf(SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_spda(), "Memory-Efficient Fused SDPA was not built for this system")
+    @unittest.skipIf(SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_sdpa(), "Memory-Efficient Fused SDPA was not built for this system")
     @parametrize("warn_only", [True, False])
     def test_mem_eff_backwards_throws_determinism_warning(self, device, warn_only):
         batch_size, seq_len, num_heads, head_dim = 1, 64, 8, 64
@@ -1776,7 +1776,7 @@ class TestSDPA(NNTestCase):
 
     @onlyCUDA
     @unittest.skip("This test is not behaving deterministaclly non-deterministaclly on CI/CD")
-    @unittest.skipIf(SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_spda(), "Platform does not support Memory-Efficient SDPA")
+    @unittest.skipIf(SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_sdpa(), "Platform does not support Memory-Efficient SDPA")
     def test_mem_eff_backwards_determinism(self, device):
         # Need big seq_len to ensure that num_splits > 1
         dtype = torch.float32
@@ -1828,7 +1828,7 @@ class TestSDPA(NNTestCase):
 
     # verified passing successfully on H100
     @onlyCUDA
-    @unittest.skipIf(SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_spda(), "Does not support Memory-Efficient SDPA")
+    @unittest.skipIf(SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_sdpa(), "Does not support Memory-Efficient SDPA")
     @parametrize("batch_size", [1, 8])
     @parametrize("seq_len_q", [4, 8, 64, 128, 256, 512, 1024, 2048] if SM80OrLater else [4, 8, 64, 128, 256, 512])
     @parametrize("seq_len_k", [4, 8, 64, 128, 256, 512, 1024, 2048] if SM80OrLater else [4, 8, 64, 128, 256, 512])
@@ -1923,7 +1923,7 @@ class TestSDPA(NNTestCase):
 
     # verified passing successfully on H100
     @onlyCUDA
-    @unittest.skipIf(SDPBackend.FLASH_ATTENTION not in get_platform_specific_spda(), "Does not support flash attention")
+    @unittest.skipIf(SDPBackend.FLASH_ATTENTION not in get_platform_specific_sdpa(), "Does not support flash attention")
     @parametrize("batch_size", [1, 8])
     @parametrize("seq_len_q", [4, 8, 64, 128, 256, 512, 1024, 2048])
     @parametrize("seq_len_k", [4, 8, 64, 128, 256, 512, 1024, 2048])
@@ -2024,7 +2024,7 @@ class TestSDPA(NNTestCase):
         self.assertEqual(value.grad, value_ref.grad.to(value.grad.dtype),
                          atol=grad_v_ref_atol, rtol=grad_v_ref_rtol)
 
-    @unittest.skipIf(not get_platform_specific_spda(), "Does not support SDPA or pre-SM80 hardware")
+    @unittest.skipIf(not get_platform_specific_sdpa(), "Does not support SDPA or pre-SM80 hardware")
     @parametrize("batch_size", [1, 8])
     @parametrize("seq_len_q", [512, 1024, 2048])
     @parametrize("seq_len_k", [512, 1024, 2048])
@@ -2156,8 +2156,8 @@ class TestSDPA(NNTestCase):
                          atol=grad_v_ref_atol, rtol=grad_v_ref_rtol)
 
     @onlyCUDA
-    @unittest.skipIf(not get_platform_specific_spda(), "Fused SDPA was not built for this system")
-    @parametrize("fused_kernel", get_platform_specific_spda())
+    @unittest.skipIf(not get_platform_specific_sdpa(), "Fused SDPA was not built for this system")
+    @parametrize("fused_kernel", get_platform_specific_sdpa())
     def test_fused_kernels_seq_len_1_inputs(self, device, fused_kernel):
         if (not TEST_WITH_ROCM) and (not SM80OrLater) and fused_kernel == SDPBackend.FLASH_ATTENTION:
             return
@@ -2191,8 +2191,8 @@ class TestSDPA(NNTestCase):
         self.assertEqual(actual.contiguous(), math_ref.contiguous().to(torch.float16), atol=1e-3, rtol=1e-2)
 
     @onlyCUDA
-    @unittest.skipIf(not get_platform_specific_spda(), "Fused SDPA was not built for this system")
-    @parametrize("fused_kernel", get_platform_specific_spda())
+    @unittest.skipIf(not get_platform_specific_sdpa(), "Fused SDPA was not built for this system")
+    @parametrize("fused_kernel", get_platform_specific_sdpa())
     def test_fused_kernels_seq_len_0_inputs(self, device, fused_kernel):
         if (not TEST_WITH_ROCM) and (not SM80OrLater) and fused_kernel == SDPBackend.FLASH_ATTENTION:
             return
@@ -2220,7 +2220,7 @@ class TestSDPA(NNTestCase):
 
     @onlyCUDA
     @unittest.skipIf(not PLATFORM_SUPPORTS_FUSED_SDPA, "Fused SDPA was not built for this system")
-    @parametrize("kernel", get_platform_specific_spda())
+    @parametrize("kernel", get_platform_specific_sdpa())
     @parametrize("expand_q_batch", [True, False])
     @parametrize("expand_k_batch", [True, False])
     @parametrize("expand_v_batch", [True, False])
@@ -2309,7 +2309,7 @@ class TestSDPA(NNTestCase):
         self.assertEqual(actual.contiguous(), math_ref.contiguous().to(dtype), atol=1e-3, rtol=1e-2)
 
     @onlyCUDA
-    @unittest.skipIf(SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_spda(), "Memory-Efficient Fused SDPA was not built for this system")
+    @unittest.skipIf(SDPBackend.EFFICIENT_ATTENTION not in get_platform_specific_sdpa(), "Memory-Efficient Fused SDPA was not built for this system")
     def test_fused_kernels_nested_broadcasting_query_dense(self, device):
         rand_nested_tensor = partial(rand_sdpa_tensor, type="nested", device=device, dtype=torch.float32)
         batch, num_heads, head_dim, head_dim_v = 32, 16, 64, 96
