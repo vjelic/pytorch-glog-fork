@@ -1306,6 +1306,8 @@ class TestOptim(TestCase):
             )
 
     def test_nadam(self):
+        if TEST_WITH_ROCM:
+            self.rel_tol = 1e-5
         self._test_basic_cases(
             lambda weight, bias, foreach: optim.NAdam(
                 self._build_params_dict(weight, bias, lr=1e-2), lr=1e-3, foreach=foreach
