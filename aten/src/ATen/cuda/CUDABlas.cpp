@@ -403,13 +403,15 @@ void bgemm<at::BFloat16>(CUDABLAS_BGEMM_ARGTYPES(at::BFloat16)) {
                                     (void*)&fbeta, c, CUDA_R_16BF, (int)ldc, stridec,
                                     (int)num_batches, CUDA_R_32F, CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 #elif defined(USE_ROCM) && ROCM_VERSION >= 50600
-    TORCH_CUDABLAS_CHECK(rocblas_gemm_strided_batched_ex(handle, opa, opb, (int)m, (int)n, (int)k,
+    TORCH_CUDABLAS_CHECK(rocBLASStatusToHIPStatus(rocblas_gemm_strided_batched_ex((rocblas_handle)handle,
+				   hipOperationToRocOperation(opa),
+				   hipOperationToRocOperation(opb), (int)m, (int)n, (int)k,
                                    (void*)&falpha, a, rocblas_datatype_bf16_r, (int)lda, stridea,
                                    b, rocblas_datatype_bf16_r, (int)ldb, strideb,
                                    (void*)&fbeta, c, rocblas_datatype_bf16_r, (int)ldc, stridec,
                                    c, rocblas_datatype_bf16_r, (int)ldc, stridec,
                                    (int) num_batches, rocblas_datatype_f32_r, rocblas_gemm_algo_standard,
-                                   0, 0, NULL, NULL));
+                                   0, 0, NULL, NULL)));
 #else
     TORCH_CHECK(false, "CUDA BFloat16 bgemm requires CUDA 11 or later");
 #endif // defined(CUDA_VERSION) && CUDA_VERSION >= 11000
@@ -606,7 +608,6 @@ void gemm<at::BFloat16>(CUDABLAS_GEMM_ARGTYPES(at::BFloat16)) {
       CUDA_R_32F,
       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 }
-#endif // defined(CUDA_VERSION) && CUDA_VERSION >= 11000
 
 #if (defined(USE_ROCM) && ROCM_VERSION >= 50600) || (defined(CUDA_VERSION) && CUDA_VERSION >= 11000 && !defined(_MSC_VER))
 
@@ -624,14 +625,6 @@ void general_rocm_error_handling(const char* expr_string,
     TORCH_CHECK(err == HIPBLAS_STATUS_SUCCESS,
                 "HIP error: ",
                 at::cuda::blas::_hipblasGetErrorEnum(err),
-                " when calling `", expr_string, "`");
-}
-
-void general_rocm_error_handling(const char* expr_string,
-                                 rocblas_status err) {
-    TORCH_CHECK(err == rocblas_status_success,
-                "CUDA error: ",
-                at::cuda::blas::_cublasGetErrorEnum(err),
                 " when calling `", expr_string, "`");
 }
 
@@ -1417,7 +1410,6 @@ void dot<c10::complex<float>>(CUDABLAS_DOT_ARGTYPES(c10::complex<float>)) {
 
 template <>
 void dot<at::Half>(CUDABLAS_DOT_ARGTYPES(at::Half)) {
-#if defined(CUDA_VERSION) && CUDA_VERSION >= 8000
   TORCH_CUDABLAS_CHECK(cublasDotEx(
       handle,
       n,
@@ -1434,7 +1426,6 @@ void dot<at::Half>(CUDABLAS_DOT_ARGTYPES(at::Half)) {
 
 template <>
 void dot<at::BFloat16>(CUDABLAS_DOT_ARGTYPES(at::BFloat16)) {
-#if defined(CUDA_VERSION) && CUDA_VERSION >= 11000
   TORCH_CUDABLAS_CHECK(cublasDotEx(
       handle,
       n,
