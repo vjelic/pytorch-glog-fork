@@ -125,7 +125,7 @@
 [submodule "third_party/kineto"]
     path = third_party/kineto
     url = https://github.com/ROCmSoftwarePlatform/kineto
-    branch = rocm6.0_internal_testing
+    branch = rocm6.0_internal_testing_updated
 [submodule "third_party/pocketfft"]
 	path = third_party/pocketfft
 	url = https://github.com/mreineck/pocketfft
