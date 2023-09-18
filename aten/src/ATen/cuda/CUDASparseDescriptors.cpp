@@ -53,7 +53,7 @@ cusparseIndexType_t getCuSparseIndexType(const c10::ScalarType& scalar_type) {
   }
 }
 
-#if AT_USE_HIPSPARSE_GENERIC_52_API() || AT_USE_CUSPARSE_GENERIC_API()
+#if AT_USE_HIPSPARSE_CONST_DESCRIPTORS() || AT_USE_HIPSPARSE_GENERIC_52_API() || AT_USE_CUSPARSE_GENERIC_API()
 CuSparseDnMatDescriptor::CuSparseDnMatDescriptor(const Tensor& input, int64_t batch_offset) {
   TORCH_INTERNAL_ASSERT_DEBUG_ONLY(input.layout() == kStrided);
   IntArrayRef input_strides = input.strides();
@@ -106,7 +106,7 @@ CuSparseDnMatDescriptor::CuSparseDnMatDescriptor(const Tensor& input, int64_t ba
 
   descriptor_.reset(raw_descriptor);
 }
-#endif // AT_USE_HIPSPARSE_GENERIC_52_API() || AT_USE_CUSPARSE_GENERIC_API()
+#endif // AT_USE_HIPSPARSE_CONST_DESCRIPTORS() || AT_USE_HIPSPARSE_GENERIC_52_API() || AT_USE_CUSPARSE_GENERIC_API()
 
 CuSparseDnVecDescriptor::CuSparseDnVecDescriptor(const Tensor& input) {
   // cuSPARSE doesn't support batched vectors
@@ -177,7 +177,7 @@ CuSparseSpMatCsrDescriptor::CuSparseSpMatCsrDescriptor(const Tensor& input, int6
       value_type // data type of values
       ));
 
-#if AT_USE_HIPSPARSE_GENERIC_52_API() || !defined(USE_ROCM)
+#if AT_USE_HIPSPARSE_CONST_DESCRIPTORS() || AT_USE_HIPSPARSE_GENERIC_52_API() || !defined(USE_ROCM)
   if (ndim == 3 && batch_offset == -1) {
     int batch_count =
         at::native::cuda_int_cast(at::native::batchCount(input), "batch_count");
