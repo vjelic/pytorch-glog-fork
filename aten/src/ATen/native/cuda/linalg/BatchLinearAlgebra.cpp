@@ -40,6 +40,8 @@
 #include <magma_v2.h>
 #include <ATen/cuda/detail/CUDAHooks.h>
 
+
+
 const bool use_magma_ = true;
 
 namespace {
@@ -2673,7 +2675,6 @@ void linalg_lstsq_gels(const Tensor& A, const Tensor& B, const Tensor& /*infos*/
         /*unitriangular=*/false);
   } else { // underdetermined case
     Tensor Ah = cloneBatchedColumnMajor(A.mH());
-
     // Step 1: compute QR factorization of conjugate transpose of A using geqrf
     geqrf_kernel(Ah, tau);
 
@@ -2744,7 +2745,7 @@ void lstsq_kernel(const Tensor& a, Tensor& b, Tensor& /*rank*/, Tensor& /*singul
         "Please rebuild with cuSOLVER.");
 #endif
   } else { // m >= n
-#if !AT_ROCM_ENABLED()
+//#if !AT_ROCM_ENABLED()
     // On CUDA platform we use either cuBLAS or cuSOLVER here
     // the batched vs looped dispatch is implemented based on the following performance results
     // https://github.com/pytorch/pytorch/pull/54725#issuecomment-832234456
@@ -2753,11 +2754,13 @@ void lstsq_kernel(const Tensor& a, Tensor& b, Tensor& /*rank*/, Tensor& /*singul
     } else {
       gels_looped(a, b, infos);
     }
+/*
 #else
     // On ROCm platform we can only use MAGMA here
     // If MAGMA is not available, an error will be thrown
     gels_magma(a, b, infos);
 #endif // !AT_ROCM_ENABLED()
+*/
   }
 }
 
