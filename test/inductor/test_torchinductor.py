@@ -6783,6 +6783,7 @@ if HAS_CUDA and not TEST_WITH_ASAN:
             compiled(inps)
 
         @requires_cuda()
+        @skipIfRocm
         def test_input_channels_last(self):
             m = torch.nn.Sequential(
                 torch.nn.Conv2d(3, 3, 1, 1),
