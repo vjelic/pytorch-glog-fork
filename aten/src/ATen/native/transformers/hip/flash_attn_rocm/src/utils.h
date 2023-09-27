@@ -101,7 +101,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename dtype_t>
-static inline size_t get_size_in_bytes(size_t n, dtype_t datatype) {
+inline size_t get_size_in_bytes(size_t n, dtype_t datatype) {
   return 0;
 };
 
@@ -110,11 +110,11 @@ static inline size_t get_size_in_bytes(size_t n, dtype_t datatype) {
 /*   return n * 4; */
 /* }; */
 template <>
-static inline size_t get_size_in_bytes(size_t n, at::BFloat16 datatype) {
+inline size_t get_size_in_bytes(size_t n, at::BFloat16 datatype) {
   return n * 2;
 };
 template <>
-static inline size_t get_size_in_bytes(size_t n, at::Half datatype) {
+inline size_t get_size_in_bytes(size_t n, at::Half datatype) {
   return n * 2;
 };
 /* template <> */
@@ -126,7 +126,7 @@ static inline size_t get_size_in_bytes(size_t n, at::Half datatype) {
 /*   return n; */
 /* }; */
 
-static std::tuple<uint64_t, uint64_t> unpack(at::PhiloxCudaState arg) {
+inline std::tuple<uint64_t, uint64_t> unpack(at::PhiloxCudaState arg) {
   if (arg.captured_) {
 #if NEW_UNPACK
     return std::make_tuple(
