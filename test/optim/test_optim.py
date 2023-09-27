@@ -23,7 +23,8 @@ from torch.testing._internal.common_utils import (
     load_tests,
     gradcheck,
     skipIfRocm,
-    skipIfTorchDynamo
+    skipIfTorchDynamo,
+    TEST_WITH_ROCM,
 )
 
 from torch._dynamo import disable as disable_dynamo
