@@ -1283,6 +1283,7 @@ if(USE_ROCM)
     set(HIP_CLANG_FLAGS ${HIP_CXX_FLAGS})
     # Ask hcc to generate device code during compilation so we can use
     # host linker to link.
+    list(APPEND HIP_CLANG_FLAGS -mprintf-kind=buffered)
     list(APPEND HIP_CLANG_FLAGS -fno-gpu-rdc)
     foreach(pytorch_rocm_arch ${PYTORCH_ROCM_ARCH})
       list(APPEND HIP_CLANG_FLAGS --offload-arch=${pytorch_rocm_arch})
