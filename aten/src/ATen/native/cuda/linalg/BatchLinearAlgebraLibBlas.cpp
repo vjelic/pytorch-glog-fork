@@ -134,7 +134,7 @@ static void apply_lu_solve_batched_cublas(const Tensor& LU, const Tensor& pivots
   const auto trans = to_cublas(transpose);
 
   auto pivots_data = pivots.data_ptr<int>();
-  auto batch_size = cuda_int_cast(batchCount(LU), "batch_size");;
+  auto batch_size = cuda_int_cast(batchCount(LU), "batch_size");
   auto m = cuda_int_cast(LU.size(-2), "m");
   auto nrhs = cuda_int_cast(B.size(-1), "nrhs");
   auto lda = cuda_int_cast(std::max<int>(1, m), "lda");
