@@ -1544,9 +1544,9 @@ void geqrfBatched<c10::complex<float>>(
       handle,
       m,
       n,
-      reinterpret_cast<hipblasComplex**>(A_array),
+      reinterpret_cast<double*const*>(A_array),
       lda,
-      reinterpret_cast<hipblasComplex**>(tau_array),
+      reinterpret_cast<double*const*>(tau_array),
       info,
       batchsize));
 }
