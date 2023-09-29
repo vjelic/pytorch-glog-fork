@@ -131,11 +131,7 @@ template <typename scalar_t>
 static void apply_lu_solve_batched_cublas(const Tensor& LU, const Tensor& pivots, const Tensor& B, TransposeType transpose) {
   TORCH_INTERNAL_ASSERT(batchCount(LU) == batchCount(B), "batch_size of LU and B must be the same");
   TORCH_INTERNAL_ASSERT(batchCount(LU) == batchCount(pivots.unsqueeze(-1)), "batch_size of LU and pivots must be the same");
-#ifdef USE_ROCM
-  const auto trans = (hipblasOperation_t)to_cublas(transpose);
-#else  
   const auto trans = to_cublas(transpose);
-#endif
 
   auto pivots_data = pivots.data_ptr<int>();
   auto batch_size = cuda_int_cast(batchCount(LU), "batch_size");
