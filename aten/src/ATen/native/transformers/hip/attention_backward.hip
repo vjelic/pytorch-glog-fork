@@ -28,6 +28,9 @@
 // #include <ATen/native/transformers/hip/mem_eff_attention/gemm_kernel_utils.h>
 #include <ATen/native/transformers/hip/mem_eff_attention/pytorch_utils.h>
 #endif
+
+#include <iostream>
+
 namespace at {
 
 namespace native {
@@ -66,6 +69,7 @@ std::tuple<Tensor, Tensor, Tensor> _flash_attention_backward(
   //  The kernel computes irregadless we will drop for this functions return
   Tensor grad_softmax;
 
+  std::cerr << __PRETTY_FUNCTION__  << " LINE: " << __LINE__ << std::endl;
   std::tie(dq, dk, dv, grad_softmax) = fmha::mha_bwd(
       contiguous_grad_out,
       query,
@@ -87,6 +91,7 @@ std::tuple<Tensor, Tensor, Tensor> _flash_attention_backward(
       num_splits,
       philox_seed,
       philox_offset);
+  std::cerr << __PRETTY_FUNCTION__  << " LINE: " << __LINE__ << std::endl;
   return std::make_tuple(dq, dk, dv);
 #endif
   TORCH_CHECK(false, "USE_FLASH_ATTENTION was not enabled for build.");
@@ -497,6 +502,7 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor> _scaled_dot_product_flash_attenti
   auto out_reshaped      = out.transpose(1, 2).reshape({Nnz_q, num_heads, head_dim});
 
   Tensor grad_q, grad_k, grad_v;
+  std::cerr << __PRETTY_FUNCTION__  << " LINE: " << __LINE__ << std::endl;
   std::tie(grad_q, grad_k, grad_v) = at::_flash_attention_backward(
       grad_out_reshaped,
       query_reshaped,
@@ -513,10 +519,15 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor> _scaled_dot_product_flash_attenti
       philox_seed,
       philox_offset,
       scale);
+  std::cerr << __PRETTY_FUNCTION__  << " LINE: " << __LINE__ << std::endl;
 
+  std::cerr << __PRETTY_FUNCTION__  << " LINE: " << __LINE__ << std::endl;
   grad_q = grad_q.view({batch_size, max_seqlen_batch_q, num_heads, head_dim}).transpose(1, 2);
+  std::cerr << __PRETTY_FUNCTION__  << " LINE: " << __LINE__ << std::endl;
   grad_k = grad_k.view({batch_size, max_seqlen_batch_k, num_heads, head_dim}).transpose(1, 2);
+  std::cerr << __PRETTY_FUNCTION__  << " LINE: " << __LINE__ << std::endl;
   grad_v = grad_v.view({batch_size, max_seqlen_batch_k, num_heads, head_dim}).transpose(1, 2);
+  std::cerr << __PRETTY_FUNCTION__  << " LINE: " << __LINE__ << std::endl;
 
   return std::make_tuple(grad_q, grad_k, grad_v);
 }

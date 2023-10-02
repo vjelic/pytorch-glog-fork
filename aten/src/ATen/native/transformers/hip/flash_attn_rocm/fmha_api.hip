@@ -26,10 +26,42 @@
 
 #include <ATen/native/transformers/hip/flash_attn_rocm/src/static_switch.h>
 
+#include <iostream>
+
 #define CHECK_SHAPE(x, ...) \
   TORCH_CHECK(x.sizes() == at::IntArrayRef({__VA_ARGS__}), #x " must have shape (" #__VA_ARGS__ ")")
 
+#define FMHA_XSTR(s) FMHA_STR(s)
+#define FMHA_STR(s) #s
+
+#define FMHA_PRINT_NAME(name)                                               \
+    do {                                                                    \
+        std::cerr << __func__ << ":" << __LINE__ << " "                     \
+                  << FMHA_STR(name) << " = " << name << std::endl;          \
+    } while (0)
+
+#define FMHA_PRINT_ATEN(name)                                               \
+    do {                                                                    \
+        FMHA_PRINT_NAME(name.size());                                       \
+        for (size_t i = 0; i < name.size(); i++) {                          \
+            std::cerr << "Vector of Tensors, Element " << i << std::endl;   \
+            std::cerr << name[i] << std::endl;                              \
+        }                                                                   \
+    } while (0);
+
 namespace fmha {
+
+template < class T >
+std::ostream& operator << (std::ostream& os, const std::vector<T>& v) 
+{
+    os << "[ ";
+    for (const auto& e : v)
+    {
+        os << " " << e;
+    }
+    os << " ]";
+    return os;
+}
 
 void run_flash_fwd(LaunchParams<FlashFwdParams>& launch_params) {
   HEADDIM_SWITCH(launch_params.params.d, [&] {
@@ -121,6 +153,10 @@ void set_params_fprop(
   char* q_ptr = reinterpret_cast<char*>(q.data_ptr());
   char* k_ptr = reinterpret_cast<char*>(k.data_ptr());
   char* v_ptr = reinterpret_cast<char*>(v.data_ptr());
+  std::cerr << __func__ << " LINE: " << __LINE__
+            << " q_ptr = " << (void*)q_ptr
+            << " is_contiguous? " << q.is_contiguous() << std::endl;
+  const char* q_base = q_ptr;
 
   char* out_ptr = reinterpret_cast<char*>(out.data_ptr());
   char* lse_ptr = reinterpret_cast<char*>(softmax_lse_d);
@@ -135,8 +171,16 @@ void set_params_fprop(
       params.q_ptr.push_back(reinterpret_cast<void*>(q_ptr));
       q_ptr = q_ptr + temp_q_stride;
     } else {
+      std::cerr << __func__ << " LINE: " << __LINE__
+                << " Before at::indexing::Slice " << std::endl;
       auto q_each_tmp =
           q.index({at::indexing::Slice(params.host_seqlens_q[i], params.host_seqlens_q[i + 1])}).contiguous();
+      std::cerr << __func__ << " LINE: " << __LINE__
+                << " params.host_seqlens_q[" << i << "] = " << params.host_seqlens_q[i]
+                << " params.host_seqlens_q[" << i + 1 << "] = " << params.host_seqlens_q[i + 1]
+                << " q_each_tmp.data_ptr() = " << (const void*)q_each_tmp.data_ptr()
+                << " q_each_tmp.data_ptr() offset " << (const char*)q_each_tmp.data_ptr() - q_base
+                << std::endl;
       params.q_tensors.push_back(q_each_tmp);
       params.q_ptr.push_back(reinterpret_cast<void*>(q_each_tmp.data_ptr()));
     }
@@ -173,6 +217,12 @@ void set_params_fprop(
       params.s_ptr.push_back(nullptr);
     }
   }
+  std::cerr << __func__ << " LINE: " << __LINE__ << std::endl;
+  std::cerr << "params.q_ptr = (" << std::endl;
+  for (const void* p : params.q_ptr) {
+    std::cerr << "  " << p << " offset = " << (const char*)p - q_base << std::endl;
+  }
+  std::cerr << ")" << std::endl;
 
   // Set the different scale values.
   // const float scale_bmm1 = 1.f / sqrtf(d);
@@ -203,7 +253,7 @@ void set_params_dgrad(
     const at::Tensor& cu_seqlens_q,
     const at::Tensor& cu_seqlens_k,
     void* s_d,
-    void* softmax_lse_d,
+    at::Tensor& softmax_lse_d,
     float p_dropout,
     float softmax_scale,
     bool is_causal) {
@@ -215,13 +265,19 @@ void set_params_dgrad(
   memset(&params, 0, sizeof(params));
 
   params.is_bf16 = q.dtype() == at::kBFloat16;
+  FMHA_PRINT_NAME(params.is_bf16);
 
   // Set the dimensions.
   params.b        = b;
+  FMHA_PRINT_NAME(params.b);
   params.h        = h;
+  FMHA_PRINT_NAME(params.h);
   params.seqlen_q = seqlen_q;
+  FMHA_PRINT_NAME(params.seqlen_q);
   params.seqlen_k = seqlen_k;
+  FMHA_PRINT_NAME(params.seqlen_k);
   params.d        = d;
+  FMHA_PRINT_NAME(params.d);
   if (cu_seqlens_q.device().type() == c10::kCUDA &&
       at::cuda::currentStreamCaptureStatus() == at::cuda::CaptureStatus::None) {
     params.host_seqlens_q = std::vector<int>(params.b + 1);
@@ -246,17 +302,31 @@ void set_params_dgrad(
     params.host_seqlens_k = std::vector<int>(
         static_cast<int*>(cu_seqlens_k.data_ptr()), static_cast<int*>(cu_seqlens_k.data_ptr()) + params.b + 1);
   }
+  FMHA_PRINT_NAME(params.host_seqlens_q);
+  FMHA_PRINT_NAME(params.host_seqlens_k);
 
+  FMHA_PRINT_NAME(q.sizes());
+  FMHA_PRINT_NAME(q.is_contiguous());
+  FMHA_PRINT_NAME(k.sizes());
+  FMHA_PRINT_NAME(k.is_contiguous());
+  FMHA_PRINT_NAME(v.sizes());
+  FMHA_PRINT_NAME(v.is_contiguous());
   char* q_ptr = reinterpret_cast<char*>(q.data_ptr());
   char* k_ptr = reinterpret_cast<char*>(k.data_ptr());
   char* v_ptr = reinterpret_cast<char*>(v.data_ptr());
 
+  FMHA_PRINT_NAME(dq.sizes());
+  FMHA_PRINT_NAME(dk.sizes());
+  FMHA_PRINT_NAME(dv.sizes());
   char* dq_ptr = reinterpret_cast<char*>(dq.data_ptr());
   char* dk_ptr = reinterpret_cast<char*>(dk.data_ptr());
   char* dv_ptr = reinterpret_cast<char*>(dv.data_ptr());
 
+  FMHA_PRINT_NAME(y.sizes());
+  FMHA_PRINT_NAME(ygrad.sizes());
+  FMHA_PRINT_NAME(softmax_lse_d.sizes());
   char* y_ptr     = reinterpret_cast<char*>(y.data_ptr());
-  char* lse_ptr   = reinterpret_cast<char*>(softmax_lse_d);
+  char* lse_ptr   = reinterpret_cast<char*>(softmax_lse_d.data_ptr());
   char* ygrad_ptr = reinterpret_cast<char*>(ygrad.data_ptr());
 
   for (int i = 0; i < b; i++) {
@@ -266,6 +336,13 @@ void set_params_dgrad(
     int temp_seqlen_k  = params.host_seqlens_k[i + 1] - params.host_seqlens_k[i];
     int temp_k_stride  = get_size_in_bytes(d * h * temp_seqlen_k, data_type);
     int temp_dk_stride = get_size_in_bytes(d * h * temp_seqlen_k, dk.dtype());
+    FMHA_PRINT_NAME(i);
+    FMHA_PRINT_NAME(temp_seqlen_q);
+    FMHA_PRINT_NAME(temp_q_stride);
+    FMHA_PRINT_NAME(temp_dq_stride);
+    FMHA_PRINT_NAME(temp_seqlen_k);
+    FMHA_PRINT_NAME(temp_k_stride);
+    FMHA_PRINT_NAME(temp_dk_stride);
     if (q.is_contiguous()) {
       params.q_ptr.push_back(reinterpret_cast<void*>(q_ptr));
       params.qgrad_ptr.push_back(reinterpret_cast<void*>(dq_ptr));
@@ -322,14 +399,23 @@ void set_params_dgrad(
     ygrad_ptr += temp_q_stride;
     lse_ptr += temp_lse_stride;
   }
+  FMHA_PRINT_ATEN(params.q_tensors.size());
+  FMHA_PRINT_ATEN(params.k_tensors.size());
+  FMHA_PRINT_ATEN(params.v_tensors.size());
+  FMHA_PRINT_ATEN(params.qgrad_tensors.size());
+  FMHA_PRINT_ATEN(params.kgrad_tensors.size());
+  FMHA_PRINT_ATEN(params.vgrad_tensors.size());
 
   // Set the different scale values.
   // const float scale_bmm1 = 1.f / sqrtf(d);
   params.scale_bmm1f = softmax_scale;
+  FMHA_PRINT_NAME(params.scale_bmm1f);
 
   // Set this to probability of keeping an element to simplify things.
   params.p_dropout = p_dropout;
+  FMHA_PRINT_NAME(params.p_dropout);
   params.is_causal = is_causal;
+  FMHA_PRINT_NAME(params.is_causal);
 }
 
 std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> mha_fwd(
@@ -506,6 +592,8 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> mha_bwd(
     at::Tensor philox_seed,  // Not used or supported on ROCm
     at::Tensor philox_offset // Not used or supported on ROCm
 ) {
+
+  std::cerr << __PRETTY_FUNCTION__  << " LINE: " << __LINE__ << std::endl;
   auto dprops = at::cuda::getCurrentDeviceProperties();
 
   const bool is_deterministic    = true;
@@ -597,6 +685,7 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> mha_bwd(
   auto gen =
       at::get_generator_or_default<at::CUDAGeneratorImpl>(c10::nullopt, at::cuda::detail::getDefaultCUDAGenerator());
 
+  std::cerr << __PRETTY_FUNCTION__  << " LINE: " << __LINE__ << std::endl;
   set_params_dgrad(
       launch_params.params,
       batch_size,
@@ -615,10 +704,11 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> mha_bwd(
       cu_seqlens_q,
       cu_seqlens_k,
       nullptr,
-      softmax_lse.data_ptr(),
+      softmax_lse,
       p_dropout,
       softmax_scale,
       is_causal);
+  std::cerr << __PRETTY_FUNCTION__  << " LINE: " << __LINE__ << std::endl;
 
   if (is_dropout) {
     // See Note [Acquire lock when using random generators]
@@ -627,7 +717,9 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> mha_bwd(
     launch_params.params.philox_args = gen->philox_cuda_state(counter_offset);
   }
 
+  std::cerr << __PRETTY_FUNCTION__  << " LINE: " << __LINE__ << std::endl;
   run_flash_bwd(launch_params);
+  std::cerr << __PRETTY_FUNCTION__  << " LINE: " << __LINE__ << std::endl;
 
   if (!q.is_contiguous()) {
     dq_tmp.copy_(at::cat(launch_params.params.qgrad_tensors, 0).contiguous(), true);
@@ -647,6 +739,7 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> mha_bwd(
   if (dv.data_ptr() != dv_tmp.data_ptr()) {
     dv.copy_(dv_tmp, true);
   }
+  std::cerr << __PRETTY_FUNCTION__  << " LINE: " << __LINE__ << std::endl;
   return std::make_tuple(dq, dk, dv, softmax_d);
 }
 
