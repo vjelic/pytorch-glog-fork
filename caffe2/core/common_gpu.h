@@ -86,7 +86,7 @@ namespace caffe2 {
 class TensorCoreEngine {};
 #endif // USE_ROCM
 
-#if defined(CUDA_VERSION) && CUDA_VERSION >= 10000
+#if (defined(CUDA_VERSION) && CUDA_VERSION >= 10000) || (defined(ROCM_VERSION) && ROCM_VERSION >= 60000)
 #define CAFFE2_CUDA_PTRATTR_MEMTYPE type
 #else
 #define CAFFE2_CUDA_PTRATTR_MEMTYPE memoryType
