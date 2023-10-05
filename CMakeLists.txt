@@ -291,9 +291,13 @@ cmake_dependent_option(
     USE_MKLDNN_CBLAS "Use CBLAS in MKLDNN" OFF
     "USE_MKLDNN" OFF)
 option(USE_DISTRIBUTED "Use distributed" ON)
-cmake_dependent_option(
-    USE_MPI "Use MPI for Caffe2. Only available if USE_DISTRIBUTED is on." ON
-    "USE_DISTRIBUTED" OFF)
+
+# Forcefully turning off MPI
+#cmake_dependent_option(
+#    USE_MPI "Use MPI for Caffe2. Only available if USE_DISTRIBUTED is on." ON
+#    "USE_DISTRIBUTED" OFF)
+option(USE_MPI "Use MPI" OFF)
+
 cmake_dependent_option(
     USE_GLOO "Use Gloo. Only available if USE_DISTRIBUTED is on." ON
     "USE_DISTRIBUTED" OFF)
