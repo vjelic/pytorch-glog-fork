@@ -7,14 +7,14 @@ ver() {
 set -ex
 
 # "install" hipMAGMA into /opt/rocm/magma by copying after build
-if [[ $(ver $ROCM_VERSION) -ge $(ver 6.0) ]]; then
-  git clone https://bitbucket.org/mpruthvi1/magma.git -b rocm_60
+#if [[ $(ver $ROCM_VERSION) -ge $(ver 6.0) ]]; then
+#  git clone https://bitbucket.org/mpruthvi1/magma.git -b rocm_60
+#  pushd magma
+#else
+  git clone https://bitbucket.org/mpruthvi1/magma.git -b rocm_lib_updates
   pushd magma
-else
-  git clone https://bitbucket.org/icl/magma.git
-  pushd magma
-  git checkout 28592a7170e4b3707ed92644bf4a689ed600c27f
-fi
+  git checkout 4431c2836eb6591e755598958e33412679543a6a
+#fi
 
 cp make.inc-examples/make.inc.hip-gcc-mkl make.inc
 echo 'LIBDIR += -L$(MKLROOT)/lib' >> make.inc
