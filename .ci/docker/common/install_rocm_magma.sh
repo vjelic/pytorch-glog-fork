@@ -12,10 +12,12 @@ set -ex
 #  pushd magma
 #else
   #git clone https://bitbucket.org/mpruthvi1/magma.git -b rocm_lib_updates
-  git clone https://github.com/icl-utk-edu/magma.git -b master
+  #git clone https://github.com/icl-utk-edu/magma.git -b master
+  git clone https://github.com/pruthvistony/magma.git -b rocm_update
   pushd magma
   #git checkout 4431c2836eb6591e755598958e33412679543a6a
-  git checkout 606169ca033e50fb1853ceec0bc60250617ea6a7
+  #git checkout 606169ca033e50fb1853ceec0bc60250617ea6a7
+  git checkout 4c22c7488c4c4c8a7fe104461b1ee8a49744ed26
 #fi
 
 cp make.inc-examples/make.inc.hip-gcc-mkl make.inc
