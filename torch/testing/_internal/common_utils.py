@@ -1284,15 +1284,6 @@ def skipIfRocm(func=None, *, msg="test doesn't currently work on the ROCm stack"
         return dec_fn(func)
     return dec_fn
 
-def runOnRocm(fn):
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        if TEST_WITH_ROCM:
-            fn(*args, **kwargs)
-        else:
-            raise unittest.SkipTest("test currently only works on the ROCm stack")
-    return wrapper
-
 def skipIfMps(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
@@ -1326,20 +1317,6 @@ def skipIfNotMiopenSuggestNHWC(fn):
         else:
             fn(*args, **kwargs)
     return wrapper
-
-
-# Reverts the linalg backend back to default to make sure potential failures in one
-# test do not affect other tests
-def setLinalgBackendsToDefaultFinally(fn):
-    @wraps(fn)
-    def _fn(*args, **kwargs):
-        _preferred_backend = torch.backends.cuda.preferred_linalg_library()
-        try:
-            fn(*args, **kwargs)
-        finally:
-            torch.backends.cuda.preferred_linalg_library(_preferred_backend)
-    return _fn
-
 
 # Context manager for setting deterministic flag and automatically
 # resetting it to its original value

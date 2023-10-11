@@ -11,7 +11,7 @@ import unittest
 
 from torch.testing._internal.common_utils import TestCase, run_tests, is_iterable_of_tensors, IS_MACOS, \
     IS_X86, parametrize, TEST_WITH_ASAN, noncontiguous_like
-from torch.testing._internal.common_utils import skipIfRocm, runOnRocm
+from torch.testing._internal.common_utils import skipIfRocm
 import torch
 from torch import Tensor
 import functools
@@ -762,7 +762,7 @@ class TestOperators(TestCase):
         # (2) attempting to use a Tensor in some data-dependent control flow or
         # (3) encountering this error in PyTorch internals.
         xfail("index_reduce"),
-        decorate("linalg.householder_product", decorator=runOnRocm),  # works on ROCm
+        xfail("linalg.householder_product"),  # vmap: inplace into a regular tensor
         xfail("nanquantile", device_type='cpu'),  # vmap not implemented for at::equal.
         xfail("native_layer_norm"),  # vmap: inplace into a regular tensor
         # got a batched tensor as input while the running_mean or running_var,

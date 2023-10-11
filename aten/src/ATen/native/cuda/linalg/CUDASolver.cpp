@@ -4,7 +4,7 @@
 #include <c10/cuda/CUDACachingAllocator.h>
 #include <c10/macros/Export.h>
 
-#if defined(CUDART_VERSION) || defined(ROCM_VERSION) && ROCM_VERSION >= 50300
+#ifdef CUDART_VERSION
 
 namespace at::cuda::solver {
 
@@ -470,8 +470,6 @@ void gesvdjBatched<c10::complex<double>>(
 }
 
 
-// ROCM does not implement gesdva yet
-#ifdef CUDART_VERSION
 template<>
 void gesvdaStridedBatched_buffersize<float>(
     cusolverDnHandle_t handle, cusolverEigMode_t jobz, int rank, int m, int n, float *A, int lda, long long int strideA,
@@ -592,7 +590,6 @@ void gesvdaStridedBatched<c10::complex<double>>(
     lwork, info, h_R_nrmF, batchSize
   ));
 }
-#endif
 
 
 template<>
