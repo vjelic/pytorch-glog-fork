@@ -11,9 +11,11 @@ set -ex
 #  git clone https://bitbucket.org/mpruthvi1/magma.git -b rocm_60
 #  pushd magma
 #else
-  git clone https://bitbucket.org/mpruthvi1/magma.git -b rocm_lib_updates
+  #git clone https://bitbucket.org/mpruthvi1/magma.git -b rocm_lib_updates
+  git clone https://github.com/icl-utk-edu/magma.git -b master
   pushd magma
-  git checkout 4431c2836eb6591e755598958e33412679543a6a
+  #git checkout 4431c2836eb6591e755598958e33412679543a6a
+  git checkout 606169ca033e50fb1853ceec0bc60250617ea6a7
 #fi
 
 cp make.inc-examples/make.inc.hip-gcc-mkl make.inc
