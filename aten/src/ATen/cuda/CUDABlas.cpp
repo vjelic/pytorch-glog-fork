@@ -1074,13 +1074,6 @@ void int8_gemm(
 }
 #endif // !defined(USE_ROCM) && !defined(_MSC_VER)
 
-// ROCm 5.6 hipblas matches the const Dtype *A API, but prior hipblas does not.
-#if defined(USE_ROCM) && ROCM_VERSION <= 56000
-#define ROCM_CONST_BUG
-#else
-#define ROCM_CONST_BUG const
-#endif
-
 template <>
 void trsm<float>(CUDABLAS_TRSM_ARGTYPES(float)) {
   TORCH_CUDABLAS_CHECK(cublasStrsm(
@@ -1104,7 +1097,7 @@ void trsm<c10::complex<float>>(CUDABLAS_TRSM_ARGTYPES(c10::complex<float>)) {
       m,
       n,
       reinterpret_cast<const cuComplex*>(alpha),
-      reinterpret_cast<ROCM_CONST_BUG cuComplex*>(A),
+      reinterpret_cast<const cuComplex*>(A),
       lda,
       reinterpret_cast<cuComplex*>(B),
       ldb));
@@ -1121,7 +1114,7 @@ void trsm<c10::complex<double>>(CUDABLAS_TRSM_ARGTYPES(c10::complex<double>)) {
       m,
       n,
       reinterpret_cast<const cuDoubleComplex*>(alpha),
-      reinterpret_cast<ROCM_CONST_BUG cuDoubleComplex*>(A),
+      reinterpret_cast<const cuDoubleComplex*>(A),
       lda,
       reinterpret_cast<cuDoubleComplex*>(B),
       ldb));
