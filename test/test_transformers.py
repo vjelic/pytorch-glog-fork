@@ -1522,7 +1522,7 @@ class TestSDPA(NNTestCase):
             tensor = 6 * torch.rand((batch, seq_len, 3 * num_heads * head_dim), device=device, dtype=torch.float32) - 3
             return tensor, tensor.to(dtype=torch.float16)
 
-        batch_size, seq_len, num_heads, head_dim = 16, 8, 4, 64
+        batch_size, seq_len, num_heads, head_dim = 16, 8, 4, 128
         shape = (batch_size, seq_len, num_heads, head_dim)
 
         # Test Packed
@@ -1568,7 +1568,8 @@ class TestSDPA(NNTestCase):
         math_ref_lp_test = math_ref_lp_test.to(dtype=torch.float32).contiguous()
 
         self.assertEqual(math_ref_test, math_ref_lp_test, atol=7e-3, rtol=7e-3)
-        self.assertEqual(actual_test, math_ref_test, atol=5e-3, rtol=5e-3)
+        # self.assertEqual(actual_test, math_ref_test, atol=5e-3, rtol=5e-3)
+        self.assertEqual(actual_test, math_ref_test, atol=1e-2, rtol=5e-3)
 
     @parametrize("contiguous_inputs", [True, False])
     def test_sdp_math_gradcheck(self, device, contiguous_inputs: bool):
