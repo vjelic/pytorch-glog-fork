@@ -50,6 +50,9 @@ if [ -n "$ANACONDA_PYTHON_VERSION" ]; then
   # Install correct Python version
   as_jenkins conda create -n py_$ANACONDA_PYTHON_VERSION -y python="$ANACONDA_PYTHON_VERSION"
 
+  # upgrade pip version
+  as_jenkins conda update -c conda-forge -n py_$ANACONDA_PYTHON_VERSION pip
+
   # Install PyTorch conda deps, as per https://github.com/pytorch/pytorch README
   CONDA_COMMON_DEPS="astunparse pyyaml mkl=2021.4.0 mkl-include=2021.4.0 setuptools"
   if [ "$ANACONDA_PYTHON_VERSION" = "3.11" ]; then
