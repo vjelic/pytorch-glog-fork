@@ -1,21 +1,13 @@
 #!/bin/bash
 
-ver() {
-  printf "%3d%03d%03d%03d" $(echo "$1" | tr '.' ' ');
-}
-
 set -ex
 
 # "install" hipMAGMA into /opt/rocm/magma by copying after build
-if [[ $(ver $ROCM_VERSION) -ge $(ver 6.0) ]]; then
-  # rocm6.0 changes on top of 28592a7170e4b3707ed92644bf4a689ed600c27f
-  git clone https://bitbucket.org/mpruthvi1/magma.git -b rocm_60
-  pushd magma
-else
-  git clone https://bitbucket.org/icl/magma.git
-  pushd magma
-  git checkout 28592a7170e4b3707ed92644bf4a689ed600c27f
-fi
+git clone https://bitbucket.org/icl/magma.git
+pushd magma
+
+# Version 2.7.2 + ROCm related updates
+git checkout 823531632140d0edcb7e77c3edc0e837421471c5
 
 cp make.inc-examples/make.inc.hip-gcc-mkl make.inc
 echo 'LIBDIR += -L$(MKLROOT)/lib' >> make.inc
