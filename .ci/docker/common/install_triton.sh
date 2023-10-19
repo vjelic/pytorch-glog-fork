@@ -9,7 +9,7 @@ get_conda_version() {
 }
 
 conda_reinstall() {
-  as_jenkins conda install -q -n py_$ANACONDA_PYTHON_VERSION -y --force-reinstall $*
+  as_jenkins conda install -q -n py_$ANACONDA_PYTHON_VERSION -y python="$ANACONDA_PYTHON_VERSION" --force-reinstall --no-deps $*
 }
 
 if [ -n "${ROCM_VERSION}" ]; then
