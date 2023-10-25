@@ -162,6 +162,10 @@ file(GLOB native_utils_cpp "native/utils/*.cpp")
 file(GLOB flash_attention_cuda_cu "native/transformers/cuda/flash_attn/*.cu")
 file(GLOB flash_attention_cuda_cpp "native/transformers/cuda/flash_attn/*.cpp")
 
+# FAT Library
+add_library(fat SHARED IMPORTED)
+set_target_properties(fat PROPERTIES IMPORTED_OBJECTS "native/transformers/hip/oort/kernels/*.so")
+
 # flash_attention sources
 #file(GLOB flash_attention_cpp_hip "native/transformers/hip/flash_attn_rocm/*.cpp")
 file(GLOB flash_attention_cpp_hip "native/transformers/hip/flash_attn_rocm/*.hip")
