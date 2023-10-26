@@ -373,7 +373,8 @@ at::Tensor adapt_tensor_shape(const at::Tensor& q,
   const ssize_t total_q = sizes[0];
   const ssize_t num_heads = sizes[1];
   const ssize_t head_size = sizes[2];
-  return q.reshape({batch_size, uniform_seq_len, num_heads, head_size}).transpose(1, 2);
+  // return q.reshape({batch_size, uniform_seq_len, num_heads, head_size}).transpose(1, 2);
+  return q.reshape({batch_size, uniform_seq_len, num_heads, head_size}).transpose(1, 2).contiguous();
   // return q.reshape({uniform_seq_len, batch_size, num_heads, head_size}).transpose(0, 1).transpose(1, 2);
 }
 
@@ -541,12 +542,6 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> mha_fwd(
   //run_flash_fwd(launch_params);
 
   //Temporary workspace                                                    at::dtype should be a float....
-  dim3 grid;
-  grid.x = (q.sizes()[2] + 128 - 1) / 128; // BLOCK_M = 128
-  grid.y = q.sizes()[0] * q.sizes()[1];
-  grid.z = 1;
-  dim3 block { 64 * 4, 1, 1 };
-
   std::cerr << "q.sizes() = " << q.sizes() << std::endl;
   std::cerr << "k.sizes() = " << k.sizes() << std::endl;
   std::cerr << "v.sizes() = " << v.sizes() << std::endl;
@@ -557,7 +552,7 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> mha_fwd(
   at::Tensor tv = adapt_tensor_shape(v, cu_seqlens_k);
   at::Tensor tout = at::zeros_like(tq);
 
-  at::Tensor M = at::empty({(tq.sizes()[0] * tq.sizes()[1]), tq.sizes()[2]}, at::dtype(at::kFloat).device(at::kCUDA));
+  at::Tensor M = at::empty({tq.sizes()[0] * tq.sizes()[1], tq.sizes()[2]}, at::dtype(at::kFloat).device(at::kCUDA));
 
   std::cerr << "tq.sizes() = " << tq.sizes() << std::endl;
   std::cerr << "tk.sizes() = " << tk.sizes() << std::endl;
@@ -565,13 +560,27 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> mha_fwd(
   std::cerr << "tout.sizes() = " << tout.sizes() << std::endl;
   std::cerr << "M.sizes() = " << M.sizes() << std::endl;
 
+  std::cerr << "tq.strides() = " << tq.strides() << std::endl;
+  std::cerr << "tk.strides() = " << tk.strides() << std::endl;
+  std::cerr << "tv.strides() = " << tv.strides() << std::endl;
+  std::cerr << "tout.strides() = " << tout.strides() << std::endl;
+
   std::cerr << "tq.data_ptr() = " << tq.data_ptr() << std::endl;
   std::cerr << "tk.data_ptr() = " << tk.data_ptr() << std::endl;
   std::cerr << "tv.data_ptr() = " << tv.data_ptr() << std::endl;
   std::cerr << "tout.data_ptr() = " << tout.data_ptr() << std::endl;
   std::cerr << "M.data_ptr() = " << M.data_ptr() << std::endl;
 
+  dim3 grid;
+  grid.x = (tq.sizes()[2] + 128 - 1) / 128; // BLOCK_M = 128
+  grid.y = tq.sizes()[0] * tq.sizes()[1];
+  grid.z = 1;
+  std::cerr << "grid size (" << grid.x << ", " << grid.y << ")" << std::endl;
+  dim3 block { 64 * 4, 1, 1 };
+
   // oort::attn_fwd<1,128,64,64,true> fwd_opt;
+  // BLOCK_DMODEL = Lk = k.shape[-1] = 16
+  // FIXME: Choose kernel dynamically
   oort::attn_fwd<1,128,16,64,true> fwd_opt;
   auto err = fwd_opt(grid, block,
     tq.data_ptr(), tk.data_ptr(), tv.data_ptr(),
