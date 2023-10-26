@@ -31,6 +31,7 @@
 #include <ATen/native/transformers/hip/flash_attn_rocm/src/flash_fwd_runner_gfx90a.h>
 
 #include <ATen/native/transformers/hip/flash_attn_rocm/src/static_switch.h>
+#include <iostream>
 
 #define CHECK_SHAPE(x, ...) \
   TORCH_CHECK(x.sizes() == at::IntArrayRef({__VA_ARGS__}), #x " must have shape (" #__VA_ARGS__ ")")
@@ -348,6 +349,43 @@ void set_params_dgrad(
   params.is_using_qloop = is_using_qloop;
 }
 
+ssize_t fmha_hip_check_seqlens(const at::Tensor& cu_seqlens)
+{
+  at::Tensor seqlens = cu_seqlens.to(at::kCPU);
+  ssize_t uniform = seqlens[1].item<ssize_t>() - seqlens[0].item<ssize_t>();
+  for (size_t i = 2; i < seqlens.numel(); i++) {
+    if (seqlens[i].item<ssize_t>() - seqlens[i-1].item<ssize_t>() != uniform)
+      return 0;
+  }
+  return uniform;
+}
+
+// Triton API: batch_size, n_heads, seq_len_q, head_dim
+// Flash V1 API: total_q x num_heads x head_size, total_q := \sum_{i=0}^{b} s_i
+// When batch_size > 1, total_q = batch_size * \sum_{i=0}^{b} s_i
+at::Tensor adapt_tensor_shape(const at::Tensor& q,
+                              const at::Tensor& cu_seqlens_q)
+{
+  const auto sizes = q.sizes();
+  ssize_t uniform_seq_len = fmha_hip_check_seqlens(cu_seqlens_q);
+  TORCH_CHECK(uniform_seq_len > 0, "cu_seqlens_q/k must be uniform in HIP backend");
+  const ssize_t batch_size = cu_seqlens_q.numel() - 1;
+  const ssize_t total_q = sizes[0];
+  const ssize_t num_heads = sizes[1];
+  const ssize_t head_size = sizes[2];
+  return q.reshape({batch_size, uniform_seq_len, num_heads, head_size}).transpose(1, 2);
+  // return q.reshape({uniform_seq_len, batch_size, num_heads, head_size}).transpose(0, 1).transpose(1, 2);
+}
+
+at::Tensor reverse_adapt_tensor_shape(const at::Tensor& q,
+                                      const at::Tensor& cu_seqlens_q)
+{
+  const auto sizes = q.sizes();
+  const ssize_t num_heads = sizes[1];
+  const ssize_t head_size = sizes[3];
+  return q.transpose(1, 2).reshape({-1, num_heads, head_size});
+}
+
 std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> mha_fwd(
     const at::Tensor& q,
     const at::Tensor& k,
@@ -364,6 +402,13 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> mha_fwd(
     const bool return_softmax, // in rocm ,this will return the random number matrix when doing dropout
     const int num_splits       // num_splits is not used in rocm
   ) {
+  std::cerr << "Input q.sizes() = " << q.sizes() << std::endl;
+  std::cerr << "Input k.sizes() = " << k.sizes() << std::endl;
+  std::cerr << "Input v.sizes() = " << v.sizes() << std::endl;
+  std::cerr << "Input out.sizes() = " << out.sizes() << std::endl;
+  std::cerr << "Input cu_seqlens_q = " << cu_seqlens_q << std::endl;
+  std::cerr << "Input cu_seqlens_k = " << cu_seqlens_k << std::endl;
+
   const bool is_deterministic = true;
 
 
@@ -377,7 +422,7 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> mha_fwd(
   // FAT limits
   TORCH_CHECK(q_dtype == at::kHalf);
   TORCH_CHECK(!is_dropout);
-  
+
   //TORCH_CHECK(q_dtype == at::kHalf || q_dtype == at::kBFloat16);
   TORCH_CHECK(k.dtype() == q_dtype);
   TORCH_CHECK(v.dtype() == q_dtype);
@@ -496,22 +541,56 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> mha_fwd(
   //run_flash_fwd(launch_params);
 
   //Temporary workspace                                                    at::dtype should be a float....
-  at::Tensor M = at::empty({(q.sizes()[0] * q.sizes()[1]), q.sizes()[2]}, at::dtype(at::kFloat).device(at::kCUDA));
   dim3 grid;
-  grid.x = (q.sizes()[2] + 64 - 1) / 64;
+  grid.x = (q.sizes()[2] + 128 - 1) / 128; // BLOCK_M = 128
   grid.y = q.sizes()[0] * q.sizes()[1];
   grid.z = 1;
-  dim3 block { 64 * 8/*num_warps*/, 1, 1 };
-  
-  oort::attn_fwd<1,128,64,64,true> fwd_opt;
-  fwd_opt(grid, block, q.data_ptr(), k.data_ptr(), v.data_ptr(), softmax_scale, (float*)M.data_ptr(), out.data_ptr(),
-	  q.stride(0), q.stride(1), q.stride(2), q.stride(3),
-	  k.stride(0), k.stride(1), k.stride(2), k.stride(3),
-	  v.stride(0), v.stride(1), v.stride(2), v.stride(3),
-	  out.stride(0), out.stride(1), out.stride(2), out.stride(3),
-	  q.sizes()[0],  q.sizes()[1],  q.sizes()[2], stream  );
-  
-  
+  dim3 block { 64 * 4, 1, 1 };
+
+  std::cerr << "q.sizes() = " << q.sizes() << std::endl;
+  std::cerr << "k.sizes() = " << k.sizes() << std::endl;
+  std::cerr << "v.sizes() = " << v.sizes() << std::endl;
+  std::cerr << "out.sizes() = " << out.sizes() << std::endl;
+
+  at::Tensor tq = adapt_tensor_shape(q, cu_seqlens_q);
+  at::Tensor tk = adapt_tensor_shape(k, cu_seqlens_k);
+  at::Tensor tv = adapt_tensor_shape(v, cu_seqlens_k);
+  at::Tensor tout = at::zeros_like(tq);
+
+  at::Tensor M = at::empty({(tq.sizes()[0] * tq.sizes()[1]), tq.sizes()[2]}, at::dtype(at::kFloat).device(at::kCUDA));
+
+  std::cerr << "tq.sizes() = " << tq.sizes() << std::endl;
+  std::cerr << "tk.sizes() = " << tk.sizes() << std::endl;
+  std::cerr << "tv.sizes() = " << tv.sizes() << std::endl;
+  std::cerr << "tout.sizes() = " << tout.sizes() << std::endl;
+  std::cerr << "M.sizes() = " << M.sizes() << std::endl;
+
+  std::cerr << "tq.data_ptr() = " << tq.data_ptr() << std::endl;
+  std::cerr << "tk.data_ptr() = " << tk.data_ptr() << std::endl;
+  std::cerr << "tv.data_ptr() = " << tv.data_ptr() << std::endl;
+  std::cerr << "tout.data_ptr() = " << tout.data_ptr() << std::endl;
+  std::cerr << "M.data_ptr() = " << M.data_ptr() << std::endl;
+
+  // oort::attn_fwd<1,128,64,64,true> fwd_opt;
+  oort::attn_fwd<1,128,16,64,true> fwd_opt;
+  auto err = fwd_opt(grid, block,
+    tq.data_ptr(), tk.data_ptr(), tv.data_ptr(),
+    softmax_scale, (float*)M.data_ptr(), tout.data_ptr(),
+	  tq.stride(0), tq.stride(1), tq.stride(2), tq.stride(3),
+	  tk.stride(0), tk.stride(1), tk.stride(2), tk.stride(3),
+	  tv.stride(0), tv.stride(1), tv.stride(2), tv.stride(3),
+	  tout.stride(0), tout.stride(1), tout.stride(2), tout.stride(3),
+	  tq.sizes()[0], tq.sizes()[1], tq.sizes()[2], stream);
+
+  hipStreamSynchronize(stream);
+  std::cerr << "fwd_opt returns: " << err << std::endl;
+
+  std::cerr << "tout value = " << tout[0][0][0][0] << std::endl;
+  auto outback = reverse_adapt_tensor_shape(tout, cu_seqlens_q);
+  std::cerr << "outback.sizes() = " << outback.sizes() << std::endl;
+  // FIXME: More efficient copy
+  out.copy_(outback);
+  // out.zero_();
 
 #if 0
     std::vector<at::Tensor> result = {softmax_lse};

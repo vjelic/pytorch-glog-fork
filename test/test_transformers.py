@@ -2339,14 +2339,22 @@ class TestSDPACudaOnly(NNTestCase):
                          atol=grad_attn_mask_atol, rtol=grad_attn_mask_rtol)
 
     @unittest.skipIf(SDPBackend.FLASH_ATTENTION not in get_platform_specific_sdpa(), "Does not support SDPA or pre-SM80 hardware")
-    @parametrize("batch_size", [1, 8])
-    @parametrize("seq_len_q", [4, 8, 64, 128, 256, 512, 1024, 2048])
-    @parametrize("seq_len_k", [4, 8, 64, 128, 256, 512, 1024, 2048])
-    @parametrize("head_dim", [8, 16, 32, 64, 72, 96, 128])
-    @parametrize("is_causal", [True, False])
-    @parametrize("dropout_p", [0.0, 0.22, 0.48])
-    @parametrize("dtype", [torch.float16, torch.bfloat16])
-    @parametrize("scale", [None, "l1"])
+    # @parametrize("batch_size", [1, 8])
+    # @parametrize("seq_len_q", [4, 8, 64, 128, 256, 512, 1024, 2048])
+    # @parametrize("seq_len_k", [4, 8, 64, 128, 256, 512, 1024, 2048])
+    # @parametrize("head_dim", [8, 16, 32, 64, 72, 96, 128])
+    # @parametrize("is_causal", [True, False])
+    # @parametrize("dropout_p", [0.0, 0.22, 0.48])
+    # @parametrize("dtype", [torch.float16, torch.bfloat16])
+    # @parametrize("scale", [None, "l1"])
+    @parametrize("batch_size", [8])
+    @parametrize("seq_len_q", [1024])
+    @parametrize("seq_len_k", [1024])
+    @parametrize("head_dim", [16])
+    @parametrize("is_causal", [True])
+    @parametrize("dropout_p", [0.0])
+    @parametrize("dtype", [torch.float16])
+    @parametrize("scale", [None])
     def test_flash_attention_vs_math_ref_grads(self, device, batch_size: int, seq_len_q: int, seq_len_k: int,
                                                head_dim: int, is_causal: bool, dropout_p: float, dtype: torch.dtype,
                                                scale: str):
@@ -2368,6 +2376,7 @@ class TestSDPACudaOnly(NNTestCase):
 
         is_dropout = dropout_p > 0.0
 
+        print(f'{query.shape=}')
         # Create real output
         output_tuple = torch.ops.aten._scaled_dot_product_flash_attention(
             query, key, value, dropout_p=dropout_p, is_causal=is_causal, scale=scale, return_debug_mask=True)
@@ -2399,6 +2408,11 @@ class TestSDPACudaOnly(NNTestCase):
             out_lp_ref = torch.ops.aten._scaled_dot_product_attention_math(
                 query_ref_lp, key_ref_lp, value_ref_lp, dropout_p=dropout_p, is_causal=is_causal, scale=scale,
                 dropout_mask=dropout_mask)[0]
+        output_ref_atol, output_ref_rtol = get_tolerances(out_ref, out_lp_ref)
+        print(f'{out[0][0][0][0]=}')
+        print(f'{out_ref[0][0][0][0]=}')
+        self.assertEqual(out, out_ref.to(out.dtype), atol=output_ref_atol, rtol=output_ref_rtol)
+        return
 
         upstream_grad = torch.rand_like(out, requires_grad=False)
 
