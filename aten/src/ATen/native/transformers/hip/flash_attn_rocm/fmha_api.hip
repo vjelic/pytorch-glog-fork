@@ -581,18 +581,33 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> mha_fwd(
   // oort::attn_fwd<1,128,64,64,true> fwd_opt;
   // BLOCK_DMODEL = Lk = k.shape[-1] = 16
   // FIXME: Choose kernel dynamically
-  oort::attn_fwd<1,128,16,64,true> fwd_opt;
-  auto err = fwd_opt(grid, block,
-    tq.data_ptr(), tk.data_ptr(), tv.data_ptr(),
-    softmax_scale, (float*)M.data_ptr(), tout.data_ptr(),
-	  tq.stride(0), tq.stride(1), tq.stride(2), tq.stride(3),
-	  tk.stride(0), tk.stride(1), tk.stride(2), tk.stride(3),
-	  tv.stride(0), tv.stride(1), tv.stride(2), tv.stride(3),
-	  tout.stride(0), tout.stride(1), tout.stride(2), tout.stride(3),
-	  tq.sizes()[0], tq.sizes()[1], tq.sizes()[2], stream);
+  if (is_causal) {
+    constexpr int STAGE = 3;
+    oort::attn_fwd<STAGE,128,16,64,true> fwd_opt;
+    auto err = fwd_opt(grid, block,
+      tq.data_ptr(), tk.data_ptr(), tv.data_ptr(),
+      softmax_scale, (float*)M.data_ptr(), tout.data_ptr(),
+      tq.stride(0), tq.stride(1), tq.stride(2), tq.stride(3),
+      tk.stride(0), tk.stride(1), tk.stride(2), tk.stride(3),
+      tv.stride(0), tv.stride(1), tv.stride(2), tv.stride(3),
+      tout.stride(0), tout.stride(1), tout.stride(2), tout.stride(3),
+      tq.sizes()[0], tq.sizes()[1], tq.sizes()[2], stream);
+    std::cerr << "fwd_opt returns: " << err << std::endl;
+  } else {
+    constexpr int STAGE = 1;
+    oort::attn_fwd<1,128,16,64,true> fwd_opt;
+    auto err = fwd_opt(grid, block,
+      tq.data_ptr(), tk.data_ptr(), tv.data_ptr(),
+      softmax_scale, (float*)M.data_ptr(), tout.data_ptr(),
+      tq.stride(0), tq.stride(1), tq.stride(2), tq.stride(3),
+      tk.stride(0), tk.stride(1), tk.stride(2), tk.stride(3),
+      tv.stride(0), tv.stride(1), tv.stride(2), tv.stride(3),
+      tout.stride(0), tout.stride(1), tout.stride(2), tout.stride(3),
+      tq.sizes()[0], tq.sizes()[1], tq.sizes()[2], stream);
+    std::cerr << "fwd_opt returns: " << err << std::endl;
+  }
 
   hipStreamSynchronize(stream);
-  std::cerr << "fwd_opt returns: " << err << std::endl;
 
   std::cerr << "tout value = " << tout[0][0][0][0] << std::endl;
   auto outback = reverse_adapt_tensor_shape(tout, cu_seqlens_q);
