@@ -2348,17 +2348,23 @@ class TestSDPACudaOnly(NNTestCase):
     # @parametrize("dtype", [torch.float16, torch.bfloat16])
     # @parametrize("scale", [None, "l1"])
     @parametrize("batch_size", [8])
-    @parametrize("seq_len_q", [1024])
-    @parametrize("seq_len_k", [1024])
+    # @parametrize("seq_len_q", [64, 128, 256, 512, 1024, 2048])
+    @parametrize("seq_len_uniform", [128, 256, 512, 1024, 2048])
+    # @parametrize("seq_len_k", [64, 128, 256, 512, 1024, 2048])
+    # @parametrize("seq_len_q", [256, 512])
+    # @parametrize("seq_len_k", [256, 512])
     @parametrize("head_dim", [16])
-    @parametrize("is_causal", [True])
+    @parametrize("is_causal", [False])
     @parametrize("dropout_p", [0.0])
     @parametrize("dtype", [torch.float16])
     @parametrize("scale", [None])
-    def test_flash_attention_vs_math_ref_grads(self, device, batch_size: int, seq_len_q: int, seq_len_k: int,
+    def test_flash_attention_vs_math_ref_grads(self, device, batch_size: int,
+                                               # seq_len_q: int, seq_len_k: int,
+                                               seq_len_uniform: int,
                                                head_dim: int, is_causal: bool, dropout_p: float, dtype: torch.dtype,
                                                scale: str):
-
+        # FIXME: Triton can't handle seq_len_q != seq_len_k
+        seq_len_q = seq_len_k = seq_len_uniform
         scale = scale if scale is None else (1 / head_dim)
         n_heads = 4
         query = torch.rand(batch_size, n_heads, seq_len_q, head_dim,
@@ -2376,7 +2382,9 @@ class TestSDPACudaOnly(NNTestCase):
 
         is_dropout = dropout_p > 0.0
 
-        print(f'{query.shape=}')
+        print(f'{query.shape=} {query.stride()=}')
+        print(f'{key.shape=} {key.stride()=}')
+        print(f'{value.shape=} {value.stride()=}')
         # Create real output
         output_tuple = torch.ops.aten._scaled_dot_product_flash_attention(
             query, key, value, dropout_p=dropout_p, is_causal=is_causal, scale=scale, return_debug_mask=True)
@@ -2409,8 +2417,10 @@ class TestSDPACudaOnly(NNTestCase):
                 query_ref_lp, key_ref_lp, value_ref_lp, dropout_p=dropout_p, is_causal=is_causal, scale=scale,
                 dropout_mask=dropout_mask)[0]
         output_ref_atol, output_ref_rtol = get_tolerances(out_ref, out_lp_ref)
-        print(f'{out[0][0][0][0]=}')
-        print(f'{out_ref[0][0][0][0]=}')
+        print(f'{out[0][0][0][:]=}')
+        print(f'{out_ref[0][0][0][:]=}')
+        print(f'{out[-1][0][0][:]=}')
+        print(f'{out_ref[-1][0][0][:]=}')
         self.assertEqual(out, out_ref.to(out.dtype), atol=output_ref_atol, rtol=output_ref_rtol)
         return
 
