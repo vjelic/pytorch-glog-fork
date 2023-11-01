@@ -20,6 +20,8 @@ from torch._dynamo.mutation_guard import GenerationTracker
 from torch._dynamo.testing import expectedFailureDynamic, same
 from torch.nn.modules.lazy import LazyModuleMixin
 from torch.nn.parameter import Parameter, UninitializedParameter
+from torch.testing._internal.common_utils import skipIfRocm
+
 
 try:
     from . import test_functions
@@ -2230,6 +2232,7 @@ class OptimizedModuleTest(torch._dynamo.test_case.TestCase):
         # causes two compilations, bc unimplemented custom setattr
         self.assertTrue(compiles_without_buffers >= 2)
 
+    @skipIfRocm #Noted upstream issue for this test for CUDA/ROCm (https://github.com/pytorch/pytorch/issues/108838)
     def test_module_with_training_state(self):
         mod = ModuleWithTrainingState()
         opt_mod = torch.compile(mod)
