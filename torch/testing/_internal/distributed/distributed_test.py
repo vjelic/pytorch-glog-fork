@@ -2955,6 +2955,7 @@ class DistributedTest:
             BACKEND != "gloo", "Only Gloo backend support sparse all reduce"
         )
         @skip_if_no_gpu
+        @skip_if_rocm # Disable upstream at cutoff https://github.com/pytorch/pytorch/issues/104526
         def test_sparse_all_reduce_sum_cuda(self):
             self._test_sparse_all_reduce_sum(lambda t: t.clone().cuda())
 
