@@ -362,7 +362,7 @@ else
 fi
 
 DOCKER_PROGRESS="--progress=plain"
-if [[ "${DOCKER_BUILDKIT}" == 1 ]]; then
+if [[ "${DOCKER_BUILDKIT}" == 0 ]]; then
   DOCKER_PROGRESS=""
 fi
 
