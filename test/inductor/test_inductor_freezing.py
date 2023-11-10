@@ -367,6 +367,8 @@ class OptimizeForInferenceTemplate(TestCase):
         self.assertEqual(eager, compiled)
         self.assertTrue(weight_ref() is None)
 
+    #This test case is disabled upstream via: https://github.com/pytorch/pytorch/issues/107893
+    @skipIfRocm
     def test_conv_with_as_strided(self):
         class Model(nn.Module):
             def __init__(self, groups):
@@ -449,6 +451,8 @@ class OptimizeForInferenceTemplate(TestCase):
             mod_eager = mod(x)
             self.assertEqual(foo(mod, x), mod_eager)
 
+    # This test is disabled upstream via: https://github.com/pytorch/pytorch/issues/107925
+    @skipIfRocm
     def test_conv_weight_layout_convert(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -504,6 +508,8 @@ class OptimizeForInferenceTemplate(TestCase):
         if self.device == "cuda":
             self.assertTrue(nconv == 1)
 
+    #This test is disabled upstream via: https://github.com/pytorch/pytorch/issues/107950
+    @skipIfRocm
     def test_redundant_clone_for_layout_convert(self):
         class Model(torch.nn.Module):
             def __init__(self):
