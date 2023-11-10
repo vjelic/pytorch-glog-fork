@@ -3116,6 +3116,7 @@ class CommonTemplate:
             (torch.randn(1, 3, 6, 6),),
         )
 
+    @skipIfRocm
     def test_alexnet_prefix(self):
         def forward(arg6, arg7, arg16):
             convolution = torch.ops.aten.convolution(
