@@ -73,6 +73,13 @@ enum ErrorHandlingMode {
 constexpr const char* TORCH_NCCL_AVOID_RECORD_STREAMS =
     "TORCH_NCCL_AVOID_RECORD_STREAMS";
 
+// If set, ProcessGroupNCCL will reuse the compute stream.
+// This implies TORCH_NCCL_AVOID_RECORD_STREAMS=1, as well.
+// We do not need to use recordStream calls if using the same stream
+// for compute and nccl.
+constexpr const char* TORCH_NCCL_SINGLE_STREAM =
+    "TORCH_NCCL_SINGLE_STREAM";
+
 // ProcessGroupNCCL implements NCCL bindings for c10d.
 //
 // All functions of the class are expected to be called in the same order
@@ -201,6 +208,9 @@ class TORCH_API ProcessGroupNCCL : public Backend {
 
     // Clone of avoidRecordStreams_ from ProcessGroupNCCL.
     bool avoidRecordStreams_ = false;
+
+    // Clone of singleStream_ from ProcessGroupNCCL.
+    bool singleStream_ = false;
 
     // Clone of opTimeout_ from ProcessGroupNCCL.
     std::chrono::milliseconds opTimeout_;
@@ -524,6 +534,11 @@ class TORCH_API ProcessGroupNCCL : public Backend {
       OpType opType);
 
  private:
+  void syncStreams(
+      const std::vector<at::Device>& devices,
+      std::vector<at::cuda::CUDAEvent>& ncclEvents,
+      std::vector<at::cuda::CUDAStream>& ncclStreams);
+
   // Helper that encapsulates work shared across all collective communication
   // primitives.  The callbacks have the following signatures:
   //
@@ -763,6 +778,9 @@ class TORCH_API ProcessGroupNCCL : public Backend {
 
   // Whether or not TORCH_NCCL_AVOID_RECORD_STREAMS was set
   bool avoidRecordStreams_ = false;
+
+  // Whether or not TORCH_NCCL_SINGLE_STREAM was set
+  bool singleStream_ = false;
 
   // Set of communicators that this process group has aborted and their
   // ncclUniqueId has been written to the store. We don't need a lock

@@ -216,31 +216,6 @@ at::Device getDeviceForRank(int rank) {
   return at::Device(at::DeviceType::CUDA, deviceIdx);
 }
 
-// [Sync Streams] Helper that lets the input ncclStreams to wait for the current
-// stream. NCCL communications run on ncclStreams, but input tensors are
-// allocated on different streams (i.e., current streams). Communications on
-// ncclStreams cannot start before pending input tensor ops on current streams
-// finish. Otherwise, ops on two streams might read/write same tensors
-// concurrently.
-//
-// The synchronization above alone is not enough. We also need to make sure
-// input tensors are not freed before their usages on ncclStreams finish. This
-// can be achieved by calling c10::cuda::CUDACachingAllocator::recordStream,
-// which remembers the usage stream (ncclStream), creates an event on the usage
-// stream when GC attempts to free the input tensor, and delays GC until that
-// event is done.
-void syncStreams(
-    const std::vector<at::Device>& devices,
-    std::vector<at::cuda::CUDAEvent>& ncclEvents,
-    std::vector<at::cuda::CUDAStream>& ncclStreams) {
-  for (const auto i : c10::irange(devices.size())) {
-    at::cuda::CUDAStream& ncclStream = ncclStreams[i];
-    at::cuda::CUDAEvent& ncclEvent = ncclEvents[i];
-    ncclEvent.record(at::cuda::getCurrentCUDAStream(devices[i].index()));
-    ncclEvent.block(ncclStream);
-  }
-}
-
 // Given a ncclUniqueId, convert it to a string representation that can be put
 // in the store.
 std::string buildNcclUniqueIdStr(const ncclUniqueId& ncclID) {
@@ -504,10 +479,12 @@ void ProcessGroupNCCL::WorkNCCL::synchronize() {
 }
 
 void ProcessGroupNCCL::WorkNCCL::synchronizeStreams() {
-  for (const auto i : c10::irange(devices_.size())) {
-    auto currentStream = at::cuda::getCurrentCUDAStream(devices_[i].index());
-    // Block the current stream on the NCCL stream
-    (*ncclEndEvents_)[i].block(currentStream);
+  if (!singleStream_) {
+    for (const auto i : c10::irange(devices_.size())) {
+      auto currentStream = at::cuda::getCurrentCUDAStream(devices_[i].index());
+      // Block the current stream on the NCCL stream
+      (*ncclEndEvents_)[i].block(currentStream);
+    }
   }
 
   if (avoidRecordStreams_) {
@@ -644,6 +621,10 @@ ProcessGroupNCCL::ProcessGroupNCCL(
   enableTiming_ = parseEnvVarFlag(NCCL_ENABLE_TIMING) || desyncDebug_;
 #endif
   avoidRecordStreams_ = parseEnvVarFlag(TORCH_NCCL_AVOID_RECORD_STREAMS);
+  singleStream_ = parseEnvVarFlag(TORCH_NCCL_SINGLE_STREAM);
+  if (singleStream_) {
+      avoidRecordStreams_ = true;
+  }
 
   if (blockingWait_) {
     if (asyncErrorHandling_ != NoHandling || desyncDebug_) {
@@ -1314,8 +1295,14 @@ std::vector<std::shared_ptr<NCCLComm>>& ProcessGroupNCCL::getNCCLComm(
 #endif
 
     // Creates the NCCL streams
-    streamVal.push_back(
-        at::cuda::getStreamFromPool(options_->is_high_priority_stream));
+    if (singleStream_) {
+      streamVal.push_back(
+          at::cuda::getCurrentCUDAStream(deviceIndex));
+    }
+    else {
+      streamVal.push_back(
+          at::cuda::getStreamFromPool(options_->is_high_priority_stream));
+    }
   }
 
   {
@@ -1639,6 +1626,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::endCoalescing() {
   // Set appropriate work parameters.
   work->blockingWait_ = blockingWait_;
   work->avoidRecordStreams_ = avoidRecordStreams_;
+  work->singleStream_ = singleStream_;
   work->opTimeout_ = options_->timeout;
   work->store_ = store_;
   if (avoidRecordStreams_) {
@@ -1658,6 +1646,33 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::endCoalescing() {
   }
 
   return work;
+}
+
+// [Sync Streams] Helper that lets the input ncclStreams to wait for the current
+// stream. NCCL communications run on ncclStreams, but input tensors are
+// allocated on different streams (i.e., current streams). Communications on
+// ncclStreams cannot start before pending input tensor ops on current streams
+// finish. Otherwise, ops on two streams might read/write same tensors
+// concurrently.
+//
+// The synchronization above alone is not enough. We also need to make sure
+// input tensors are not freed before their usages on ncclStreams finish. This
+// can be achieved by calling c10::cuda::CUDACachingAllocator::recordStream,
+// which remembers the usage stream (ncclStream), creates an event on the usage
+// stream when GC attempts to free the input tensor, and delays GC until that
+// event is done.
+void ProcessGroupNCCL::syncStreams(
+    const std::vector<at::Device>& devices,
+    std::vector<at::cuda::CUDAEvent>& ncclEvents,
+    std::vector<at::cuda::CUDAStream>& ncclStreams) {
+  if (!singleStream_) {
+    for (const auto i : c10::irange(devices.size())) {
+      at::cuda::CUDAStream& ncclStream = ncclStreams[i];
+      at::cuda::CUDAEvent& ncclEvent = ncclEvents[i];
+      ncclEvent.record(at::cuda::getCurrentCUDAStream(devices[i].index()));
+      ncclEvent.block(ncclStream);
+    }
+  }
 }
 
 template <typename Fn, typename PreProcess, typename PostProcess>
@@ -1919,8 +1934,10 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::pointToPoint(
     // prevent being freed before the collective finishes.
     //
     // See [Sync Streams].
-    c10::cuda::CUDACachingAllocator::recordStream(
-        tensors[i].storage().data_ptr(), ncclStream);
+    if (!singleStream_) {
+      c10::cuda::CUDACachingAllocator::recordStream(
+          tensors[i].storage().data_ptr(), ncclStream);
+    }
   }
 
   std::vector<void*> comms_;
@@ -2062,10 +2079,12 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::allreduce_sparse(
         auto recvIndices = indices[0] * colSize;
 
         // prevent output and recvIndices from being freed
-        c10::cuda::CUDACachingAllocator::recordStream(
-            output.storage().data_ptr(), stream);
-        c10::cuda::CUDACachingAllocator::recordStream(
-            recvIndices.storage().data_ptr(), stream);
+        if (!singleStream_) {
+          c10::cuda::CUDACachingAllocator::recordStream(
+              output.storage().data_ptr(), stream);
+          c10::cuda::CUDACachingAllocator::recordStream(
+              recvIndices.storage().data_ptr(), stream);
+        }
         auto result = ncclAllReduceSparseBlock(
             input._values().data_ptr(), // sendbuff
             recvIndices.data_ptr<int64_t>(), // recv_indices
