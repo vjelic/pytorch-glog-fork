@@ -622,9 +622,6 @@ ProcessGroupNCCL::ProcessGroupNCCL(
 #endif
   avoidRecordStreams_ = parseEnvVarFlag(TORCH_NCCL_AVOID_RECORD_STREAMS);
   singleStream_ = parseEnvVarFlag(TORCH_NCCL_SINGLE_STREAM);
-  if (singleStream_) {
-      avoidRecordStreams_ = true;
-  }
 
   if (blockingWait_) {
     if (asyncErrorHandling_ != NoHandling || desyncDebug_) {
@@ -1934,10 +1931,8 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::pointToPoint(
     // prevent being freed before the collective finishes.
     //
     // See [Sync Streams].
-    if (!singleStream_) {
-      c10::cuda::CUDACachingAllocator::recordStream(
-          tensors[i].storage().data_ptr(), ncclStream);
-    }
+    c10::cuda::CUDACachingAllocator::recordStream(
+        tensors[i].storage().data_ptr(), ncclStream);
   }
 
   std::vector<void*> comms_;
@@ -2079,12 +2074,10 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::allreduce_sparse(
         auto recvIndices = indices[0] * colSize;
 
         // prevent output and recvIndices from being freed
-        if (!singleStream_) {
-          c10::cuda::CUDACachingAllocator::recordStream(
-              output.storage().data_ptr(), stream);
-          c10::cuda::CUDACachingAllocator::recordStream(
-              recvIndices.storage().data_ptr(), stream);
-        }
+        c10::cuda::CUDACachingAllocator::recordStream(
+            output.storage().data_ptr(), stream);
+        c10::cuda::CUDACachingAllocator::recordStream(
+            recvIndices.storage().data_ptr(), stream);
         auto result = ncclAllReduceSparseBlock(
             input._values().data_ptr(), // sendbuff
             recvIndices.data_ptr<int64_t>(), // recv_indices
