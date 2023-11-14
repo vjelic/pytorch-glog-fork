@@ -297,7 +297,7 @@ __device__ scalar_t findPattern(
   }
 
   // should not get here
-  CUDA_KERNAL_ASSERT(false);
+  // CUDA_KERNAL_ASSERT(false); // got error in local build: error: use of undeclared identifier 'CUDA_KERNAL_ASSERT'
   return static_cast<scalar_t>(0);
 }
 
