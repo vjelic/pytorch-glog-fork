@@ -2,6 +2,7 @@
 #include <ATen/cuda/Atomic.cuh>
 #include <ATen/cuda/DeviceUtils.cuh>
 #include <ATen/cuda/AsmUtils.cuh>
+#include <c10/macros/Macros.h>
 
 namespace at {
 namespace native {
