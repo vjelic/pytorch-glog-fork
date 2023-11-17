@@ -479,13 +479,13 @@ void ProcessGroupNCCL::WorkNCCL::synchronize() {
 }
 
 void ProcessGroupNCCL::WorkNCCL::synchronizeStreams() {
-  //if (!singleStream_) {
+  if (!singleStream_) {
     for (const auto i : c10::irange(devices_.size())) {
       auto currentStream = at::cuda::getCurrentCUDAStream(devices_[i].index());
       // Block the current stream on the NCCL stream
       (*ncclEndEvents_)[i].block(currentStream);
     }
-  //}
+  }
 
   if (avoidRecordStreams_) {
     stashed_for_allocator_safety_->clear();
@@ -1662,14 +1662,14 @@ void ProcessGroupNCCL::syncStreams(
     const std::vector<at::Device>& devices,
     std::vector<at::cuda::CUDAEvent>& ncclEvents,
     std::vector<at::cuda::CUDAStream>& ncclStreams) {
-  //if (!singleStream_) {
+  if (!singleStream_) {
     for (const auto i : c10::irange(devices.size())) {
       at::cuda::CUDAStream& ncclStream = ncclStreams[i];
       at::cuda::CUDAEvent& ncclEvent = ncclEvents[i];
       ncclEvent.record(at::cuda::getCurrentCUDAStream(devices[i].index()));
       ncclEvent.block(ncclStream);
     }
-  //}
+  }
 }
 
 template <typename Fn, typename PreProcess, typename PostProcess>
