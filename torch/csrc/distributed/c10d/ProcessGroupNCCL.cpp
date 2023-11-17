@@ -1293,6 +1293,8 @@ std::vector<std::shared_ptr<NCCLComm>>& ProcessGroupNCCL::getNCCLComm(
 
     // Creates the NCCL streams
     if (singleStream_) {
+      // we still assign current stream as the nccl stream, but this won't
+      // go far enough. We will get current stream with each nccl invocation
       streamVal.push_back(
           at::cuda::getCurrentCUDAStream(deviceIndex));
     }
@@ -2088,7 +2090,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::allreduce_sparse(
             ncclDataType,
             ncclReduceOp,
             comm,
-            stream.stream());
+            singleStream_ ? at::cuda::getCurrentCUDAStream() : stream.stream());
         return result;
       },
       [](std::vector<at::cuda::CUDAStream>& ncclStreams,
@@ -2140,7 +2142,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::allreduce_impl(
             ncclDataType,
             ncclReduceOp,
             comm,
-            stream.stream());
+            singleStream_ ? at::cuda::getCurrentCUDAStream() : stream.stream());
       },
       OpType::ALLREDUCE,
       "nccl:all_reduce");
@@ -2233,7 +2235,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::broadcast(
             getNcclDataType(input.scalar_type()),
             root,
             comm,
-            stream.stream());
+            singleStream_ ? at::cuda::getCurrentCUDAStream() : stream.stream());
       },
       OpType::BROADCAST,
       "nccl:broadcast");
@@ -2292,7 +2294,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::_broadcast_oop(
             getNcclDataType(input.scalar_type()),
             root,
             comm,
-            stream.stream());
+            singleStream_ ? at::cuda::getCurrentCUDAStream() : stream.stream());
       },
       OpType::BROADCAST,
       "nccl:_broadcast_oop");
@@ -2339,7 +2341,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::reduce(
             ncclReduceOp,
             root,
             comm,
-            stream.stream());
+            singleStream_ ? at::cuda::getCurrentCUDAStream() : stream.stream());
       },
       OpType::REDUCE,
       "nccl:reduce");
@@ -2401,7 +2403,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::_reduce_oop(
             ncclReduceOp,
             (int)root,
             comm,
-            stream.stream());
+            singleStream_ ? at::cuda::getCurrentCUDAStream() : stream.stream());
       },
       OpType::REDUCE,
       "nccl:_reduce_oop");
@@ -2455,7 +2457,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::allgather(
               input.numel(),
               getNcclDataType(input.scalar_type()),
               comm,
-              stream.stream());
+              singleStream_ ? at::cuda::getCurrentCUDAStream() : stream.stream());
         },
         [](std::vector<at::cuda::CUDAStream>& ncclStreams,
            c10::intrusive_ptr<ProcessGroupNCCL::WorkNCCL>& work) {
@@ -2540,7 +2542,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::allgather_into_tensor_coalesced(
             input.numel(),
             getNcclDataType(input.scalar_type()),
             comm,
-            stream.stream());
+            singleStream_ ? at::cuda::getCurrentCUDAStream() : stream.stream());
       },
       OpType::COALESCED,
       "nccl:all_gather_into_tensor_coalesced");
@@ -2599,7 +2601,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::reduce_scatter(
               ncclDataType,
               ncclReduceOp,
               comm,
-              stream.stream());
+              singleStream_ ? at::cuda::getCurrentCUDAStream() : stream.stream());
         },
         [&](std::vector<at::cuda::CUDAStream>& ncclStreams,
             c10::intrusive_ptr<ProcessGroupNCCL::WorkNCCL>& work) {
@@ -2724,7 +2726,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::_reduce_scatter_base(
             ncclDataType,
             ncclReduceOp,
             comm,
-            stream.stream());
+            singleStream_ ? at::cuda::getCurrentCUDAStream() : stream.stream());
       },
       OpType::_REDUCE_SCATTER_BASE,
       "nccl:_reduce_scatter_base");
@@ -2755,7 +2757,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::reduce_scatter_tensor_coalesced(
             ncclDataType,
             ncclReduceOp,
             comm,
-            stream.stream());
+            singleStream_ ? at::cuda::getCurrentCUDAStream() : stream.stream());
       },
       OpType::COALESCED,
       "nccl:reduce_scatter_tensor_coalesced");
@@ -3316,7 +3318,7 @@ c10::intrusive_ptr<Work> ProcessGroupNCCL::_allgather_base(
             input.numel(),
             getNcclDataType(input.scalar_type()),
             comm,
-            stream.stream());
+            singleStream_ ? at::cuda::getCurrentCUDAStream() : stream.stream());
       },
       OpType::_ALLGATHER_BASE,
       "nccl:_all_gather_base");
