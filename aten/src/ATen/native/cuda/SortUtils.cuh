@@ -9,7 +9,6 @@
 #include <ATen/native/cuda/SortingCommon.cuh>
 #include <ATen/native/cuda/Sort.h>
 #include <ATen/native/StridedRandomAccessor.h>
-#include <c10/macros/Macros.h>
 
 #define HAS_WARP_MERGE_SORT() (CUDA_VERSION >= 110600)
 
@@ -196,8 +195,8 @@ warpMergeSortKVInPlace(
 
   namespace cub = ROCM_HIPCUB(at_cuda_detail::cub);
 
-  CUDA_KERNAL_ASSERT(blockDim.x == C10_WARP_SIZE);
-  CUDA_KERNAL_ASSERT(blockDim.y <= max_block_dim_y);
+  CUDA_KERNEL_ASSERT(blockDim.x == C10_WARP_SIZE);
+  CUDA_KERNEL_ASSERT(blockDim.y <= max_block_dim_y);
   constexpr int items_per_thread = sort_size / C10_WARP_SIZE;
   static_assert(
       items_per_thread * C10_WARP_SIZE == sort_size,
