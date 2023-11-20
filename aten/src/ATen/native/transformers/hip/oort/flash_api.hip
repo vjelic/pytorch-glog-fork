@@ -31,6 +31,7 @@
 
 #include <cstdint>
 #include <tuple>
+#include <iostream>
 
 #include <ATen/ops/zeros.h>
 
@@ -338,6 +339,9 @@ mha_fwd(const at::Tensor &q,         // batch_size x seqlen_q x num_heads x head
     v_padded = v_t.permute({0,2,1,3}).contiguous();
     out = output_t.permute({0,2,1,3}).contiguous();
 
+
+    std::cerr << std::endl << "************ FWD Seed_t and offset_t: " << *(uint64_t*)(seed_t.data_ptr()) << ", " << *(uint32_t*)(offset_t.data_ptr()) << std::endl << std::endl;
+
     return {out, q_padded, k_padded, v_padded, M, seed_t, offset_t, softmax_fa_t};
 #undef CALL_FWD
 }
@@ -541,6 +545,7 @@ mha_bwd(const at::Tensor &dout,  // batch_size x seqlen_q x num_heads, x head_si
                      window_size_right);
 
     at::PhiloxCudaState philox_args;
+
     if (is_dropout) {
         if (at::cuda::currentStreamCaptureStatus() ==
                 at::cuda::CaptureStatus::None)
@@ -552,6 +557,9 @@ mha_bwd(const at::Tensor &dout,  // batch_size x seqlen_q x num_heads, x head_si
         }
     }
     params.philox_args = philox_args;
+
+    std::cerr << std::endl << "************ BWD Seed and offset: " << philox_args.seed_.val << ", " << philox_args.offset_.val << std::endl;
+    std::cerr << std::endl << "************ BWD22 Seed and offset: " << *(uint64_t*)(philox_seed.data_ptr()) << ", " << *(uint64_t*)(philox_offset.data_ptr()) << std::endl;
 
 
     //JCG TODO WE GO IN HERE TODO backwards
@@ -612,7 +620,7 @@ mha_bwd(const at::Tensor &dout,  // batch_size x seqlen_q x num_heads, x head_si
                                                                              k_t.stride(0), k_t.stride(1), k_t.stride(2), k_t.stride(3),
                                                                              v_t.stride(0), v_t.stride(1), v_t.stride(2), v_t.stride(3),
                                                                              q_t.sizes()[0], q_t.sizes()[1], seqlen_q, seqlen_k, p_dropout,
-                                                                             (uint64_t)(philox_args.seed_.val), (uint32_t)(philox_args.offset_.val), stream);
+                                                                             *(uint64_t*)(philox_seed.data_ptr()), *(uint64_t*)(philox_offset.data_ptr()), stream);
 
             oort::bwd_kernel_dq<16,64,16,true,true> dq_opt;
             auto				                    dq_err = dq_opt(grid, block,
@@ -623,10 +631,10 @@ mha_bwd(const at::Tensor &dout,  // batch_size x seqlen_q x num_heads, x head_si
                                                                     k_t.stride(0), k_t.stride(1), k_t.stride(2), k_t.stride(3),
                                                                     v_t.stride(0), v_t.stride(1), v_t.stride(2), v_t.stride(3),
                                                                     q_t.sizes()[0], q_t.sizes()[1], seqlen_q, seqlen_k, p_dropout,
-                                                                    (uint64_t)(philox_args.seed_.val), (uint32_t)(philox_args.offset_.val), stream);
+                                                                    *(uint64_t*)(philox_seed.data_ptr()), *(uint64_t*)(philox_offset.data_ptr()), stream);
 
           }
-        else if (q_dtype == at::kBFloat16)
+        else if(q_dtype == at::kBFloat16)
           {
             oort::bwd_kernel_dk_dv<16,64,16,true,true> dk_dv_opt;
             auto				                       dk_dv_err = dk_dv_opt(grid, block,
@@ -637,7 +645,7 @@ mha_bwd(const at::Tensor &dout,  // batch_size x seqlen_q x num_heads, x head_si
                                                                              k_t.stride(0), k_t.stride(1), k_t.stride(2), k_t.stride(3),
                                                                              v_t.stride(0), v_t.stride(1), v_t.stride(2), v_t.stride(3),
                                                                              q_t.sizes()[0], q_t.sizes()[1], seqlen_q, seqlen_k, p_dropout,
-                                                                             (uint64_t)(philox_args.seed_.val), (uint32_t)(philox_args.offset_.val), stream);
+                                                                             *(uint64_t*)(philox_seed.data_ptr()), *(uint64_t*)(philox_offset.data_ptr()), stream);
 
             oort::bwd_kernel_dq<16,64,16,true,true> dq_opt;
             auto				                    dq_err = dq_opt(grid, block,
@@ -648,7 +656,7 @@ mha_bwd(const at::Tensor &dout,  // batch_size x seqlen_q x num_heads, x head_si
                                                                     k_t.stride(0), k_t.stride(1), k_t.stride(2), k_t.stride(3),
                                                                     v_t.stride(0), v_t.stride(1), v_t.stride(2), v_t.stride(3),
                                                                     q_t.sizes()[0], q_t.sizes()[1], seqlen_q, seqlen_k, p_dropout,
-                                                                    (uint64_t)(philox_args.seed_.val), (uint32_t)(philox_args.offset_.val), stream);
+                                                                    *(uint64_t*)(philox_seed.data_ptr()), *(uint64_t*)(philox_offset.data_ptr()), stream);
           }
       }
     else if((is_causal == true) && (is_dropout == false))
@@ -664,7 +672,7 @@ mha_bwd(const at::Tensor &dout,  // batch_size x seqlen_q x num_heads, x head_si
                                                                              k_t.stride(0), k_t.stride(1), k_t.stride(2), k_t.stride(3),
                                                                              v_t.stride(0), v_t.stride(1), v_t.stride(2), v_t.stride(3),
                                                                              q_t.sizes()[0], q_t.sizes()[1], seqlen_q, seqlen_k, p_dropout,
-                                                                             (uint64_t)(philox_args.seed_.val), (uint32_t)(philox_args.offset_.val), stream);
+                                                                             *(uint64_t*)(philox_seed.data_ptr()), *(uint64_t*)(philox_offset.data_ptr()), stream);
 
             oort::bwd_kernel_dq<16,64,16,true,false> dq_opt;
             auto				                    dq_err = dq_opt(grid, block,
@@ -675,7 +683,7 @@ mha_bwd(const at::Tensor &dout,  // batch_size x seqlen_q x num_heads, x head_si
                                                                     k_t.stride(0), k_t.stride(1), k_t.stride(2), k_t.stride(3),
                                                                     v_t.stride(0), v_t.stride(1), v_t.stride(2), v_t.stride(3),
                                                                     q_t.sizes()[0], q_t.sizes()[1], seqlen_q, seqlen_k, p_dropout,
-                                                                    (uint64_t)(philox_args.seed_.val), (uint32_t)(philox_args.offset_.val), stream);
+                                                                    *(uint64_t*)(philox_seed.data_ptr()), *(uint64_t*)(philox_offset.data_ptr()), stream);
 
           }
         else if (q_dtype == at::kBFloat16)
@@ -689,7 +697,7 @@ mha_bwd(const at::Tensor &dout,  // batch_size x seqlen_q x num_heads, x head_si
                                                                              k_t.stride(0), k_t.stride(1), k_t.stride(2), k_t.stride(3),
                                                                              v_t.stride(0), v_t.stride(1), v_t.stride(2), v_t.stride(3),
                                                                              q_t.sizes()[0], q_t.sizes()[1], seqlen_q, seqlen_k, p_dropout,
-                                                                             (uint64_t)(philox_args.seed_.val), (uint32_t)(philox_args.offset_.val), stream);
+                                                                             *(uint64_t*)(philox_seed.data_ptr()), *(uint64_t*)(philox_offset.data_ptr()), stream);
 
             oort::bwd_kernel_dq<16,64,16,true,false> dq_opt;
             auto				                    dq_err = dq_opt(grid, block,
@@ -700,7 +708,7 @@ mha_bwd(const at::Tensor &dout,  // batch_size x seqlen_q x num_heads, x head_si
                                                                     k_t.stride(0), k_t.stride(1), k_t.stride(2), k_t.stride(3),
                                                                     v_t.stride(0), v_t.stride(1), v_t.stride(2), v_t.stride(3),
                                                                     q_t.sizes()[0], q_t.sizes()[1], seqlen_q, seqlen_k, p_dropout,
-                                                                    (uint64_t)(philox_args.seed_.val), (uint32_t)(philox_args.offset_.val), stream);
+                                                                    *(uint64_t*)(philox_seed.data_ptr()), *(uint64_t*)(philox_offset.data_ptr()), stream);
           }
       }
     else if((is_causal == false) && (is_dropout == true))
@@ -716,7 +724,7 @@ mha_bwd(const at::Tensor &dout,  // batch_size x seqlen_q x num_heads, x head_si
                                                                              k_t.stride(0), k_t.stride(1), k_t.stride(2), k_t.stride(3),
                                                                              v_t.stride(0), v_t.stride(1), v_t.stride(2), v_t.stride(3),
                                                                              q_t.sizes()[0], q_t.sizes()[1], seqlen_q, seqlen_k, p_dropout,
-                                                                             (uint64_t)(philox_args.seed_.val), (uint32_t)(philox_args.offset_.val), stream);
+                                                                             *(uint64_t*)(philox_seed.data_ptr()), *(uint64_t*)(philox_offset.data_ptr()), stream);
 
             oort::bwd_kernel_dq<16,64,16,false,true> dq_opt;
             auto				                    dq_err = dq_opt(grid, block,
@@ -727,7 +735,7 @@ mha_bwd(const at::Tensor &dout,  // batch_size x seqlen_q x num_heads, x head_si
                                                                     k_t.stride(0), k_t.stride(1), k_t.stride(2), k_t.stride(3),
                                                                     v_t.stride(0), v_t.stride(1), v_t.stride(2), v_t.stride(3),
                                                                     q_t.sizes()[0], q_t.sizes()[1], seqlen_q, seqlen_k, p_dropout,
-                                                                    (uint64_t)(philox_args.seed_.val), (uint32_t)(philox_args.offset_.val), stream);
+                                                                    *(uint64_t*)(philox_seed.data_ptr()), *(uint64_t*)(philox_offset.data_ptr()), stream);
 
           }
         else if (q_dtype == at::kBFloat16)
@@ -741,7 +749,7 @@ mha_bwd(const at::Tensor &dout,  // batch_size x seqlen_q x num_heads, x head_si
                                                                              k_t.stride(0), k_t.stride(1), k_t.stride(2), k_t.stride(3),
                                                                              v_t.stride(0), v_t.stride(1), v_t.stride(2), v_t.stride(3),
                                                                              q_t.sizes()[0], q_t.sizes()[1], seqlen_q, seqlen_k, p_dropout,
-                                                                             (uint64_t)(philox_args.seed_.val), (uint32_t)(philox_args.offset_.val), stream);
+                                                                             *(uint64_t*)(philox_seed.data_ptr()), *(uint64_t*)(philox_offset.data_ptr()), stream);
 
             oort::bwd_kernel_dq<16,64,16,false,true> dq_opt;
             auto				                    dq_err = dq_opt(grid, block,
@@ -752,7 +760,7 @@ mha_bwd(const at::Tensor &dout,  // batch_size x seqlen_q x num_heads, x head_si
                                                                     k_t.stride(0), k_t.stride(1), k_t.stride(2), k_t.stride(3),
                                                                     v_t.stride(0), v_t.stride(1), v_t.stride(2), v_t.stride(3),
                                                                     q_t.sizes()[0], q_t.sizes()[1], seqlen_q, seqlen_k, p_dropout,
-                                                                    (uint64_t)(philox_args.seed_.val), (uint32_t)(philox_args.offset_.val), stream);
+                                                                    *(uint64_t*)(philox_seed.data_ptr()), *(uint64_t*)(philox_offset.data_ptr()), stream);
           }
       }
     else
@@ -768,7 +776,7 @@ mha_bwd(const at::Tensor &dout,  // batch_size x seqlen_q x num_heads, x head_si
                                                                              k_t.stride(0), k_t.stride(1), k_t.stride(2), k_t.stride(3),
                                                                              v_t.stride(0), v_t.stride(1), v_t.stride(2), v_t.stride(3),
                                                                              q_t.sizes()[0], q_t.sizes()[1], seqlen_q, seqlen_k, p_dropout,
-                                                                             (uint64_t)(philox_args.seed_.val), (uint32_t)(philox_args.offset_.val), stream);
+                                                                             *(uint64_t*)(philox_seed.data_ptr()), *(uint64_t*)(philox_offset.data_ptr()), stream);
             oort::bwd_kernel_dq<16,64,16,false,false> dq_opt;
             auto				                    dq_err = dq_opt(grid, block,
                                                                     (__fp16*)(q_t.data_ptr()), (__fp16*)(k_t.data_ptr()), (__fp16*)(v_t.data_ptr()),
@@ -778,7 +786,7 @@ mha_bwd(const at::Tensor &dout,  // batch_size x seqlen_q x num_heads, x head_si
                                                                     k_t.stride(0), k_t.stride(1), k_t.stride(2), k_t.stride(3),
                                                                     v_t.stride(0), v_t.stride(1), v_t.stride(2), v_t.stride(3),
                                                                     q_t.sizes()[0], q_t.sizes()[1], seqlen_q, seqlen_k, p_dropout,
-                                                                    (uint64_t)(philox_args.seed_.val), (uint32_t)(philox_args.offset_.val), stream);
+                                                                    *(uint64_t*)(philox_seed.data_ptr()), *(uint64_t*)(philox_offset.data_ptr()), stream);
 
           }
         else if (q_dtype == at::kBFloat16)
@@ -787,12 +795,12 @@ mha_bwd(const at::Tensor &dout,  // batch_size x seqlen_q x num_heads, x head_si
             auto				                       dk_dv_err = dk_dv_opt(grid, block,
                                                                              (__bf16*)(q_t.data_ptr()), (__bf16*)(k_t.data_ptr()), (__bf16*)(v_t.data_ptr()),
                                                                              softmax_scale, (__bf16*)out_t.data_ptr(), (__bf16*)dout_t.data_ptr(),
-                                                                             (__bf16*)dk_t.data_ptr(),(__bf16*)dv_t.data_ptr(), (float*)(softmax_lse.data_ptr()),(float*)(delta.data_ptr()),
+                                                                             (__bf16*)dk_t.data_ptr(),(__bf16*)dv_t.data_ptr(),(float*)(softmax_lse.data_ptr()),(float*)(delta.data_ptr()),
                                                                              q_t.stride(0), q_t.stride(1), q_t.stride(2), q_t.stride(3),
                                                                              k_t.stride(0), k_t.stride(1), k_t.stride(2), k_t.stride(3),
                                                                              v_t.stride(0), v_t.stride(1), v_t.stride(2), v_t.stride(3),
                                                                              q_t.sizes()[0], q_t.sizes()[1], seqlen_q, seqlen_k, p_dropout,
-                                                                             (uint64_t)(philox_args.seed_.val), (uint32_t)(philox_args.offset_.val), stream);
+                                                                             *(uint64_t*)(philox_seed.data_ptr()), *(uint64_t*)(philox_offset.data_ptr()), stream);
             oort::bwd_kernel_dq<16,64,16,false,false> dq_opt;
             auto				                    dq_err = dq_opt(grid, block,
                                                                     (__bf16*)(q_t.data_ptr()), (__bf16*)(k_t.data_ptr()), (__bf16*)(v_t.data_ptr()),
@@ -802,7 +810,7 @@ mha_bwd(const at::Tensor &dout,  // batch_size x seqlen_q x num_heads, x head_si
                                                                     k_t.stride(0), k_t.stride(1), k_t.stride(2), k_t.stride(3),
                                                                     v_t.stride(0), v_t.stride(1), v_t.stride(2), v_t.stride(3),
                                                                     q_t.sizes()[0], q_t.sizes()[1], seqlen_q, seqlen_k, p_dropout,
-                                                                    (uint64_t)(philox_args.seed_.val), (uint32_t)(philox_args.offset_.val), stream);
+                                                                    *(uint64_t*)(philox_seed.data_ptr()), *(uint64_t*)(philox_offset.data_ptr()), stream);
           }
       }
 
