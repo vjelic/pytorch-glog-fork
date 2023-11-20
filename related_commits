@@ -6,5 +6,5 @@ ubuntu|pytorch|torchtext|release/0.16|66671007c84e07386da3c04e5ca403b8a417c8e5|h
 centos|pytorch|torchtext|release/0.16|66671007c84e07386da3c04e5ca403b8a417c8e5|https://github.com/pytorch/text
 ubuntu|pytorch|torchdata|release/0.7|b565dc126c713d2e1806fcd2dcfe19696403412f|https://github.com/pytorch/data
 centos|pytorch|torchdata|release/0.7|b565dc126c713d2e1806fcd2dcfe19696403412f|https://github.com/pytorch/data
-ubuntu|pytorch|torchaudio|release/2.1_add_rnnt|d3deb2e1026b55477c5b972f54e138f7f468ba7a|https://github.com/pytorch/audio
-centos|pytorch|torchaudio|release/2.1_add_rnnt|d3deb2e1026b55477c5b972f54e138f7f468ba7a|https://github.com/pytorch/audio
+ubuntu|pytorch|torchaudio|release/2.1_add_rnnt|1d54f55ea60339b8ab9227f56436fa6b73db54ef|https://github.com/ROCmSoftwarePlatform/audio
+centos|pytorch|torchaudio|release/2.1_add_rnnt|1d54f55ea60339b8ab9227f56436fa6b73db54ef|https://github.com/ROCmSoftwarePlatform/audio
