@@ -13,7 +13,7 @@
 
 // cublasLT was introduced in CUDA 10.1 but we enable only for 11.1 that also
 // added bf16 support
-#if (!defined(USE_ROCM) && !defined(_MSC_VER)) || (defined(USE_ROCM) && ROCM_VERSION >= 60000)
+#if (!defined(USE_ROCM) && !defined(_MSC_VER)) || (defined(USE_ROCM) && ROCM_VERSION >= 50700)
 #include <cublasLt.h>
 #endif
 
@@ -82,9 +82,6 @@ static hipblasStatus_t rocBLASStatusToHIPStatus(rocblas_status error)
 #define HIP_C_32U  HIPBLAS_C_32U
 #define HIP_R_16BF HIPBLAS_R_16B
 #define HIP_C_16BF HIPBLAS_C_16B
-#define HIPBLAS_COMPUTE_32F HIP_R_32F
-#define hipDoubleComplex hipblasDoubleComplex
-#define hipComplex hipblasComplex
 #endif
 #endif
 
@@ -412,7 +409,12 @@ void bgemm<at::BFloat16>(CUDABLAS_BGEMM_ARGTYPES(at::BFloat16)) {
                                   (void*)&falpha, a, CUDA_R_16BF, (int)lda, stridea,
                                   b, CUDA_R_16BF, (int)ldb, strideb,
                                   (void*)&fbeta, c, CUDA_R_16BF, (int)ldc, stridec,
-                                  (int)num_batches, CUBLAS_COMPUTE_32F,
+                                  (int)num_batches,
+#if defined(USE_ROCM) && ROCM_VERSION >= 60000
+                                  CUBLAS_COMPUTE_32F,
+#else
+                                  CUDA_R_32F,
+#endif
                                   CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 }
 
@@ -603,12 +605,22 @@ void gemm<at::BFloat16>(CUDABLAS_GEMM_ARGTYPES(at::BFloat16)) {
       c,
       CUDA_R_16BF,
       ldc,
+#if defined(USE_ROCM) && ROCM_VERSION >= 60000
       CUBLAS_COMPUTE_32F,
+#else
+      CUDA_R_32F,
+#endif
       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   TORCH_CUDABLAS_CHECK(cublasSetMathMode(handle, CUBLAS_DEFAULT_MATH));
 }
 
-#if (!defined(USE_ROCM) && !defined(_MSC_VER)) || (defined(USE_ROCM) && ROCM_VERSION >= 60000)
+#if (!defined(USE_ROCM) && !defined(_MSC_VER)) || (defined(USE_ROCM) && ROCM_VERSION >= 50700)
+
+#if defined(USE_ROCM) && ROCM_VERSION >= 50700 && ROCM_VERSION < 60000
+// only for rocm 5.7 where we first supported hipblaslt, it was difficult
+// to hipify correctly without this change.
+#define hipDataType hipblasDatatype_t
+#endif
 
 namespace {
 // Following the pattern of CuSparseDescriptor
@@ -712,9 +724,11 @@ void gemm_and_bias(
   cublasComputeType_t computeType = CUBLAS_COMPUTE_32F;
   cudaDataType_t scaleType = CUDA_R_32F;
   if constexpr (std::is_same_v<Dtype, double>) {
+#if !defined(USE_ROCM) || (defined(USE_ROCM) && ROCM_VERSION >= 60000)
     abcType = CUDA_R_64F;
     computeType = CUBLAS_COMPUTE_64F;
     scaleType = CUDA_R_64F;
+#endif
   } else if constexpr (std::is_same_v<Dtype, float>) {
 #ifndef USE_ROCM
     if (at::globalContext().allowTF32CuBLAS()) {
@@ -832,6 +846,7 @@ void gemm_and_bias(
       scaleType);
 }
 
+#if !defined(USE_ROCM) || (defined(USE_ROCM) && ROCM_VERSION >= 60000)
 template void gemm_and_bias(
     bool transpose_mat1,
     bool transpose_mat2,
@@ -847,6 +862,7 @@ template void gemm_and_bias(
     double* result_ptr,
     int64_t result_ld,
     GEMMAndBiasActivationEpilogue activation);
+#endif
 
 template void gemm_and_bias(
     bool transpose_mat1,
@@ -1020,6 +1036,7 @@ void int8_gemm(
     int64_t mat2_ld,
     int32_t* result_ptr,
     int64_t result_ld) {
+#if !defined(USE_ROCM) || (defined(USE_ROCM) && ROCM_VERSION >= 60000)
 
   cublasComputeType_t computeType = CUBLAS_COMPUTE_32I;
   cudaDataType_t scaleType = CUDA_R_32I;
@@ -1090,11 +1107,13 @@ void int8_gemm(
       computeType,
       " scaleType ",
       scaleType);
+#endif // !defined(USE_ROCM) || (defined(USE_ROCM) && ROCM_VERSION >= 60000)
+  TORCH_CHECK(false, "int8_gemm is only supported for ROCm 6.0 and above");
 }
-#endif // (!defined(USE_ROCM) && !defined(_MSC_VER)) || (defined(USE_ROCM) && ROCM_VERSION >= 60000)
+#endif // (!defined(USE_ROCM) && !defined(_MSC_VER)) || (defined(USE_ROCM) && ROCM_VERSION >= 50700)
 
 // ROCm 5.6 hipblas matches the const Dtype *A API, but prior hipblas does not.
-#if defined(USE_ROCM) && ROCM_VERSION <= 56000
+#if defined(USE_ROCM) && ROCM_VERSION <= 50600
 #define ROCM_CONST_BUG
 #else
 #define ROCM_CONST_BUG const
