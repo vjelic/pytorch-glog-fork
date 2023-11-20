@@ -83,6 +83,8 @@ static hipblasStatus_t rocBLASStatusToHIPStatus(rocblas_status error)
 #define HIP_R_16BF HIPBLAS_R_16B
 #define HIP_C_16BF HIPBLAS_C_16B
 #define HIPBLAS_COMPUTE_32F HIP_R_32F
+#define hipDoubleComplex hipblasDoubleComplex
+#define hipComplex hipblasComplex
 #endif
 #endif
 
