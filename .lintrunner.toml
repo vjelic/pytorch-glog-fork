@@ -726,6 +726,7 @@ command = [
 exclude_patterns = [
     'tools/gen_vulkan_spv.py',
     'torch/__init__.py',  # Skip this file to format because it's part of the public API
+    'torch/_vendor/**',
 ]
 init_command = [
     'python3',
