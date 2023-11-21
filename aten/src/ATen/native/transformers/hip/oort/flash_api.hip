@@ -31,7 +31,6 @@
 
 #include <cstdint>
 #include <tuple>
-#include <iostream>
 
 #include <ATen/ops/zeros.h>
 
@@ -278,9 +277,6 @@ mha_fwd(const at::Tensor &q,         // batch_size x seqlen_q x num_heads x head
     v_padded = v_t.permute({0,2,1,3}).contiguous();
     out = output_t.permute({0,2,1,3}).contiguous();
 
-
-    std::cerr << std::endl << "************ FWD Seed_t and offset_t: " << *(uint64_t*)(seed_t.data_ptr()) << ", " << *(uint32_t*)(offset_t.data_ptr()) << std::endl << std::endl;
-
     return {out, q_padded, k_padded, v_padded, M, seed_t, offset_t, softmax_fa_t};
 #undef CALL_FWD
 }
@@ -472,11 +468,6 @@ mha_bwd(const at::Tensor &dout,  // batch_size x seqlen_q x num_heads, x head_si
         }
     }
 
-    std::cerr << std::endl << "************ BWD Seed and offset: " << philox_args.seed_.val << ", " << philox_args.offset_.val << std::endl;
-    std::cerr << std::endl << "************ BWD22 Seed and offset: " << *(uint64_t*)(philox_seed.data_ptr()) << ", " << *(uint64_t*)(philox_offset.data_ptr()) << std::endl;
-
-
-    //JCG TODO WE GO IN HERE TODO backwards
     //reorder tensors and make contiguous
     at::Tensor q_t = q.permute({0,2,1,3}).contiguous();
     at::Tensor k_t = k.permute({0,2,1,3}).contiguous();
