@@ -728,6 +728,8 @@ void gemm_and_bias(
     abcType = CUDA_R_64F;
     computeType = CUBLAS_COMPUTE_64F;
     scaleType = CUDA_R_64F;
+#else
+    TORCH_CHECK(false, "gemm_and_bias is only supported for double type on ROCm 6.0 and above");
 #endif
   } else if constexpr (std::is_same_v<Dtype, float>) {
 #ifndef USE_ROCM
@@ -846,7 +848,6 @@ void gemm_and_bias(
       scaleType);
 }
 
-#if !defined(USE_ROCM) || (defined(USE_ROCM) && ROCM_VERSION >= 60000)
 template void gemm_and_bias(
     bool transpose_mat1,
     bool transpose_mat2,
@@ -862,7 +863,6 @@ template void gemm_and_bias(
     double* result_ptr,
     int64_t result_ld,
     GEMMAndBiasActivationEpilogue activation);
-#endif
 
 template void gemm_and_bias(
     bool transpose_mat1,

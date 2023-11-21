@@ -1314,7 +1314,7 @@ if(USE_ROCM)
     # This is needed for library added by hip_add_library (same for hip_add_executable)
     hip_include_directories(${Caffe2_HIP_INCLUDE})
 
-    if(ROCM_VERSION_DEV VERSION_GREATER_EQUAL "6.0.0")
+    if(ROCM_VERSION_DEV VERSION_GREATER_EQUAL "5.7.0")
       set(Caffe2_PUBLIC_HIP_DEPENDENCY_LIBS
         ${PYTORCH_HIP_LIBRARIES} ${PYTORCH_MIOPEN_LIBRARIES} ${hipcub_LIBRARIES} ${ROCM_HIPRTC_LIB} ${ROCM_ROCTX_LIB} ${hipblaslt_LIBRARIES})
     else()
