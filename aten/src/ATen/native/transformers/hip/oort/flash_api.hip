@@ -76,67 +76,6 @@ namespace pytorch_flash {
 #define CHECK_SHAPE(x, ...) TORCH_CHECK(x.sizes() == at::IntArrayRef({__VA_ARGS__}), #x " must have shape (" #__VA_ARGS__ ")")
 #define CHECK_CONTIGUOUS(x) TORCH_CHECK(x.is_contiguous(), #x " must be contiguous")
 
-// TODO: Remove this dead function
-void set_params_dgrad(Flash_bwd_params &params,
-                      // sizes
-                      const size_t b,
-                      const size_t seqlen_q,
-                      const size_t seqlen_k,
-                      const size_t seqlen_q_rounded,
-                      const size_t seqlen_k_rounded,
-                      const size_t h,
-                      const size_t h_k,
-                      const size_t d,
-                      const size_t d_rounded,
-                      // device pointers
-                      const at::Tensor q,
-                      const at::Tensor k,
-                      const at::Tensor v,
-                      const at::Tensor out,
-                      const at::Tensor dout,
-                      at::Tensor dq,
-                      at::Tensor dk,
-                      at::Tensor dv,
-                      void *cu_seqlens_q_d,
-                      void *cu_seqlens_k_d,
-                      void *dq_accum_d,
-                      void *dk_accum_d,
-                      void *dv_accum_d,
-                      void *softmax_lse_d,
-                      void *dsoftmax_sum_d,
-                      float p_dropout,
-                      float softmax_scale,
-                      int window_size_left,
-                      int window_size_right) {
-    // Set the pointers and strides.
-    params.do_ptr = dout.data_ptr();
-    params.do_row_stride = dout.stride(-3);
-    params.do_head_stride = dout.stride(-2);
-    params.dq_ptr = dq.data_ptr();
-    params.dk_ptr = dk.data_ptr();
-    params.dv_ptr = dv.data_ptr();
-    params.dq_row_stride = dq.stride(-3);
-    params.dk_row_stride = dk.stride(-3);
-    params.dv_row_stride = dv.stride(-3);
-    params.dq_head_stride = dq.stride(-2);
-    params.dk_head_stride = dk.stride(-2);
-    params.dv_head_stride = dv.stride(-2);
-
-    if (cu_seqlens_q_d == nullptr) {
-        params.do_batch_stride = dout.stride(0);
-        params.dq_batch_stride = dq.stride(0);
-        params.dk_batch_stride = dk.stride(0);
-        params.dv_batch_stride = dv.stride(0);
-    }
-
-    params.dq_accum_ptr = dq_accum_d;
-    params.dk_accum_ptr = dk_accum_d;
-    params.dv_accum_ptr = dv_accum_d;
-
-    // Softmax sum
-    params.dsoftmax_sum = dsoftmax_sum_d;
-}
-
 std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor, at::Tensor, at::Tensor, at::Tensor, at::Tensor>
 mha_fwd(const at::Tensor &q,         // batch_size x seqlen_q x num_heads x head_size
         const at::Tensor &k,         // batch_size x seqlen_k x num_heads_k x head_size
@@ -520,30 +459,6 @@ mha_bwd(const at::Tensor &dout,  // batch_size x seqlen_q x num_heads, x head_si
         dv_expanded = dv;
     }
 
-    Flash_bwd_params params;
-
-    set_params_dgrad(params,
-                     batch_size,
-                     seqlen_q, seqlen_k,
-                     seqlen_q_rounded, seqlen_k_rounded,
-                     num_heads, num_heads_k,
-                     head_size, head_size_rounded,
-                     q, k, v, out,
-                     dout, dq, dk_expanded, dv_expanded,
-                     nullptr,
-                     nullptr,
-                     loop ? dq_accum.data_ptr() : nullptr,
-                     // loop ? dk_accum.data_ptr() : nullptr,
-                     // loop ? dv_accum.data_ptr() : nullptr,
-                     nullptr,
-                     nullptr,
-                     softmax_lse.data_ptr(),
-                     softmax_d.data_ptr(),
-                     p_dropout,
-                     softmax_scale,
-                     window_size_left,
-                     window_size_right);
-
     at::PhiloxCudaState philox_args;
 
     if (is_dropout) {
@@ -556,7 +471,6 @@ mha_bwd(const at::Tensor &dout,  // batch_size x seqlen_q x num_heads, x head_si
                 philox_seed.data_ptr<int64_t>(), philox_offset.data_ptr<int64_t>(), 0);
         }
     }
-    params.philox_args = philox_args;
 
     std::cerr << std::endl << "************ BWD Seed and offset: " << philox_args.seed_.val << ", " << philox_args.offset_.val << std::endl;
     std::cerr << std::endl << "************ BWD22 Seed and offset: " << *(uint64_t*)(philox_seed.data_ptr()) << ", " << *(uint64_t*)(philox_offset.data_ptr()) << std::endl;
