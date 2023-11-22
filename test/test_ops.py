@@ -32,6 +32,7 @@ from torch.testing._internal.common_utils import (
     suppress_warnings,
     noncontiguous_like,
     TEST_WITH_ASAN,
+    TEST_WITH_ROCM,
     TEST_WITH_UBSAN,
     skipIfRocm,
     IS_WINDOWS,
@@ -482,6 +483,9 @@ class TestCommon(TestCase):
     @parametrize('executor', ['aten', 'nvfuser'])
     @skipIfTorchInductor("Takes too long for inductor")
     def test_python_ref_executor(self, device, dtype, op, executor):
+        if TEST_WITH_ROCM and executor == "nvfuser":
+            raise unittest.SkipTest("ROCm doesn't support nvfuser")
+
         # TODO: Not all dtypes are supported with nvfuser
         from torch._prims_common import _torch_dtype_to_nvfuser_dtype_map
         if executor == "nvfuser" and dtype not in _torch_dtype_to_nvfuser_dtype_map:
