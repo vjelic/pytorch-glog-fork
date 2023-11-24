@@ -131,10 +131,7 @@ esac
 if [[ $ID == centos && $OS_VERSION == 7 ]]; then WGET_FLAG="--no-check-certificate" ; else WGET_FLAG=""; fi
 mkdir valgrind_build && cd valgrind_build
 VALGRIND_VERSION=3.16.1
-if ! wget $WGET_FLAG http://valgrind.org/downloads/valgrind-${VALGRIND_VERSION}.tar.bz2
-then
-  wget $WGET_FLAG https://sourceware.org/ftp/valgrind/valgrind-${VALGRIND_VERSION}.tar.bz2
-fi
+wget $WGET_FLAG https://ossci-linux.s3.amazonaws.com/valgrind-${VALGRIND_VERSION}.tar.bz2
 tar -xjf valgrind-${VALGRIND_VERSION}.tar.bz2
 cd valgrind-${VALGRIND_VERSION}
 ./configure --prefix=/usr/local
