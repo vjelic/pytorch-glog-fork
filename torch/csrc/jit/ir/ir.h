@@ -76,7 +76,7 @@ namespace aten {
 using namespace ::c10::aten;
 }
 namespace cuda {
-#ifndef __HIP_PLATFORM_HCC__
+#ifndef USE_ROCM
 using namespace ::c10::cuda;
 #endif
 } // namespace cuda

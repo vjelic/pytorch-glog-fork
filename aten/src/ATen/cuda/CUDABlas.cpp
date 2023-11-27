@@ -7,7 +7,7 @@
 #include <c10/util/irange.h>
 #include <c10/macros/Export.h>
 
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef USE_ROCM
 #define PYTORCH_ROCBLAS_VERSION_DECIMAL (ROCBLAS_VERSION_MAJOR * 100 + ROCBLAS_VERSION_MINOR)
 #define USE_GEMM_FLAGS_FP16_ALT_IMPL (PYTORCH_ROCBLAS_VERSION_DECIMAL >= 242)
 #endif
@@ -140,7 +140,7 @@ C10_EXPORT const char* _cublasGetErrorEnum(cublasStatus_t error) {
 
 /* LEVEL 3 BLAS FUNCTIONS */
 
-#ifndef __HIP_PLATFORM_HCC__
+#ifndef USE_ROCM
 #if defined(CUDA_VERSION) && CUDA_VERSION >= 11200
 #define cublasGemmStridedBatchedExFix cublasGemmStridedBatchedEx
 #else
@@ -278,7 +278,7 @@ void bgemm<at::Half>(CUDABLAS_BGEMM_ARGTYPES(at::Half)) {
   BGEMM_CHECK_ARGVALUES(at::Half);
   float falpha = alpha;
   float fbeta = beta;
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef USE_ROCM
   int flag = 0;
 #if USE_GEMM_FLAGS_FP16_ALT_IMPL
   flag = at::BackwardPassGuard::is_backward_pass() ? rocblas_gemm_flags_fp16_alt_impl : 0;
@@ -320,10 +320,10 @@ void bgemm<at::Half>(CUDABLAS_BGEMM_ARGTYPES(at::Half)) {
     // manually to be able to use tensor cores for FP16. On CUDA 11, this is no longer required.
     TORCH_CUDABLAS_CHECK(cublasSetMathMode(handle, CUBLAS_DEFAULT_MATH));
   #endif  // CUDA_VERSION < 11000
-#endif // __HIP_PLATFORM_HCC__
+#endif // USE_ROCM
 }
 
-#if defined(__HIP_PLATFORM_HCC__) || defined(CUDA_VERSION) && CUDA_VERSION >= 11000
+#if defined(USE_ROCM) || defined(CUDA_VERSION) && CUDA_VERSION >= 11000
 template <>
 void bgemm<at::BFloat16>(CUDABLAS_BGEMM_ARGTYPES(at::BFloat16)) {
   // See Note [Writing Nondeterministic Operations]
@@ -343,7 +343,7 @@ void bgemm<at::BFloat16>(CUDABLAS_BGEMM_ARGTYPES(at::BFloat16)) {
                                     b, CUDA_R_16BF, (int)ldb, strideb,
                                     (void*)&fbeta, c, CUDA_R_16BF, (int)ldc, stridec,
                                     (int)num_batches, CUDA_R_32F, CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-  #elif defined(__HIP_PLATFORM_HCC__)
+  #elif defined(USE_ROCM)
     TORCH_CUDABLAS_CHECK(rocblas_gemm_strided_batched_ex(handle, opa, opb, (int)m, (int)n, (int)k,
                                    (void*)&falpha, a, rocblas_datatype_bf16_r, (int)lda, stridea,
                                    b, rocblas_datatype_bf16_r, (int)ldb, strideb,
@@ -355,7 +355,7 @@ void bgemm<at::BFloat16>(CUDABLAS_BGEMM_ARGTYPES(at::BFloat16)) {
     TORCH_CHECK(false, "CUDA BFloat16 bgemm requires CUDA 11 or later");
   #endif // defined(CUDA_VERSION) && CUDA_VERSION >= 11000
 }
-#endif // __HIP_PLATFORM_HCC__
+#endif // USE_ROCM
 
 template <>
 void gemm<double>(CUDABLAS_GEMM_ARGTYPES(double)) {
@@ -383,7 +383,7 @@ void gemm<float>(CUDABLAS_GEMM_ARGTYPES(float)) {
       handle, opa, opb, m, n, k, &alpha, a, lda, b, ldb, &beta, c, ldc));
 }
 
-#if !defined(__HIP_PLATFORM_HCC__) || (defined(__HIP_PLATFORM_HCC__) && TORCH_HIP_VERSION >= 210)
+#if !defined(USE_ROCM) || (defined(USE_ROCM) && TORCH_HIP_VERSION >= 210)
   template <>
   void gemm<c10::complex<double>>(CUDABLAS_GEMM_ARGTYPES(c10::complex<double>)) {
     // See Note [Writing Nondeterministic Operations]
@@ -400,7 +400,7 @@ void gemm<float>(CUDABLAS_GEMM_ARGTYPES(float)) {
   }
 #endif
 
-#if !defined(__HIP_PLATFORM_HCC__) || (defined(__HIP_PLATFORM_HCC__) && TORCH_HIP_VERSION >= 210)
+#if !defined(USE_ROCM) || (defined(USE_ROCM) && TORCH_HIP_VERSION >= 210)
   template <>
   void gemm<c10::complex<float>>(CUDABLAS_GEMM_ARGTYPES(c10::complex<float>)) {
     // See Note [Writing Nondeterministic Operations]
@@ -428,7 +428,7 @@ void gemm<at::Half>(CUDABLAS_GEMM_ARGTYPES(at::Half)) {
   float fbeta = beta;
   _cublasAdjustLdLevel3(transa, transb, m, n, k, &lda, &ldb, &ldc);
   GEMM_CHECK_ARGVALUES(at::Half);
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef USE_ROCM
   int flag = 0;
 #if USE_GEMM_FLAGS_FP16_ALT_IMPL
   flag = at::BackwardPassGuard::is_backward_pass() ? rocblas_gemm_flags_fp16_alt_impl : 0;
@@ -514,7 +514,7 @@ void gemm<at::Half>(CUDABLAS_GEMM_ARGTYPES(at::Half)) {
 #endif
 }
 
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef USE_ROCM
 template <>
 void gemm<at::BFloat16>(CUDABLAS_GEMM_ARGTYPES(at::BFloat16)) {
   cublasHandle_t handle = at::cuda::getCurrentCUDABlasHandle();
@@ -717,7 +717,7 @@ void trsmBatched<c10::complex<double>>(
     CUDABLAS_POSINT_CHECK(gemv<Dtype>, incy); \
   } while (0)
 
-#if !defined(__HIP_PLATFORM_HCC__) || (defined(__HIP_PLATFORM_HCC__) && TORCH_HIP_VERSION >= 210)
+#if !defined(USE_ROCM) || (defined(USE_ROCM) && TORCH_HIP_VERSION >= 210)
   template <>
   void gemv<c10::complex<double>>(CUDABLAS_GEMV_ARGTYPES(c10::complex<double>)) {
     // See Note [Writing Nondeterministic Operations]
@@ -733,7 +733,7 @@ void trsmBatched<c10::complex<double>>(
   }
 #endif
 
-#if !defined(__HIP_PLATFORM_HCC__) || (defined(__HIP_PLATFORM_HCC__) && TORCH_HIP_VERSION >= 210)
+#if !defined(USE_ROCM) || (defined(USE_ROCM) && TORCH_HIP_VERSION >= 210)
 template <>
 void gemv<c10::complex<float>>(CUDABLAS_GEMV_ARGTYPES(c10::complex<float>)) {
   // gemv is bw bound, and does not benefit from TF32. But the precision
@@ -812,7 +812,7 @@ void gemv<at::Half>(CUDABLAS_GEMV_ARGTYPES(at::Half)) {
       'n', trans_flipped, 1, m, n, alpha, x, incx, a, lda, beta, y, incy);
 }
 
-#if defined(__HIP_PLATFORM_HCC__) || defined(CUDA_VERSION) && CUDA_VERSION >= 11000
+#if defined(USE_ROCM) || defined(CUDA_VERSION) && CUDA_VERSION >= 11000
 template <>
 void gemv<at::BFloat16>(CUDABLAS_GEMV_ARGTYPES(at::BFloat16)) {
   bool trans_bool = (_cublasOpFromChar(trans) != CUBLAS_OP_N);
