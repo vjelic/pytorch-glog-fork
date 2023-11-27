@@ -162,6 +162,7 @@ install_centos() {
   if [[ $OS_VERSION == 9 ]]
   then
 	  dnf --enablerepo=crb -y install libsndfile-devel
+	  yum install -y procps
   else
 	  yum install -y \
             opencv-devel \
