@@ -7,6 +7,8 @@ FROM quay.io/centos/centos:stream${CENTOS_VERSION}
 ARG PYTORCH_ROCM_ARCH
 ENV PYTORCH_ROCM_ARCH ${PYTORCH_ROCM_ARCH}
 
+ENV HIPCC_VERBOSE 3
+
 # Install required packages to build Caffe2
 
 # Install common dependencies (so that this step can be cached separately)
