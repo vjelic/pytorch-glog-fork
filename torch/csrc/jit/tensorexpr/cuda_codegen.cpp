@@ -925,7 +925,7 @@ void CudaCodeGen::Initialize() {
   HalfChecker halfChecker(buffer_args());
   stmt_v->accept(&halfChecker);
 
-#if __HIP_PLATFORM_HCC__
+#if USE_ROCM
 #if ROCM_VERSION < 40200
   os() << "#include <hip/hip_runtime.h>" << std::endl;
   if (halfChecker.hasHalf()) {
@@ -1218,7 +1218,7 @@ void CudaCodeGen::CompileToNVRTC(
   AT_CUDA_NVRTC_CHECK(nvrtc().nvrtcCreateProgram(
       &program, code.c_str(), nullptr, 0, nullptr, nullptr));
 
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef USE_ROCM
   std::vector<const char*> args = {"--std=c++14"};
 #if ROCM_VERSION >= 40200
   args.push_back("-hip-pch");

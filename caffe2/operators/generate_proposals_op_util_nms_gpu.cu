@@ -7,7 +7,7 @@ namespace utils {
 namespace {
 // Helper data structure used locally
 struct
-#ifndef __HIP_PLATFORM_HCC__
+#ifndef USE_ROCM
     __align__(16)
 #endif
         Box {

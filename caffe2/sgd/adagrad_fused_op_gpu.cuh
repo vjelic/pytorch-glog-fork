@@ -10,7 +10,7 @@
 #include "caffe2/core/operator.h"
 #include "caffe2/utils/GpuAtomics.cuh"
 
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef USE_ROCM
 #define SEGREDUCE_MINBLOCKS 8
 #else
 #define SEGREDUCE_MINBLOCKS 16
@@ -31,7 +31,7 @@ constexpr int kWarpSize = 32;
 
 template <typename T>
 inline __device__ T shfl_xor(const T val, int laneMask, int width = kWarpSize) {
-#ifndef __HIP_PLATFORM_HCC__
+#ifndef USE_ROCM
   return __shfl_xor_sync(0xffffffff, val, laneMask, width);
 #else
   return __shfl_xor(val, laneMask, width);
@@ -136,7 +136,7 @@ template <
     typename T,
     bool ExactBlock = false,
     roundOption roundOpt = NEAREST>
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef USE_ROCM
 C10_LAUNCH_BOUNDS_2(1024, SEGREDUCE_MINBLOCKS)
 #endif
 __global__ void rowwise_sparse_adagrad_fused_length_sum_gradient_kernel(
