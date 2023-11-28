@@ -83,19 +83,25 @@ install_centos() {
 
   yum install -y epel-release
 
-  # Add amdgpu repository
-  local amdgpu_baseurl
-  if [[ $OS_VERSION == 9 ]]; then
-      amdgpu_baseurl="https://repo.radeon.com/amdgpu/${ROCM_VERSION}/rhel/9.0/main/x86_64"
-  else
-      amdgpu_baseurl="https://repo.radeon.com/amdgpu/${ROCM_VERSION}/rhel/7.9/main/x86_64"
+  if [[ $(ver $ROCM_VERSION) -ge $(ver 4.5) ]]; then
+      # Add amdgpu repository
+      local amdgpu_baseurl
+      if [[ $OS_VERSION == 9 ]]; then
+          amdgpu_baseurl="https://repo.radeon.com/amdgpu/${AMDGPU_VERSIONS[$ROCM_VERSION]}/rhel/9.1/main/x86_64"
+      else
+        if [[ $(ver $ROCM_VERSION) -ge $(ver 5.3) ]]; then
+          amdgpu_baseurl="https://repo.radeon.com/amdgpu/${ROCM_VERSION}/rhel/7.9/main/x86_64"
+        else
+          amdgpu_baseurl="https://repo.radeon.com/amdgpu/${AMDGPU_VERSIONS[$ROCM_VERSION]}/rhel/7.9/main/x86_64"
+        fi
+      fi
+      echo "[AMDGPU]" > /etc/yum.repos.d/amdgpu.repo
+      echo "name=AMDGPU" >> /etc/yum.repos.d/amdgpu.repo
+      echo "baseurl=${amdgpu_baseurl}" >> /etc/yum.repos.d/amdgpu.repo
+      echo "enabled=1" >> /etc/yum.repos.d/amdgpu.repo
+      echo "gpgcheck=1" >> /etc/yum.repos.d/amdgpu.repo
+      echo "gpgkey=http://repo.radeon.com/rocm/rocm.gpg.key" >> /etc/yum.repos.d/amdgpu.repo
   fi
-  echo "[AMDGPU]" > /etc/yum.repos.d/amdgpu.repo
-  echo "name=AMDGPU" >> /etc/yum.repos.d/amdgpu.repo
-  echo "baseurl=${amdgpu_baseurl}" >> /etc/yum.repos.d/amdgpu.repo
-  echo "enabled=1" >> /etc/yum.repos.d/amdgpu.repo
-  echo "gpgcheck=1" >> /etc/yum.repos.d/amdgpu.repo
-  echo "gpgkey=http://repo.radeon.com/rocm/rocm.gpg.key" >> /etc/yum.repos.d/amdgpu.repo
 
   if [[ $OS_VERSION == 9 ]]; then
       local rocm_baseurl="invalid-url"
