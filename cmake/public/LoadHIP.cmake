@@ -147,7 +147,6 @@ if(HIP_FOUND)
   set(rocthrust_DIR ${ROCM_PATH}/lib/cmake/rocthrust)
   set(hipsolver_DIR ${ROCM_PATH}/lib/cmake/hipsolver)
 
-
   find_package_and_print_version(hip REQUIRED)
   find_package_and_print_version(hsa-runtime64 REQUIRED)
   find_package_and_print_version(amd_comgr REQUIRED)
