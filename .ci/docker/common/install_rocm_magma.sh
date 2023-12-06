@@ -8,12 +8,16 @@ set -ex
 
 # "install" hipMAGMA into /opt/rocm/magma by copying after build
 if [[ $(ver $ROCM_VERSION) -ge $(ver 6.0) ]]; then
-  git clone https://bitbucket.org/mpruthvi1/magma.git -b rocm_60
+  # Moved to temp fork SWDEV-429841
+  git clone https://bitbucket.org/mpruthvi1/magma.git -b rocm60_gcn_depr
   pushd magma
+
+  # Version 2.7.2 + ROCm related updates
+  git checkout 825f861ae834407946fb748834e4e025ac7d7064
 else
   git clone https://bitbucket.org/icl/magma.git
   pushd magma
-  git checkout 28592a7170e4b3707ed92644bf4a689ed600c27f
+  git checkout 823531632140d0edcb7e77c3edc0e837421471c5
 fi
 
 cp make.inc-examples/make.inc.hip-gcc-mkl make.inc
