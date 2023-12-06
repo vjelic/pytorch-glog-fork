@@ -122,8 +122,9 @@
 	path = third_party/cudnn_frontend
 	url = https://github.com/NVIDIA/cudnn-frontend.git
 [submodule "third_party/kineto"]
-    path = third_party/kineto
-    url = https://github.com/pytorch/kineto
+	path = third_party/kineto
+	url = https://github.com/ROCmSoftwarePlatform/kineto
+	branch = rocm6.0_fixes
 [submodule "third_party/pocketfft"]
 	path = third_party/pocketfft
 	url = https://github.com/mreineck/pocketfft
