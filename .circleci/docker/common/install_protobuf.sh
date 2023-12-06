@@ -2,8 +2,8 @@
 
 set -ex
 
-# This function installs protobuf 3.17
-install_protobuf_317() {
+# This function installs protobuf 3.20.2
+install_protobuf_320() {
   pip uninstall -y protobuf
   pb_dir="/usr/temp_pb_install_dir"
   mkdir -p $pb_dir
@@ -13,8 +13,8 @@ install_protobuf_317() {
   #   g++: error: ./../lib64/crti.o: No such file or directory
   ln -s /usr/lib64 "$pb_dir/lib64"
 
-  curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v3.17.3/protobuf-all-3.17.3.tar.gz"
-  tar -xvz -C "$pb_dir" --strip-components 1 -f protobuf-all-3.17.3.tar.gz
+  curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v3.20.2/protobuf-all-3.20.2.tar.gz"
+  tar -xvz -C "$pb_dir" --strip-components 1 -f protobuf-all-3.20.2.tar.gz
   # -j2 to balance memory usage and speed.
   # naked `-j` seems to use too much memory.
   pushd "$pb_dir" && ./configure && make -j2 && make -j2 check && sudo make -j2 install && sudo ldconfig
@@ -34,11 +34,11 @@ install_ubuntu() {
   apt-get autoclean && apt-get clean
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-  install_protobuf_317
+  install_protobuf_320
 }
 
 install_centos() {
-  install_protobuf_317
+  install_protobuf_320
 }
 
 # Install base packages depending on the base OS
