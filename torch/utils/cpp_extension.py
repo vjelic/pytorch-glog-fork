@@ -237,6 +237,9 @@ COMMON_HIP_FLAGS = [
     '-DUSE_ROCM=1',
 ]
 
+
+
+
 COMMON_HIPCC_FLAGS = [
     '-DCUDA_HAS_FP16=1',
     '-D__HIP_NO_HALF_OPERATORS__=1',
