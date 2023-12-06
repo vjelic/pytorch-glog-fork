@@ -7272,7 +7272,6 @@ CUDA_IDENTIFIER_MAP = collections.OrderedDict(
             "cublasDrotmg_v2",
             ("hipblasDrotmg_v2", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
         ),
-        ("CUBLAS_COMPUTE_16F", ("HIPBLAS_COMPUTE_16F" if rocm_version >= (6,0,0) else "HIPBLASLT_COMPUTE_F16", CONV_MATH_FUNC, API_BLAS)),
         (
             "CURAND_STATUS_SUCCESS",
             ("HIPRAND_STATUS_SUCCESS", CONV_NUMERIC_LITERAL, API_RAND),
