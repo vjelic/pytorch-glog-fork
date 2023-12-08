@@ -280,10 +280,7 @@ WINDOWS_BLOCKLIST = [
 ] + FSDP_TEST
 
 ROCM_BLOCKLIST = [
-    "distributed/rpc/test_faulty_agent",
-    "distributed/rpc/test_tensorpipe_agent",
     "distributed/rpc/test_share_memory",
-    "distributed/rpc/cuda/test_tensorpipe_agent",
     "distributed/_shard/checkpoint/test_checkpoint"
     "distributed/_shard/checkpoint/test_file_system_checkpoint"
     "distributed/_shard/sharding_spec/test_sharding_spec",
@@ -1062,8 +1059,9 @@ def get_pytest_args(
     if not is_cpp_test:
         # C++ tests need to be run with pytest directly, not via python
         pytest_args.extend(["-p", "no:xdist", "--use-pytest"])
-        if not options.continue_through_error and IS_CI:
-            pytest_args.append(f"--sc={stepcurrent_key}")
+        # Do not specify --sc to have consistent behaviour on test file reruns
+        #if not options.continue_through_error:
+        #    pytest_args.append(f"--sc={stepcurrent_key}")
     else:
         # Use pytext-dist to run C++ tests in parallel as running them sequentially using run_test
         # is much slower than running them directly

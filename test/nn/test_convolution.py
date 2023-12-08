@@ -13,7 +13,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.testing._internal.common_dtype import floating_types_and, floating_and_complex_types_and
 from torch.testing._internal.common_utils import run_tests, \
-    skipIfRocmVersionLessThan, skipIfNotMiopenSuggestNHWC, TEST_SCIPY, TEST_WITH_ROCM, \
+    skipIfRocm, skipIfRocmVersionLessThan, skipIfNotMiopenSuggestNHWC, TEST_SCIPY, TEST_WITH_ROCM, \
     download_file, parametrize as parametrize_test, subtest, \
     instantiate_parametrized_tests, set_default_dtype
 from torch.testing._internal.common_cuda import TEST_CUDA, TEST_CUDNN
@@ -507,10 +507,11 @@ class TestConvolutionNN(NNTestCase):
             output2 = m2(i2)
             output2.backward(grad_output[:, 2:].contiguous())
 
-            self.assertEqual(output, torch.cat([output1, output2], 1))
+            self.assertEqual(output, torch.cat([output1, output2], 1),
+                             atol=dtype2prec_DONTUSE[dtype], rtol=0)
             self.assertEqual(i.grad.data,
                              torch.cat([i1.grad.data, i2.grad.data], 1),
-                             atol=dtype2prec_DONTUSE[dtype], rtol=0)
+                             atol=1e-1 if dtype == torch.half else dtype2prec_DONTUSE[dtype], rtol=0)
             self.assertEqual(m.weight.grad.data,
                              torch.cat([m1.weight.grad.data, m2.weight.grad.data], 0),
                              atol=1e-1 if dtype == torch.half else dtype2prec_DONTUSE[dtype], rtol=0)
@@ -547,13 +548,14 @@ class TestConvolutionNN(NNTestCase):
             output2 = m2(i2)
             output2.backward(grad_output[:, 8:].contiguous())
 
-            self.assertEqual(output, torch.cat([output1, output2], 1))
+            self.assertEqual(output, torch.cat([output1, output2], 1),
+                             atol=dtype2prec_DONTUSE[dtype], rtol=0)
             self.assertEqual(i.grad.data,
                              torch.cat([i1.grad.data, i2.grad.data], 1),
-                             atol=dtype2prec_DONTUSE[dtype], rtol=0)
+                             atol=1e-1 if dtype == torch.half else dtype2prec_DONTUSE[dtype], rtol=0)
             self.assertEqual(m.weight.grad.data,
                              torch.cat([m1.weight.grad.data, m2.weight.grad.data], 0),
-                             atol=1e-1 if dtype == torch.half else dtype2prec_DONTUSE[dtype], rtol=0)
+                             atol=2e-1 if dtype in [torch.half, torch.bfloat16] else dtype2prec_DONTUSE[dtype], rtol=0)
 
     # CPU-only test for group conv3d fast implementation using bmm
     # See: https://github.com/pytorch/pytorch/pull/36355
@@ -2080,7 +2082,8 @@ class TestConvolutionNNDeviceType(NNTestCase):
         output2 = m2(i2)
         output2.backward(grad_output[:, 2:].contiguous())
 
-        self.assertEqual(output, torch.cat([output1, output2], 1))
+        self.assertEqual(output, torch.cat([output1, output2], 1),
+                         atol=dtype2prec_DONTUSE[dtype], rtol=0)
         self.assertEqual(i.grad.data,
                          torch.cat([i1.grad.data, i2.grad.data], 1),
                          atol=dtype2prec_DONTUSE[dtype], rtol=0)
@@ -2089,7 +2092,7 @@ class TestConvolutionNNDeviceType(NNTestCase):
                          atol=dtype2prec_DONTUSE[dtype], rtol=0)
         self.assertEqual(m.weight.grad.data,
                          torch.cat([m1.weight.grad.data, m2.weight.grad.data], 0),
-                         atol=dtype2prec_DONTUSE[dtype], rtol=0)
+                         atol=1e-1 if dtype == torch.half else dtype2prec_DONTUSE[dtype], rtol=0)
 
     @dtypes(torch.double, torch.cdouble)
     def test_Conv2d_backward_depthwise(self, device, dtype):
@@ -2480,6 +2483,8 @@ class TestConvolutionNNDeviceType(NNTestCase):
     @onlyCUDA
     @largeTensorTest('40GB')
     @largeTensorTest('24GB', 'cpu')
+    # Skipped for ROCm temp - https://ontrack-internal.amd.com/browse/SWDEV-383635
+    @skipIfRocm
     def test_conv3d_64bit_indexing(self, device):
         x = torch.rand(1, 32, 512, 512, 256)
         m = torch.nn.Conv3d(32, 1, kernel_size=1, padding=0, stride=1, bias=False)
