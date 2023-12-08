@@ -4495,7 +4495,7 @@ class DistributedTest:
         )
         @sandcastle_skip_if(
             BACKEND == "gloo" and HAS_TORCHVISION,
-            "Failing weith gloo backend + torchvision due to ongoing issue https://github.com/pytorch/pytorch/issues/111834",
+            "Failing with gloo backend + torchvision due to ongoing issue https://github.com/pytorch/pytorch/issues/111834",
         )
         @skip_if_lt_x_gpu(2)
         @parametrize("grad_as_bucket_view", [True, False])
@@ -4526,7 +4526,7 @@ class DistributedTest:
         )
         @sandcastle_skip_if(
             BACKEND == "gloo" and HAS_TORCHVISION,
-            "Failing weith gloo backend + torchvision due to ongoing issue https://github.com/pytorch/pytorch/issues/111834",
+            "Failing with gloo backend + torchvision due to ongoing issue https://github.com/pytorch/pytorch/issues/111834",
         )
         @skip_if_lt_x_gpu(2)
         @parametrize("optimize_subset", [True, False])
@@ -4550,7 +4550,7 @@ class DistributedTest:
         )
         @sandcastle_skip_if(
             BACKEND == "gloo" and HAS_TORCHVISION,
-            "Failing weith gloo backend + torchvision due to ongoing issue https://github.com/pytorch/pytorch/issues/111834",
+            "Failing with gloo backend + torchvision due to ongoing issue https://github.com/pytorch/pytorch/issues/111834",
         )
         @skip_if_lt_x_gpu(2)
         @parametrize("optimize_subset", [True, False])
@@ -4644,7 +4644,7 @@ class DistributedTest:
         @skip_if_lt_x_gpu(2)
         @sandcastle_skip_if(
             BACKEND == "gloo" and HAS_TORCHVISION,
-            "Failing weith gloo backend + torchvision due to ongoing issue https://github.com/pytorch/pytorch/issues/111834",
+            "Failing with gloo backend + torchvision due to ongoing issue https://github.com/pytorch/pytorch/issues/111834",
         ) 
         def test_ddp_apply_optim_in_backward(self):
             for optim_cls in [torch.optim.SGD, torch.optim.Adam]:
@@ -4657,7 +4657,7 @@ class DistributedTest:
         @skip_if_lt_x_gpu(2)
         @sandcastle_skip_if(
             BACKEND == "gloo" and HAS_TORCHVISION,
-            "Failing weith gloo backend + torchvision due to ongoing issue https://github.com/pytorch/pytorch/issues/111834",
+            "Failing with gloo backend + torchvision due to ongoing issue https://github.com/pytorch/pytorch/issues/111834",
         ) 
         def test_ddp_apply_optim_in_backward_grad_as_bucket_view_false(self):
             self._test_ddp_apply_optim_in_backward(
