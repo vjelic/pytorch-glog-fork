@@ -3066,6 +3066,7 @@ class TestAttnMasks(NNTestCase):
         torch.testing.assert_close(key.grad, key_prototype.grad, rtol=grad_tolerances.rtol, atol=grad_tolerances.atol)
         torch.testing.assert_close(value.grad, value_prototype.grad, rtol=grad_tolerances.rtol, atol=grad_tolerances.atol)
 
+    @skipIfRocm  # No support for the second variant for now
     @parametrize("causal_variant", [CausalVariant.UPPER_LEFT, CausalVariant.LOWER_RIGHT])
     @parametrize(
         "shape",
@@ -3094,6 +3095,7 @@ class TestAttnMasks(NNTestCase):
 
         self.run_test(device, False, make_q_tensor, make_kv_tensor, attn_bias, forw_tol, grad_tol)
 
+    @skipIfRocm  # No support for the second variant for now
     @parametrize("causal_variant", [CausalVariant.UPPER_LEFT, CausalVariant.LOWER_RIGHT])
     @parametrize(
         "shape",
