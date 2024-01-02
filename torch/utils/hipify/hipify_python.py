@@ -37,6 +37,7 @@ from .cuda_to_hip_mappings import MATH_TRANSPILATIONS
 from typing import Dict, List, Iterator, Optional
 from collections.abc import Mapping, Iterable
 from enum import Enum
+from pathlib import Path
 
 class CurrentState(Enum):
     INITIALIZED = 1
@@ -173,8 +174,8 @@ def matched_files_iter(
                 dirs.remove("third_party")
                 dirs.append("third_party/nvfuser")
         for filename in filenames:
-            filepath = os.path.join(abs_dirpath, filename)
-            rel_filepath = os.path.join(rel_dirpath, filename)
+            filepath = os.path.join(abs_dirpath, filename).replace(os.sep, '/')
+            rel_filepath = os.path.join(rel_dirpath, filename).replace(os.sep, '/')
             # We respect extensions, UNLESS you wrote the entire
             # filename verbatim, in which case we always accept it
             if (
@@ -792,6 +793,7 @@ def preprocessor(
         return hipify_result
 
     rel_filepath = os.path.relpath(filepath, output_directory)
+    rel_filepath = rel_filepath.replace("\\", "/")
 
     with open(fin_path, encoding='utf-8') as fin:
         if fin.readline() == HIPIFY_C_BREADCRUMB:
@@ -1082,6 +1084,9 @@ def hipify(
     # Copy from project directory to output directory if not done already.
     if not os.path.exists(output_directory):
         shutil.copytree(project_directory, output_directory)
+
+    includes = [inc.replace(os.sep, '/') for inc in includes]
+    ignores = [ign.replace(os.sep, '/') for ign in ignores]
 
     all_files = list(matched_files_iter(output_directory, includes=includes,
                                         ignores=ignores, extensions=extensions,
