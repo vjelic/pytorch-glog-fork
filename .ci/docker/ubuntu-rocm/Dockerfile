@@ -105,6 +105,11 @@ COPY ./common/install_cache.sh install_cache.sh
 ENV PATH /opt/cache/bin:$PATH
 RUN bash ./install_cache.sh && rm install_cache.sh
 
+# Install Open MPI
+COPY ./common/install_openmpi.sh install_openmpi.sh
+RUN bash install_openmpi.sh
+RUN rm install_openmpi.sh
+
 # Include BUILD_ENVIRONMENT environment variable in image
 ARG BUILD_ENVIRONMENT
 ENV BUILD_ENVIRONMENT ${BUILD_ENVIRONMENT}
