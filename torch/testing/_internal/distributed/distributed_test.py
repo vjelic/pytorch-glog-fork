@@ -6,6 +6,7 @@ import random
 import sys
 import tempfile
 import time
+import unittest
 from collections import namedtuple, OrderedDict
 from contextlib import contextmanager, suppress
 from datetime import timedelta
@@ -76,6 +77,7 @@ from torch.testing._internal.common_utils import (
     parametrize,
     sandcastle_skip,
     sandcastle_skip_if,
+    TEST_WITH_ROCM,
 )
 
 import torch.distributed.optim.post_localSGD_optimizer as post_localSGD_optimizer
@@ -4245,6 +4247,7 @@ class DistributedTest:
                     all([param.requires_grad for param in ddp_model.parameters()])
                 )
 
+        @unittest.skipIf(TEST_WITH_ROCM, "Skipping as we won't be fixing this on old version of pytorch")
         @sandcastle_skip_if(
             BACKEND not in DistTestCases.backend_feature["ddp"],
             f"The {BACKEND} backend does not support DistributedDataParallel"

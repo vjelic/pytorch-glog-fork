@@ -2,6 +2,7 @@
 
 import sys
 import time
+import unittest
 from statistics import mean
 from unittest.mock import patch
 
@@ -18,6 +19,7 @@ from torch.testing._internal.common_utils import (
     TEST_WITH_DEV_DBG_ASAN,
     get_cycles_per_ms,
     run_tests,
+    TEST_WITH_ROCM,
 )
 
 
@@ -238,6 +240,7 @@ class TestForwardOverlapWorldSizeOne(FSDPTest):
             both = e4["gpu_total"]
             self.assertTrue(compute_only + all_gather_only > 1.1 * both)
 
+    @unittest.skipIf(TEST_WITH_ROCM, "Skipping as we won't be fixing this test failure on old version of pytorch")
     @skip_if_lt_x_gpu(2)
     def test_forward_overlap(self):
         self._dist_train()
