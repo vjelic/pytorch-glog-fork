@@ -298,6 +298,8 @@ ROCM_BLOCKLIST = [
     "test_jit_legacy",
     "test_cuda_nvml_based_avail",
     "test_jit_cuda_fuser",
+    # SWDEV-439003 - mypy incompatible with numpy 1.19.0
+    "test_typing",
 ]
 
 # The tests inside these files should never be run in parallel with each other
