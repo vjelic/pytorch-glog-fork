@@ -3611,6 +3611,9 @@ class TestVmapOperatorsOpInfo(TestCase):
 
         # TypeError: expected Tensor as element 0 in argument 0, but got float
         xfail('item'),
+
+        # Causing a hang - https://github.com/ROCmSoftwarePlatform/frameworks-internal/issues/6864
+        decorate('special.hermite_polynomial_h', decorator=skipIfRocm),
     }))
     def test_vmap_exhaustive(self, device, dtype, op):
         # needs to be fixed
