@@ -115,8 +115,8 @@ if __name__ == "__main__":
                 else:
                     utilization = pyamdsmi.amdsmi_get_utilization_count(
                         handle,
-                        pyamdsmi.AmdSmiUtilizationCounterType.COARSE_GRAIN_GFX_ACTIVITY,
-                        pyamdsmi.AmdSmiUtilizationCounterType.COARSE_GRAIN_MEM_ACTIVITY,
+                        [pyamdsmi.AmdSmiUtilizationCounterType.COARSE_GRAIN_GFX_ACTIVITY,
+                        pyamdsmi.AmdSmiUtilizationCounterType.COARSE_GRAIN_MEM_ACTIVITY],
                     )
                     stats["total_gpu_utilization"] = utilization[1][
                         "value"

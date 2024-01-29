@@ -1019,31 +1019,21 @@ def _get_amdsmi_memory_usage(device: Optional[Union[Device, int]] = None) -> int
     handle = _get_amdsmi_handler()
     device = _get_amdsmi_device_index(device)
     handle = pyamdsmi.amdsmi_get_processor_handles()[device]
-    utilization = pyamdsmi.amdsmi_get_utilization_count(
-        handle,
-        pyamdsmi.AmdSmiUtilizationCounterType.COARSE_GRAIN_GFX_ACTIVITY,
-        pyamdsmi.AmdSmiUtilizationCounterType.COARSE_GRAIN_MEM_ACTIVITY,
-    )
-    return utilization[2]["value"]  # AMDSMI_COURSE_GRAIN_MEM_ACTIVITY
+    return(pyamdsmi.amdsmi_get_gpu_activity(handle)["umc_activity"])
 
 
 def _get_amdsmi_utilization(device: Optional[Union[Device, int]] = None) -> int:
     handle = _get_amdsmi_handler()
     device = _get_amdsmi_device_index(device)
     handle = pyamdsmi.amdsmi_get_processor_handles()[device]
-    utilization = pyamdsmi.amdsmi_get_utilization_count(
-        handle,
-        pyamdsmi.AmdSmiUtilizationCounterType.COARSE_GRAIN_GFX_ACTIVITY,
-        pyamdsmi.AmdSmiUtilizationCounterType.COARSE_GRAIN_MEM_ACTIVITY,
-    )
-    return utilization[1]["value"]  # AMDSMI_COARSE_GRAIN_GFX_ACTIVITY
+    return(pyamdsmi.amdsmi_get_gpu_activity(handle)["gfx_activity"])
 
 
 def _get_amdsmi_temperature(device: Optional[Union[Device, int]] = None) -> int:
     handle = _get_amdsmi_handler(device)
     return pyamdsmi.amdsmi_get_temp_metric(
         handle,
-        pyamdsmi.AmdSmiTemperatureType.EDGE,
+        pyamdsmi.AmdSmiTemperatureType.JUNCTION,
         pyamdsmi.AmdSmiTemperatureMetric.CURRENT,
     )
 
@@ -1137,9 +1127,6 @@ def power_draw(device: Optional[Union[Device, int]] = None) -> int:
         handle = _get_pynvml_handler(device)
         return pynvml.nvmlDeviceGetPowerUsage(handle)
     else:
-        import pdb
-
-        pdb.set_trace()
         return _get_amdsmi_power_draw(device)
 
 
