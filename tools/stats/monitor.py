@@ -113,17 +113,8 @@ if __name__ == "__main__":
                     stats["total_gpu_utilization"] = gpu_utilization.gpu
                     stats["total_gpu_mem_utilization"] = gpu_utilization.memory
                 else:
-                    utilization = pyamdsmi.amdsmi_get_utilization_count(
-                        handle,
-                        [pyamdsmi.AmdSmiUtilizationCounterType.COARSE_GRAIN_GFX_ACTIVITY,
-                        pyamdsmi.AmdSmiUtilizationCounterType.COARSE_GRAIN_MEM_ACTIVITY],
-                    )
-                    stats["total_gpu_utilization"] = utilization[1][
-                        "value"
-                    ]  # AMDSMI_COARSE_GRAIN_GFX_ACTIVITY
-                    stats["total_gpu_mem_utilization"] = utilization[2][
-                        "value"
-                    ]  # AMDSMI_COURSE_GRAIN_MEM_ACTIVITY
+                    stats["total_gpu_utilization"] = pyamdsmi.amdsmi_get_gpu_activity(handle)["gfx_activity"]
+                    stats["total_gpu_mem_utilization"] = pyamdsmi.amdsmi_get_gpu_activity(handle)["umc_activity"]
 
         except Exception as e:
             stats = {
