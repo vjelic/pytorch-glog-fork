@@ -1,17 +1,13 @@
 #!/usr/bin/env python3
 import datetime
 import json
+import math
 import signal
 import time
 from typing import Any, Dict, List
 
 import psutil  # type: ignore[import]
-import torch
-
-if not torch.version.hip:
-    import pynvml  # type: ignore[import]
-else:
-    import amdsmi as pyamdsmi  # type: ignore[import]
+import pynvml  # type: ignore[import]
 
 
 def get_processes_running_python_tests() -> List[Any]:
@@ -56,39 +52,42 @@ def get_per_process_cpu_info() -> List[Dict[str, Any]]:
 
 
 def get_per_process_gpu_info(handle: Any) -> List[Dict[str, Any]]:
-    if torch.version.hip is None:
-        processes = pynvml.nvmlDeviceGetComputeRunningProcesses(handle)
-    else:
-        processes = pyamdsmi.amdsmi_get_gpu_process_list(handle)
+    processes = pynvml.nvmlDeviceGetComputeRunningProcesses(handle)
     per_process_info = []
     for p in processes:
-        if torch.version.hip:
-            proc_info = pyamdsmi.amdsmi_get_gpu_process_info(handle, p)
-            info = {
-                "pid": proc_info["pid"],
-                "gpu_memory": proc_info["memory_usage"]["vram_mem"],
-            }
-        else:
-            info = {"pid": p.pid, "gpu_memory": p.usedGpuMemory}
+        info = {"pid": p.pid, "gpu_memory": p.usedGpuMemory}
+        per_process_info.append(info)
+    return per_process_info
+
+
+def rocm_get_per_process_gpu_info(handle: Any) -> List[Dict[str, Any]]:
+    processes = pyamdsmi.amdsmi_get_gpu_process_list(handle)
+    per_process_info = []
+    for p in processes:
+        proc_info = pyamdsmi.amdsmi_get_gpu_process_info(handle, p)
+        info = {
+            "pid": proc_info["pid"],
+            "gpu_memory": proc_info["memory_usage"]["vram_mem"],
+        }
         per_process_info.append(info)
     return per_process_info
 
 
 if __name__ == "__main__":
     handle = None
-    if not torch.version.hip:
-        try:
-            pynvml.nvmlInit()
-            handle = pynvml.nvmlDeviceGetHandleByIndex(0)
-        except pynvml.NVMLError:
-            # no pynvml avaliable, probably because not cuda
-            pass
-    else:
-        try:
-            pyamdsmi.amdsmi_init()
-            handle = pyamdsmi.amdsmi_get_processor_handles()[0]
-        except ModuleNotFoundError:
-            pass
+    try:
+        pynvml.nvmlInit()
+        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+    except pynvml.NVMLError:
+        # no pynvml avaliable, probably because not cuda
+        pass
+    try:
+        import amdsmi as pyamdsmi
+        pyamdsmi.amdsmi_init()
+        amdsmi_handle = pyamdsmi.amdsmi_get_processor_handles()[0]
+        amdsmi_tot_vram = pyamdsmi.amdsmi_get_gpu_memory_total(amdsmi_handle, pyamdsmi.AmdSmiMemoryType.VRAM)
+    except ModuleNotFoundError:
+        pass
 
     kill_now = False
 
@@ -107,15 +106,15 @@ if __name__ == "__main__":
             }
             if handle is not None:
                 stats["per_process_gpu_info"] = get_per_process_gpu_info(handle)
-                if not torch.version.hip:
-                    # https://docs.nvidia.com/deploy/nvml-api/structnvmlUtilization__t.html
-                    gpu_utilization = pynvml.nvmlDeviceGetUtilizationRates(handle)
-                    stats["total_gpu_utilization"] = gpu_utilization.gpu
-                    stats["total_gpu_mem_utilization"] = gpu_utilization.memory
-                else:
-                    stats["total_gpu_utilization"] = pyamdsmi.amdsmi_get_gpu_activity(handle)["gfx_activity"]
-                    stats["total_gpu_mem_utilization"] = pyamdsmi.amdsmi_get_gpu_activity(handle)["umc_activity"]
-
+                # https://docs.nvidia.com/deploy/nvml-api/structnvmlUtilization__t.html
+                gpu_utilization = pynvml.nvmlDeviceGetUtilizationRates(handle)
+                stats["total_gpu_utilization"] = gpu_utilization.gpu
+                stats["total_gpu_mem_utilization"] = gpu_utilization.memory
+            if amdsmi_handle is not None:
+                stats["per_process_gpu_info"] = rocm_get_per_process_gpu_info(amdsmi_handle) 
+                stats["total_gpu_utilization"] = pyamdsmi.amdsmi_get_gpu_activity(amdsmi_handle)["gfx_activity"]
+                memory_used = pyamdsmi.amdsmi_get_gpu_memory_usage(amdsmi_handle, pyamdsmi.AmdSmiMemoryType.VRAM)
+                stats["total_gpu_mem_utilization"] = math.floor((memory_used/amdsmi_tot_vram)*100)
         except Exception as e:
             stats = {
                 "time": datetime.datetime.utcnow().isoformat("T") + "Z",
