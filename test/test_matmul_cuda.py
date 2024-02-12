@@ -263,7 +263,9 @@ class TestFP8MatmulCuda(TestCase):
     def test_float8_out_dtype(self, device) -> None:
         self._test_tautological_mm(device, size=64, out_dtype=torch.float16)
         self._test_tautological_mm(device, size=96, out_dtype=torch.float32)
-        self._test_tautological_mm(device, size=80, out_dtype=torch.bfloat16)
+        # hipblaslt does not yet support bfloat16 output
+        if torch.version.hip is None:
+            self._test_tautological_mm(device, size=80, out_dtype=torch.bfloat16)
         with self.assertRaises(RuntimeError):
             self._test_tautological_mm(device, out_dtype=e5m2_type)
 
