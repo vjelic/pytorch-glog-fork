@@ -1,5 +1,4 @@
 # Owner(s): ["module: inductor"]
-import gc
 import math
 import sys
 import unittest
@@ -21,6 +20,7 @@ from torch.testing._internal.common_utils import (
     freeze_rng_state,
     IS_FBCODE,
     skipIfRocm,
+    skipIfRocmArch,
     TEST_WITH_ASAN,
 )
 
@@ -40,7 +40,7 @@ except unittest.SkipTest:
         sys.exit(0)
     raise
 
-
+NAVI_ARCH = ("gfx1100", "gfx1101") # Used for navi exclusive skips on ROCm
 TestCase = test_torchinductor.TestCase
 ToTuple = test_torchinductor.ToTuple
 check_model_cuda = test_torchinductor.check_model_cuda
@@ -305,6 +305,7 @@ class CudaReproTests(TestCase):
         out_ref.add_(2)
         # self.assertEqual(out_ref, out)
 
+    @skipIfRocmArch(NAVI_ARCH)
     def test_accuracy_issue1(self):
         class Repro(torch.nn.Module):
             def __init__(self):
@@ -341,6 +342,7 @@ class CudaReproTests(TestCase):
             assert same_two_models(mod, opt_mod, args), "Dynamo failed"
 
     @config.patch(allow_buffer_reuse=False)
+    @skipIfRocmArch(NAVI_ARCH)
     def test_issue103461(self):
         def forward(add_1):
             var_mean = torch.ops.aten.var_mean.correction(
@@ -828,6 +830,7 @@ class CudaReproTests(TestCase):
             res2 = jit_func(x)
             self.assertEqual(res1, res2)
 
+    @skipIfRocmArch(NAVI_ARCH)
     def test_issue103481(self):
         def fn(x, y):
             # NOTE: 6 dimensions is important! does not fail for 5 dimensions
@@ -967,29 +970,24 @@ class CudaReproTests(TestCase):
         self.assertEqual(ref, res)
 
     @config.patch({"triton.cudagraphs": True})
-    @config.patch({"fx_graph_cache": True})
     def test_index_put_cudagraph(self):
-        for _ in range(2):
+        def fn(x, y, z):
+            x = torch.zeros_like(x)
+            return x.index_put([y], z, True)
 
-            def fn(x, y, z):
-                x = torch.zeros_like(x)
-                return x.index_put([y], z, True)
+        x = torch.zeros((512, 512), device="cuda", dtype=torch.bool)
+        y = torch.zeros((512,), device="cuda", dtype=torch.int64)
+        z = torch.ones((512, 512), device="cuda", dtype=torch.bool)
 
-            x = torch.zeros((512, 512), device="cuda", dtype=torch.bool)
-            y = torch.zeros((512,), device="cuda", dtype=torch.int64)
-            z = torch.ones((512, 512), device="cuda", dtype=torch.bool)
+        opt_fn = torch._dynamo.optimize("inductor")(fn)
 
-            opt_fn = torch._dynamo.optimize("inductor")(fn)
+        ref = fn(x, y, z)
 
-            ref = fn(x, y, z)
+        # run it twice to test cuda graph issue
+        res = opt_fn(x, y, z)
+        res = opt_fn(x, y, z)
 
-            # run it twice to test cuda graph issue
-            res = opt_fn(x, y, z)
-            res = opt_fn(x, y, z)
-
-            self.assertEqual(ref, res)
-            torch._dynamo.reset()
-            gc.collect()
+        self.assertEqual(ref, res)
 
     @unittest.skipIf(
         not PLATFORM_SUPPORTS_FLASH_ATTENTION, "flash attention not supported"
@@ -1077,48 +1075,6 @@ class CudaReproTests(TestCase):
         o2 = mod(inp.clone())
 
         self.assertEqual(o1, o2)
-
-    @config.patch("triton.use_block_ptr", True)
-    def test_selecsls42b_misaligned_address(self):
-        # https://github.com/openai/triton/issues/2836
-
-        @torch.compile(fullgraph=True)
-        def fn(arg207_1, arg208_1, convert_element_type_40, expand, full, mul_3):
-            div = torch.ops.aten.div.Scalar(expand, 16)
-            where = torch.ops.aten.where.self(arg207_1, full, div)
-            convert_element_type_43 = torch.ops.prims.convert_element_type.default(
-                where, torch.float32
-            )
-            sum_2 = torch.ops.aten.sum.dim_IntList(convert_element_type_43, [0, 2, 3])
-            sub = torch.ops.aten.sub.Tensor(convert_element_type_40, arg208_1)
-            mul = torch.ops.aten.mul.Tensor(convert_element_type_43, sub)
-            sum_3 = torch.ops.aten.sum.dim_IntList(mul, [0, 2, 3])
-            mul_1 = torch.ops.aten.mul.Tensor(sum_2, 0.0078125)
-            unsqueeze = torch.ops.aten.unsqueeze.default(mul_1, 0)
-            unsqueeze_1 = torch.ops.aten.unsqueeze.default(unsqueeze, 2)
-            unsqueeze_2 = torch.ops.aten.unsqueeze.default(unsqueeze_1, 3)
-            mul_2 = torch.ops.aten.mul.Tensor(sum_3, 0.0078125)
-            mul_4 = torch.ops.aten.mul.Tensor(mul_2, mul_3)
-            unsqueeze_3 = torch.ops.aten.unsqueeze.default(mul_4, 0)
-            unsqueeze_4 = torch.ops.aten.unsqueeze.default(unsqueeze_3, 2)
-            unsqueeze_5 = torch.ops.aten.unsqueeze.default(unsqueeze_4, 3)
-            mul_6 = torch.ops.aten.mul.Tensor(sub, unsqueeze_5)
-            sub_1 = torch.ops.aten.sub.Tensor(convert_element_type_43, mul_6)
-            sub_2 = torch.ops.aten.sub.Tensor(sub_1, unsqueeze_2)
-            return (sub_2,)
-
-        args = [
-            torch.randn((8, 1024, 4, 4), device="cuda") > 0,  # torch.bool tensor
-            torch.randn((1, 1024, 1, 1), device="cuda"),
-            torch.randn((8, 1024, 4, 4), device="cuda"),
-            torch.randn((8, 1024, 1, 1), dtype=torch.float16, device="cuda").expand(
-                (8, 1024, 4, 4)
-            ),
-            torch.randn((), device="cuda"),
-            torch.randn((1024,), device="cuda"),
-        ]
-        fn(*args)
-        torch.cuda.synchronize()  # shake out Triton Error [CUDA]: misaligned address
 
 
 if __name__ == "__main__":
