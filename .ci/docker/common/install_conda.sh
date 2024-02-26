@@ -51,7 +51,7 @@ if [ -n "$ANACONDA_PYTHON_VERSION" ]; then
 
   # Install PyTorch conda deps, as per https://github.com/pytorch/pytorch README
   CONDA_COMMON_DEPS="astunparse pyyaml mkl=2021.4.0 mkl-include=2021.4.0 setuptools"
-  if [ "$ANACONDA_PYTHON_VERSION" = "3.11" ]; then
+  if [[ "$ANACONDA_PYTHON_VERSION" =~ ^3\.11(\.[0-9]+)?$ ]]; then
     # Install llvm-8 as it is required to compile llvmlite-0.30.0 from source
     # TODO: Stop using `-c malfet`
     conda_install numpy=1.23.5 ${CONDA_COMMON_DEPS} llvmdev=8.0.0 -c malfet
