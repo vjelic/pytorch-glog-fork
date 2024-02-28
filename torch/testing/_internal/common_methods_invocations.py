@@ -8151,6 +8151,8 @@ op_db: List[OpInfo] = [
                        # Reference: https://github.com/pytorch/pytorch/issues/49133
                        DecorateInfo(unittest.skip("Skipped!"), 'TestUnaryUfuncs', 'test_reference_numerics_normal',
                                     dtypes=[torch.cfloat]),
+                       DecorateInfo(unittest.skip("Skipping as we won't be fixing test failure on an older version of pytorch"), 'TestUnaryUfuncs', 'test_out_arg_all_dtypes',
+                                    dtypes=[torch.complex64]),
                    )),
     UnaryUfuncInfo('sinh',
                    ref=np_unary_ufunc_integer_promotion_wrapper(np.sinh),
@@ -8500,6 +8502,8 @@ op_db: List[OpInfo] = [
                                     dtypes=[torch.bfloat16]),
                        DecorateInfo(unittest.skip("Skipped!"), 'TestUnaryUfuncs', 'test_reference_numerics_normal',
                                     dtypes=[torch.bfloat16]),
+                       DecorateInfo(unittest.skip("Skipping as we won't be fixing test failure on an older version of pytorch"), 'TestUnaryUfuncs', 'test_out_arg_all_dtypes',
+                                    dtypes=[torch.complex64]),
                    )),
     UnaryUfuncInfo('rsqrt',
                    ref=lambda x: np.reciprocal(np.sqrt(x)),
