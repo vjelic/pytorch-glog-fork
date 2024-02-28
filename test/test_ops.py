@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 from functools import partial, wraps
 import warnings
+import unittest
 
 import torch
 
