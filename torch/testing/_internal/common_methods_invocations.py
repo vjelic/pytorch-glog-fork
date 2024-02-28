@@ -7648,6 +7648,8 @@ op_db: List[OpInfo] = [
                # RuntimeError: !lhs.isAliasOf(rhs)INTERNAL ASSERT FAILED at
                # "../torch/csrc/jit/passes/utils/check_alias_annotation.cpp":104, please report a bug to PyTorch.
                DecorateInfo(unittest.skip("Skipped!"), 'TestJit', 'test_variant_consistency_jit'),
+               DecorateInfo(unittest.skip("Skipping as we won't be fixing test failure on an older version of pytorch"), 'TestCommon', 'test_variant_consistency_eager',
+                            dtypes=[torch.float32]),
            ),
            supports_out=False,),
     OpInfo('nn.functional.conv2d',
@@ -9567,6 +9569,8 @@ op_db: List[OpInfo] = [
             # INTERNAL ASSERT FAILED at "../torch/csrc/jit/passes/utils/check_alias_annotation.cpp":159,
             # please report a bug to PyTorch.
             DecorateInfo(unittest.skip("Skipped!"), 'TestJit', 'test_variant_consistency_jit', dtypes=(torch.float32,)),
+            DecorateInfo(unittest.skip("Skipping as we won't be fixing test failure on an older version of pytorch"), 'TestCommon', 'test_reference_testing',
+                         dtypes=[torch.float32]),
         ),
         sample_inputs_func=sample_inputs_tensorinv,
         supports_forward_ad=True,
