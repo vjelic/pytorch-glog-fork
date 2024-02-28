@@ -2,10 +2,14 @@
 astunparse
 expecttest
 future
+hypothesis
+ninja
 numpy
 psutil
+pytest
 pyyaml
 requests
+scipy
 setuptools
 six
 types-dataclasses
