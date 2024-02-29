@@ -3,10 +3,13 @@ astunparse
 expecttest
 hypothesis
 future
+ninja
 numpy==1.23.1
 psutil
+pytest
 pyyaml
 requests
+scipy
 setuptools
 six
 types-dataclasses
