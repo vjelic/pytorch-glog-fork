@@ -990,7 +990,6 @@ def _get_amdsmi_device_index(device: Optional[Union[int, Device]]) -> int:
     r"""Return the amdsmi index of the device, taking ROCR_VISIBLE_DEVICES into account."""
     idx = _get_device_index(device, optional=True)
     visible_devices = _parse_visible_devices()
-    # visible_devices = raw_visible_devices
 
     # UUID support requires rocm6.1
     rocm_version = str(torch.version.hip)
