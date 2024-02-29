@@ -670,11 +670,11 @@ def _raw_device_uuid_amdsmi() -> Optional[List[str]]:
             warnings.warn("Cannot get amd device handler")
             return None
         try:
-            uuid = amdsmi.amdsmi_get_gpu_device_uuid(handler)
+            uuid = amdsmi.amdsmi_get_gpu_asic_info(handler)["asic_serial"][2:]
         except amdsmi.AmdSmiException:
             warnings.warn("Cannot get uuid for amd device")
             return None
-        uuids.append(str(uuid))
+        uuids.append(str(uuid).lower())
     return uuids
 
 
@@ -989,10 +989,8 @@ def _get_amdsmi_handler(device: Optional[Union[Device, int]] = None):
 def _get_amdsmi_device_index(device: Optional[Union[int, Device]]) -> int:
     r"""Return the amdsmi index of the device, taking ROCR_VISIBLE_DEVICES into account."""
     idx = _get_device_index(device, optional=True)
-    raw_visible_devices = _parse_visible_devices()
-
-    # if GPU- prefix remove this to match amdsmi uuid formatting
-    visible_devices = [d.replace("GPU-", "", 1)[4:] for d in raw_visible_devices]
+    visible_devices = _parse_visible_devices()
+    # visible_devices = raw_visible_devices
 
     # UUID support requires rocm6.1
     rocm_version = str(torch.version.hip)
@@ -1000,21 +998,19 @@ def _get_amdsmi_device_index(device: Optional[Union[int, Device]]) -> int:
     min_version = int(rocm_version.split(".")[1])
     if type(visible_devices[0]) is str:
         if maj_version > 6 or (maj_version == 6 and min_version >= 1):
+            visible_devices = [str(d).replace("GPU-", "", 1) for d in visible_devices]
             uuids = _raw_device_uuid_amdsmi()
             if uuids is None:
                 raise RuntimeError("Can't get device UUIDs")
-            short_uuids = [i.split("-")[-1] for i in uuids]
-            visible_devices = _transform_uuid_to_ordinals(
-                cast(List[str], visible_devices), short_uuids
-            )
+            visible_devices = _transform_uuid_to_ordinals(visible_devices, uuids)
         else:
             raise RuntimeError(
-                "ROCm version (6.1) or greater required for amdsmi_get_gpu_device_uuid. Use integer format for visible devices or upgrade ROCm."
+                "ROCm 6.1 or greater required for amdsmi_get_gpu_device_uuid. Use integer format instead."
             )
     visible_devices = cast(List[int], visible_devices)
     if idx < 0 or idx >= len(visible_devices):
         raise RuntimeError(
-            f"device {idx} is not visible (ROCR_VISIBLE_DEVICES={raw_visible_devices})"
+            f"device {idx} is not visible (ROCR_VISIBLE_DEVICES={visible_devices})"
         )
     return visible_devices[idx]
 
