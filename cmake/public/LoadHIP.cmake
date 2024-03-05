@@ -171,7 +171,8 @@ if(HIP_FOUND)
   find_package_and_print_version(hipsolver REQUIRED)
 
   # Enabling HIP language support
-  enable_language(HIP)
+  # this line is breaking on rocm6.1 HIP builds
+  #enable_language(HIP)
 
   find_library(PYTORCH_HIP_LIBRARIES amdhip64 HINTS ${ROCM_PATH}/lib)
   # TODO: miopen_LIBRARIES should return fullpath to the library file,
