@@ -33,6 +33,7 @@ from torch.testing._internal.common_utils import (
     dtype_abbrs,
     IS_MACOS,
     IS_X86,
+    is_navi_arch,
     skipCUDAMemoryLeakCheckIf,
     skipIfCrossRef,
     skipIfTorchDynamo,
@@ -200,13 +201,7 @@ if not SM80OrLater:
 if TEST_WITH_ROCM:
     # Tensors are not alike
     inductor_skips["cuda"]["logcumsumexp"] = {f32}
-    IS_NAVI = False
-    if torch.cuda.is_available():
-        prop = torch.cuda.get_device_properties(0)
-        gfx_arch = prop.gcnArchName.split(":")[0]
-        if gfx_arch in ["gfx1100", "gfx1101", "gfx1102"]:
-            IS_NAVI = True
-    if IS_NAVI:
+    if is_navi_arch():
         inductor_skips["cuda"]["aminmax"] = {b8, f16, f32, f64, i32, i64}
         inductor_skips["cuda"]["dist"] = {b8, f16, f32, f64, i32, i64}
         inductor_skips["cuda"]["kron"] = {b8, f16, f32, f64, i32, i64}
