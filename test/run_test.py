@@ -157,10 +157,7 @@ WINDOWS_BLOCKLIST = [
 ] + FSDP_TEST
 
 ROCM_BLOCKLIST = [
-    "distributed/rpc/test_faulty_agent",
-    "distributed/rpc/test_tensorpipe_agent",
     "distributed/rpc/test_share_memory",
-    "distributed/rpc/cuda/test_tensorpipe_agent",
     "distributed/_shard/checkpoint/test_checkpoint"
     "distributed/_shard/checkpoint/test_file_system_checkpoint"
     "distributed/_shard/sharding_spec/test_sharding_spec",
@@ -955,6 +952,11 @@ def handle_log_file(
             if re.search("Running .* items in this shard:", line):
                 print_to_stderr(line.rstrip())
         print_to_stderr("")
+
+        # Temporary dumping the log file into stderr for QA reference
+        print_to_stderr(f"\n START of temporary dumping of {test} execution log file from ({file_path})")
+        print_to_stderr(full_text)
+        print_to_stderr(f"END of temporary dumping of {test} execution log file form ({file_path})\n")
         return
 
     # otherwise: print entire file
@@ -1430,7 +1432,8 @@ def load_test_times_from_file(
 
     with open(path) as f:
         test_times_file = cast(Dict[str, Any], json.load(f))
-    build_environment = os.environ.get("BUILD_ENVIRONMENT")
+    # build_environment hard coded to value from upstream when branch is created
+    build_environment = "linux-focal-rocm6.0-py3.8"
     test_config = os.environ.get("TEST_CONFIG")
     if test_config in test_times_file.get(build_environment, {}):
         print_to_stderr("Found test times from artifacts")
