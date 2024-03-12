@@ -370,7 +370,7 @@ if [[ "${DOCKER_BUILDKIT}" == 0 ]]; then
 fi
 
 # Build image
-DOCKER_BUILDKIT=1 docker build \
+docker build \
        --no-cache \
        ${DOCKER_PROGRESS} \
        --build-arg "BUILD_ENVIRONMENT=${image}" \
