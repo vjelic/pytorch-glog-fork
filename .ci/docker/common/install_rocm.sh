@@ -31,7 +31,8 @@ install_ubuntu() {
     apt-get install -y libc++1
     apt-get install -y libc++abi1
 
-    if [[ $(ver $ROCM_VERSION) -ge $(ver 4.5) ]]; then
+    # Skip the amdgpu repo
+    if [[ $(ver $ROCM_VERSION) -ge $(ver 7.5) ]]; then
         # Add amdgpu repository
         UBUNTU_VERSION_NAME=`cat /etc/os-release | grep UBUNTU_CODENAME | awk -F= '{print $2}'`
         local amdgpu_baseurl
@@ -99,7 +100,8 @@ install_centos() {
   yum install -y epel-release
   yum install -y dkms kernel-headers-`uname -r` kernel-devel-`uname -r`
 
-  if [[ $(ver $ROCM_VERSION) -ge $(ver 4.5) ]]; then
+  # Skip the amdgpu repo
+  if [[ $(ver $ROCM_VERSION) -ge $(ver 7.5) ]]; then
       # Add amdgpu repository
       local amdgpu_baseurl
       if [[ $OS_VERSION == 9 ]]; then
