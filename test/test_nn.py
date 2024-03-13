@@ -4588,6 +4588,7 @@ tensor(..., device='meta', size=(1,), requires_grad=True)""")
                 outs[0].sum().backward()
 
     @unittest.skipIf(not (TEST_CUDNN and (TEST_CUDNN_VERSION if TEST_CUDNN_VERSION else 0) >= 5103), "needs cudnn >= 5.1")
+    @skipIfRocm
     def test_RNN_dropout_state(self):
         for p in (0, 0.1234):
             for train in (True, False):
