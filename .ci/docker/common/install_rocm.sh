@@ -101,7 +101,7 @@ install_centos() {
   yum install -y dkms kernel-headers-`uname -r` kernel-devel-`uname -r`
 
   # Skip the amdgpu repo
-  if [[ $(ver $ROCM_VERSION) -ge $(ver 7.5) ]]; then
+  if [[ $(ver $ROCM_VERSION) -ge $(ver 4.5) ]]; then
       # Add amdgpu repository
       local amdgpu_baseurl
       if [[ $OS_VERSION == 9 ]]; then
