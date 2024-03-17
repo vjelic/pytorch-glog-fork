@@ -149,7 +149,7 @@ void bgemm<at::Half>(CUDABLAS_BGEMM_ARGTYPES(at::Half));
 template <>
 void bgemm<at::BFloat16>(CUDABLAS_BGEMM_ARGTYPES(at::BFloat16));
 
-#if defined(USE_ROCM) && ROCM_VERSION <= 50500
+#if defined(USE_ROCM) && ROCM_VERSION <= 55000 || defined(_MSC_VER)
 // ROCm 5.6 hipblas matches the const Dtype *A API, but prior hipblas does not.
 #define CUDABLAS_TRSM_ARGTYPES(Dtype)                                  \
   hipblasHandle_t handle, hipblasSideMode_t side, hipblasFillMode_t uplo, \
@@ -267,6 +267,9 @@ void getrsBatched(CUDABLAS_GETRS_ARGTYPES(Dtype)) {
   TORCH_INTERNAL_ASSERT(false, "at::cuda::blas::getrsBatched: not implemented for ",
     typeid(Dtype).name());
 }
+
+// HIP doesn't support sparse operations on Windows
+#if !defined(USE_ROCM) && !defined(_MSC_VER)
 template<>
 TORCH_CUDA_CU_API void getrsBatched<float>(CUDABLAS_GETRS_ARGTYPES(float));
 template<>
@@ -275,6 +278,7 @@ template<>
 TORCH_CUDA_CU_API void getrsBatched<c10::complex<float>>(CUDABLAS_GETRS_ARGTYPES(c10::complex<float>));
 template<>
 TORCH_CUDA_CU_API void getrsBatched<c10::complex<double>>(CUDABLAS_GETRS_ARGTYPES(c10::complex<double>));
+#endif
 
 #define CUDABLAS_GEQRF_BATCHED_ARGTYPES(Dtype)                   \
   cublasHandle_t handle, int m, int n, Dtype **A_array, int lda, \
@@ -287,6 +291,8 @@ void geqrfBatched(CUDABLAS_GEQRF_BATCHED_ARGTYPES(Dtype)) {
       "at::cuda::blas::geqrfBatched: not implemented for ",
       typeid(Dtype).name());
 }
+// HIP doesn't support sparse operations on Windows
+#if !defined(USE_ROCM) && !defined(_MSC_VER)
 template <>
 TORCH_CUDA_CU_API void geqrfBatched<float>(CUDABLAS_GEQRF_BATCHED_ARGTYPES(float));
 template <>
@@ -297,6 +303,7 @@ TORCH_CUDA_CU_API void geqrfBatched<c10::complex<double>>(
 template <>
 TORCH_CUDA_CU_API void geqrfBatched<c10::complex<float>>(
     CUDABLAS_GEQRF_BATCHED_ARGTYPES(c10::complex<float>));
+#endif
 
 #define CUDABLAS_GETRF_ARGTYPES(Dtype)  \
   int n, Dtype** dA_array, int ldda, int* ipiv_array, int* info_array, int batchsize
@@ -305,6 +312,9 @@ template<class Dtype>
 void getrfBatched(CUDABLAS_GETRF_ARGTYPES(Dtype)) {
   TORCH_CHECK(false, "at::cuda::blas::getrfBatched: not implemented for ", typeid(Dtype).name());
 }
+
+// HIP doesn't support sparse operations on Windows
+#if !defined(USE_ROCM) && !defined(_MSC_VER)
 template<>
 TORCH_CUDA_CU_API void getrfBatched<float>(CUDABLAS_GETRF_ARGTYPES(float));
 template<>
@@ -313,6 +323,7 @@ template<>
 TORCH_CUDA_CU_API void getrfBatched<c10::complex<double>>(CUDABLAS_GETRF_ARGTYPES(c10::complex<double>));
 template<>
 TORCH_CUDA_CU_API void getrfBatched<c10::complex<float>>(CUDABLAS_GETRF_ARGTYPES(c10::complex<float>));
+#endif
 
 #define CUDABLAS_GELS_BATCHED_ARGTYPES(Dtype)  \
   cublasHandle_t handle, cublasOperation_t trans, int m, int n, int nrhs, Dtype** dA_array, int ldda, Dtype** dC_array, int lddc, int* info, int *devInfoArray, int batchSize
@@ -321,7 +332,8 @@ template <class Dtype>
 void gelsBatched(CUDABLAS_GELS_BATCHED_ARGTYPES(Dtype)) {
   TORCH_INTERNAL_ASSERT(false, "at::cuda::blas::gelsBatched: not implemented for ", typeid(Dtype).name());
 }
-
+// HIP doesn't support sparse operations on Windows
+#if !defined(USE_ROCM) && !defined(_MSC_VER)
 template<>
 TORCH_CUDA_CU_API void gelsBatched<double>(CUDABLAS_GELS_BATCHED_ARGTYPES(double));
 template<>
@@ -330,5 +342,6 @@ template<>
 TORCH_CUDA_CU_API void gelsBatched<c10::complex<double>>(CUDABLAS_GELS_BATCHED_ARGTYPES(c10::complex<double>));
 template<>
 TORCH_CUDA_CU_API void gelsBatched<c10::complex<float>>(CUDABLAS_GELS_BATCHED_ARGTYPES(c10::complex<float>));
+#endif
 
 } // namespace at::cuda::blas
