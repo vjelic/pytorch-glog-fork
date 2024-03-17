@@ -1810,9 +1810,11 @@ if(BUILD_TEST)
       get_filename_component(test_name ${test_src} NAME_WE)
       add_executable(${test_name} "${test_src}")
       target_link_libraries(${test_name} torch_library gtest_main)
-      if (WIN32)
-        target_link_libraries(${test_name} libcmt.lib) # entry-point for clang-cl
-      endif(WIN32)
+      # clang-cl compiler assumes linkage but doesn't directly link to the
+      # MSVC's CRT and hence needs to be linked directly.
+      if(WIN32)
+        target_link_libraries(${test_name} msvcrtd.lib)
+      endif()
       target_include_directories(${test_name} PRIVATE $<INSTALL_INTERFACE:include>)
       target_include_directories(${test_name} PRIVATE ${Caffe2_CPU_INCLUDE} ${Caffe2_HIP_INCLUDE})
       target_compile_options(${test_name} PRIVATE ${HIP_CXX_FLAGS})
