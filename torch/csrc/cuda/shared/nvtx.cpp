@@ -1,12 +1,16 @@
 #ifdef _WIN32
 #include <wchar.h> // _wgetenv for nvtx
 #endif
+// Roctx on Windows is currently unsupported.
+#if !defined(USE_ROCM) || !defined(_WIN32)
 #include <nvToolsExt.h>
+#endif
 #include <torch/csrc/utils/pybind.h>
 
 namespace torch::cuda::shared {
 
 void initNvtxBindings(PyObject* module) {
+  #if !defined(USE_ROCM) || !defined(_WIN32)
   auto m = py::handle(module).cast<py::module>();
 
   auto nvtx = m.def_submodule("_nvtx", "libNvToolsExt.so bindings");
@@ -15,6 +19,7 @@ void initNvtxBindings(PyObject* module) {
   nvtx.def("rangeStartA", nvtxRangeStartA);
   nvtx.def("rangeEnd", nvtxRangeEnd);
   nvtx.def("markA", nvtxMarkA);
+  #endif
 }
 
 } // namespace torch::cuda::shared
