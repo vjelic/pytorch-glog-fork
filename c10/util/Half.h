@@ -222,8 +222,13 @@ C10_HOST_DEVICE inline float fp16_ieee_to_fp32_value(uint16_t h) {
   constexpr uint32_t exp_offset = UINT32_C(0xE0) << 23;
   // const float exp_scale = 0x1.0p-112f;
   constexpr uint32_t scale_bits = (uint32_t)15 << 23;
-  float exp_scale_val = 0;
+  float exp_scale_val;
+#if defined(_MSC_VER) && defined(__clang__)
+  __builtin_memcpy(&exp_scale_val, &scale_bits, sizeof(exp_scale_val));
+#else
   std::memcpy(&exp_scale_val, &scale_bits, sizeof(exp_scale_val));
+#endif
+
   const float exp_scale = exp_scale_val;
   const float normalized_value =
       fp32_from_bits((two_w >> 4) + exp_offset) * exp_scale;
