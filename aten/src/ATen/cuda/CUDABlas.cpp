@@ -1105,8 +1105,8 @@ void int8_gemm(
 #endif // (!defined(USE_ROCM) && !defined(_MSC_VER)) || (defined(USE_ROCM) && !defined(_WIN32) && ROCM_VERSION >= 50700)
 
 // ROCm 5.6 hipblas matches the const Dtype *A API, but prior hipblas does not.
-#if defined(USE_ROCM) && ROCM_VERSION < 50600
-#define ROCM_CONST_BUG_CAST(Type, Input) const_cast<Type>(reinterpret_cast<const Type>(Input))
+#if defined(USE_ROCM) && ROCM_VERSION <= 50600
+#define ROCM_CONST_BUG_CAST(Type, Input) Input
 #else
 #define ROCM_CONST_BUG_CAST(Type, Input) reinterpret_cast<const Type>(Input)
 #endif
@@ -1415,7 +1415,7 @@ void vdot<c10::complex<double>>(CUDABLAS_DOT_ARGTYPES(c10::complex<double>)) {
                                    incx, reinterpret_cast<const cuDoubleComplex*>(y), incy,
                                    reinterpret_cast<cuDoubleComplex*>(result)));
 }
-
+#if !defined(USE_ROCM) && !defined(_MSC_VER)
 template <>
 void getrsBatched<float>(CUDABLAS_GETRS_ARGTYPES(float)) {
   TORCH_CUDABLAS_CHECK(cublasSgetrsBatched(
@@ -1614,5 +1614,6 @@ void gelsBatched<c10::complex<float>>(CUDABLAS_GELS_BATCHED_ARGTYPES(c10::comple
       devInfoArray,
       batchSize));
 }
+#endif
 
 } // namespace at::cuda::blas
