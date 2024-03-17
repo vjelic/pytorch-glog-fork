@@ -1,6 +1,9 @@
 #include <sstream>
 
+// Roctx isn't supported on Windows.
+#if !defined(USE_ROCM) || !defined(_WIN32)
 #include <nvToolsExt.h>
+#endif
 
 #include <c10/cuda/CUDAGuard.h>
 #include <c10/util/ApproximateClock.h>
@@ -68,15 +71,23 @@ struct CUDAMethods : public ProfilerStubs {
   }
 
   void mark(const char* name) const override {
+    // NOLINTNEXTLINE(cppcoreguidelines-init-variables)
+    #if !defined(USE_ROCM) || !defined(_WIN32)
     ::nvtxMark(name);
+    #endif
   }
 
   void rangePush(const char* name) const override {
+    // NOLINTNEXTLINE(cppcoreguidelines-init-variables)
+    #if !defined(USE_ROCM) || !defined(_WIN32)
     ::nvtxRangePushA(name);
+    #endif
   }
 
   void rangePop() const override {
+    #if !defined(USE_ROCM) || !defined(_WIN32)
     ::nvtxRangePop();
+    #endif
   }
 
   void onEachDevice(std::function<void(int)> op) const override {
