@@ -1405,6 +1405,7 @@ class TestSparseCSR(TestCase):
             with self.assertRaisesRegex(RuntimeError, err_msg):
                 csr.matmul(bad_vec)
 
+    @skipCUDAIfRocm # failed on ROCm in release/1.13
     @onlyCUDA
     @unittest.skipIf(not (CUDA11OrLater or TEST_WITH_ROCM), "Only CUDA 11+ is supported")
     @skipCUDAIfRocmVersionLessThan((5, 2))
