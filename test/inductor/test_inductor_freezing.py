@@ -27,6 +27,7 @@ from torch.testing._internal.common_utils import (
     IS_WINDOWS,
     TEST_WITH_ASAN,
     TEST_WITH_ROCM,
+    skipIfRocm,
 )
 
 
