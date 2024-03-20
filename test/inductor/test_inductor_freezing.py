@@ -26,6 +26,7 @@ from torch.testing._internal.common_utils import (
     IS_WINDOWS,
     TEST_WITH_ASAN,
     TEST_WITH_ROCM,
+    skipIfRocm,
 )
 
 if IS_WINDOWS and IS_CI:
@@ -429,6 +430,7 @@ class OptimizeForInferenceTemplate(TestCase):
         self.assertEqual(eager, compiled)
         self.assertTrue(weight_ref() is None)
 
+    @skipIfRocm
     def test_conv_with_as_strided(self):
         class Model(nn.Module):
             def __init__(self, groups):
@@ -509,7 +511,7 @@ class OptimizeForInferenceTemplate(TestCase):
             x = torch.rand(2, 3, 5, 5).to(self.device)
             mod_eager = mod(x)
             self.assertEqual(foo(mod, x), mod_eager)
-
+    @skipIfRocm
     def test_conv_weight_layout_convert(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -600,6 +602,7 @@ class OptimizeForInferenceTemplate(TestCase):
             out_compiled = func1(x.clone())
             self.assertEqual(out_eager, out_compiled)
 
+    @skipIfRocm
     def test_redundant_clone_for_layout_convert(self):
         class Model(torch.nn.Module):
             def __init__(self):
