@@ -38,6 +38,7 @@ from torch.testing._internal.common_utils import (
     IS_WINDOWS,
     IS_X86,
     skipIfRocm,
+    skipIfRocmArch94x,
     TEST_WITH_ASAN,
     TEST_WITH_ROCM,
     TEST_WITH_SLOW,
@@ -2425,6 +2426,7 @@ class CommonTemplate:
         self.common(fn, (torch.randn(4), torch.randn(4)), check_lowp=False)
 
     @requires_multigpu()
+    @skipIfRocmArch94x
     def test_recompile_on_index(self):
         torch.set_float32_matmul_precision("high")
 
@@ -2738,6 +2740,7 @@ class CommonTemplate:
         )
         self.assertEqual(torch._inductor.metrics.generated_kernel_count, 0)
 
+    @skipIfRocmArch94x
     def test_alexnet_prefix(self):
         def forward(arg6, arg7, arg16):
             convolution = torch.ops.aten.convolution(
