@@ -76,7 +76,8 @@ def get_rocm_version() -> str:
             match = RE_PATCH.search(line)
             if match:
                 patch = int(match.group(1))
-        rocm_version = str(major)+"."+str(minor)+"."+str(patch)
+        include_patch = True if patch!=0 else False
+        rocm_version = str(major)+"."+str(minor)+("."+str(patch) if include_patch else "")
     return rocm_version
 
 def build_triton(
@@ -96,7 +97,8 @@ def build_triton(
     if not release:
         # Nightly binaries include the triton commit hash, i.e. 2.1.0+e6216047b8
         # while release build should only include the version, i.e. 2.1.0
-        version = f"{version}+{commit_hash[:10]}"
+        rocm_version = get_rocm_version()
+        version = f"{version}+rocm{rocm_version}.{commit_hash[:10]}"
 
     with TemporaryDirectory() as tmpdir:
         triton_basedir = Path(tmpdir) / "triton"
