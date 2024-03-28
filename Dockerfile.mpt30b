@@ -1,0 +1,6 @@
+FROM corescientificai/private_300x_benchmarks:mpt_finetune_a1_postlaunch_v2_launch
+ENV MAX_JOBS=128
+WORKDIR /workspace
+RUN git clone -b tunable_op_torch2.0 https://github.com/fsx950223/pytorch.git && cd pytorch && bash install.sh gfx942
+RUN cd /workspace/flash-attention && python setup.py install
+RUN cd /workspace/gradlib && git remote add myorigin https://3c673ca6aba16658a17d06dc6d97fd41e3b23bc4@github.com/fsx950223/gradlib.git && git checkout myorigin/tunable_ops && python setup.py install
