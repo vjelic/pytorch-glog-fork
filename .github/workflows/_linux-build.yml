@@ -64,7 +64,7 @@ on:
 
 jobs:
   build:
-    if: github.repository_owner == 'ROCmSoftwarePlatform'
+    if: github.repository_owner == 'ROCm'
     runs-on: ${{ inputs.runner }}
     timeout-minutes: 240
     outputs:

@@ -49,7 +49,7 @@ permissions:
 jobs:
   test:
     # Don't run on forked repos or empty test matrix
-    if: github.repository_owner == 'ROCmSoftwarePlatform' && toJSON(fromJSON(inputs.test-matrix).include) != '[]'
+    if: github.repository_owner == 'ROCm' && toJSON(fromJSON(inputs.test-matrix).include) != '[]'
     strategy:
       matrix: ${{ fromJSON(inputs.test-matrix) }}
       fail-fast: false
