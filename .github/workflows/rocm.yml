@@ -3,6 +3,7 @@ name: rocm
 on:
   push:
     branches:
+      - enable-gha-for-rocm-test
       - main
       - release/*
     tags:
