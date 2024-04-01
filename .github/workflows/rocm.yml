@@ -34,6 +34,7 @@ jobs:
       build-environment: linux-focal-rocm6.0-py3.8
       docker-image-name: pytorch-linux-focal-rocm-n-py3
       sync-tag: rocm-build
+      runner: "[self-hosted, rocm.gfx90a]"
       test-matrix: |
         { include: [
           { config: "default", shard: 1, num_shards: 6, runner: "[self-hosted, rocm.gfx90a]" },
