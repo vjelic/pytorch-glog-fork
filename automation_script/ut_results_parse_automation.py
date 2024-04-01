@@ -15,6 +15,7 @@ from pathlib import Path
 from parse_xml_results import (
         parse_xml_report
 )
+from pprint import pprint
 
 # unit test status list
 UT_STATUS_LIST = [
@@ -41,6 +42,13 @@ DISTRIBUTED_CORE_TESTS = [
     "distributed/test_c10d_nccl",
     "distributed/test_distributed_spawn"
 ]
+
+# path variables
+test_shell_path = "/var/lib/jenkins/pytorch/.ci/pytorch/test.sh"
+test_run_test_path = "/var/lib/jenkins/pytorch/test/run_test.py"
+repo_test_log_folder_path = "/var/lib/jenkins/pytorch/automation_logs/"
+test_reports_src = '/var/lib/jenkins/pytorch/test/test-reports/'
+
 
 def parse_xml_reports_as_dict(workflow_run_id, workflow_run_attempt, tag, workflow_name, path="."):
     test_cases = {}
@@ -189,8 +197,7 @@ def run_entire_tests(workflow_name, overall_logs_path_current_run, test_reports_
         os.environ['TEST_CONFIG'] = 'inductor'
         copied_logs_path = overall_logs_path_current_run + "inductor_xml_results_entire_tests/"
     # use test.sh for tests execution
-    command = "/var/lib/jenkins/pytorch/.ci/pytorch/test.sh"
-    subprocess.call(command, shell=True)
+    subprocess.call(test_shell_path, shell=True)
     copied_logs_path_destination = shutil.copytree(test_reports_src, copied_logs_path)
     entire_results_dict = summarize_xml_files(copied_logs_path_destination, workflow_name)
     
@@ -210,7 +217,7 @@ def run_priority_tests(workflow_name, overall_logs_path_current_run, test_report
         copied_logs_path = overall_logs_path_current_run + "default_xml_results_priority_tests/"
         # use run_test.py for tests execution
         default_priority_test_suites = " ".join(DEFAULT_CORE_TESTS)
-        command = "python /var/lib/jenkins/pytorch/test/run_test.py --include " + default_priority_test_suites + " --continue-through-error --exclude-jit-executor --exclude-distributed-tests --verbose"
+        command = "python " + test_run_test_path + " --include " + default_priority_test_suites + " --continue-through-error --exclude-jit-executor --exclude-distributed-tests --verbose"
         subprocess.call(command, shell=True)
     elif workflow_name == "distributed":
         os.environ['TEST_CONFIG'] = 'distributed'
@@ -218,7 +225,7 @@ def run_priority_tests(workflow_name, overall_logs_path_current_run, test_report
         copied_logs_path = overall_logs_path_current_run + "distributed_xml_results_priority_tests/"
         # use run_test.py for tests execution
         distributed_priority_test_suites = " ".join(DISTRIBUTED_CORE_TESTS)
-        command = "python /var/lib/jenkins/pytorch/test/run_test.py --include " + distributed_priority_test_suites + " --continue-through-error --distributed-tests --verbose"
+        command = "python " + test_run_test_path + " --include " + distributed_priority_test_suites + " --continue-through-error --distributed-tests --verbose"
         subprocess.call(command, shell=True)
     copied_logs_path_destination = shutil.copytree(test_reports_src, copied_logs_path)
     priority_results_dict = summarize_xml_files(copied_logs_path_destination, workflow_name)
@@ -239,7 +246,7 @@ def run_selected_tests(workflow_name, overall_logs_path_current_run, test_report
         copied_logs_path = overall_logs_path_current_run + "default_xml_results_selected_tests/"
         # use run_test.py for tests execution
         default_selected_test_suites = " ".join(selected_list)
-        command = "python /var/lib/jenkins/pytorch/test/run_test.py --include " + default_selected_test_suites  + " --continue-through-error --exclude-jit-executor --exclude-distributed-tests --verbose"
+        command = "python " + test_run_test_path + " --include " + default_selected_test_suites  + " --continue-through-error --exclude-jit-executor --exclude-distributed-tests --verbose"
         subprocess.call(command, shell=True)
     elif workflow_name == "distributed":
         os.environ['TEST_CONFIG'] = 'distributed'
@@ -247,7 +254,7 @@ def run_selected_tests(workflow_name, overall_logs_path_current_run, test_report
         copied_logs_path = overall_logs_path_current_run + "distributed_xml_results_selected_tests/"
         # use run_test.py for tests execution
         distributed_selected_test_suites = " ".join(selected_list)
-        command = "python /var/lib/jenkins/pytorch/test/run_test.py --include " + distributed_selected_test_suites + " --continue-through-error --distributed-tests --verbose"
+        command = "python " + test_run_test_path + " --include " + distributed_selected_test_suites + " --continue-through-error --distributed-tests --verbose"
         subprocess.call(command, shell=True)
     elif workflow_name == "inductor":
         os.environ['TEST_CONFIG'] = 'inductor'
@@ -264,11 +271,11 @@ def run_selected_tests(workflow_name, overall_logs_path_current_run, test_report
                 non_inductor_selected_test_suites += " "
         if inductor_selected_test_suites != "":
             inductor_selected_test_suites = inductor_selected_test_suites[:-1]
-            command = "python /var/lib/jenkins/pytorch/test/run_test.py --include " + non_inductor_selected_test_suites + " --continue-through-error --verbose"
+            command = "python " + test_run_test_path + " --include " + non_inductor_selected_test_suites + " --continue-through-error --verbose"
             subprocess.call(command, shell=True)
         if non_inductor_selected_test_suites != "":
             non_inductor_selected_test_suites = non_inductor_selected_test_suites[:-1]
-            command = "python /var/lib/jenkins/pytorch/test/run_test.py --inductor --include " + non_inductor_selected_test_suites + " --continue-through-error --verbose"
+            command = "python " + test_run_test_path + " --inductor --include " + non_inductor_selected_test_suites + " --continue-through-error --verbose"
             subprocess.call(command, shell=True)
     copied_logs_path_destination = shutil.copytree(test_reports_src, copied_logs_path)
     selected_results_dict = summarize_xml_files(copied_logs_path_destination, workflow_name)
@@ -283,7 +290,6 @@ def run_test_and_summarize_results(args):
     res_all_tests_dict = {}
 
     # create logs folder
-    repo_test_log_folder_path = "/var/lib/jenkins/pytorch/automation_logs/"
     if not os.path.exists(repo_test_log_folder_path):
         os.mkdir(repo_test_log_folder_path)
 
@@ -292,9 +298,6 @@ def run_test_and_summarize_results(args):
     os.environ['PYTORCH_TEST_WITH_ROCM'] = '1'
     os.environ['HSA_FORCE_FINE_GRAIN_PCIE'] = '1'
     os.environ['PYTORCH_TESTING_DEVICE_ONLY_FOR'] = 'cuda'
-    os.environ['CONTINUE_THROUGH_ERROR'] = 'True'
-
-    test_reports_src = '/var/lib/jenkins/pytorch/test/test-reports/'
 
     # Time stamp
     current_datetime = datetime.now().strftime("%Y%m%d_%H-%M-%S")
@@ -394,6 +397,7 @@ def main():
     args = parse_args()
     all_tests_results = {}
     all_tests_results = run_test_and_summarize_results(args)
+    pprint(dict(all_tests_results))
 
 if __name__ == "__main__":
     main()
