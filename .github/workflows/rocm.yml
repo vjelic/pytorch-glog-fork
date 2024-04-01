@@ -19,6 +19,7 @@ permissions: read-all
 
 jobs:
   target-determination:
+    if: false
     name: before-test
     uses: ./.github/workflows/target_determination.yml
     permissions:
@@ -34,12 +35,12 @@ jobs:
       sync-tag: rocm-build
       test-matrix: |
         { include: [
-          { config: "default", shard: 1, num_shards: 6, runner: "linux.rocm.gpu.2" },
-          { config: "default", shard: 2, num_shards: 6, runner: "linux.rocm.gpu.2" },
-          { config: "default", shard: 3, num_shards: 6, runner: "linux.rocm.gpu.2" },
-          { config: "default", shard: 4, num_shards: 6, runner: "linux.rocm.gpu.2" },
-          { config: "default", shard: 5, num_shards: 6, runner: "linux.rocm.gpu.2" },
-          { config: "default", shard: 6, num_shards: 6, runner: "linux.rocm.gpu.2" },
+          { config: "default", shard: 1, num_shards: 6, runner: "[self-hosted, rocm.gfx90a]" },
+          { config: "default", shard: 2, num_shards: 6, runner: "[self-hosted, rocm.gfx90a]" },
+          { config: "default", shard: 3, num_shards: 6, runner: "[self-hosted, rocm.gfx90a]" },
+          { config: "default", shard: 4, num_shards: 6, runner: "[self-hosted, rocm.gfx90a]" },
+          { config: "default", shard: 5, num_shards: 6, runner: "[self-hosted, rocm.gfx90a]" },
+          { config: "default", shard: 6, num_shards: 6, runner: "[self-hosted, rocm.gfx90a]" },
         ]}
 
   linux-focal-rocm6_0-py3_8-test:

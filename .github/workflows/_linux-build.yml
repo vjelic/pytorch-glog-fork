@@ -64,8 +64,7 @@ on:
 
 jobs:
   build:
-    # Don't run on forked repos
-    if: github.repository_owner == 'pytorch'
+    if: github.repository_owner == 'ROCmSoftwarePlatform'
     runs-on: ${{ inputs.runner }}
     timeout-minutes: 240
     outputs:
@@ -73,6 +72,7 @@ jobs:
       test-matrix: ${{ steps.filter.outputs.test-matrix }}
     steps:
       - name: Setup SSH (Click me for login details)
+        if: false
         uses: pytorch/test-infra/.github/actions/setup-ssh@main
         with:
           github-secret: ${{ secrets.GITHUB_TOKEN }}
@@ -89,11 +89,12 @@ jobs:
 
       - name: Calculate docker image
         id: calculate-docker-image
-        uses: pytorch/test-infra/.github/actions/calculate-docker-image@main
+        uses: ./.github/actions/calculate-rocm-docker-image
         with:
           docker-image-name: ${{ inputs.docker-image-name }}
 
       - name: Use following to pull public copy of the image
+        if: false
         id: print-ghcr-mirror
         env:
           ECR_DOCKER_IMAGE: ${{ steps.calculate-docker-image.outputs.docker-image }}
@@ -103,9 +104,16 @@ jobs:
           echo "docker pull ghcr.io/pytorch/ci-image:${tag/:/-}"
 
       - name: Pull docker image
-        uses: pytorch/test-infra/.github/actions/pull-docker-image@main
-        with:
-          docker-image: ${{ steps.calculate-docker-image.outputs.docker-image }}
+        shell: bash
+        env:
+          DOCKER_IMAGE: ${{ steps.calculate-docker-image.outputs.docker-image }}
+        run: |
+          set -e
+          # ignore output since only exit code is used for conditional
+          # only pull docker image if it's not available locally
+          if ! docker inspect --type=image "${DOCKER_IMAGE}" >/dev/null 2>/dev/null; then
+            docker pull "${DOCKER_IMAGE}"
+          fi
 
       - name: Parse ref
         id: parse-ref
@@ -128,6 +136,7 @@ jobs:
           job-name: ${{ steps.get-job-id.outputs.job-name }}
 
       - name: Download pytest cache
+        if: false
         uses: ./.github/actions/pytest-cache-download
         continue-on-error: true
         with:
@@ -141,12 +150,12 @@ jobs:
           BUILD_ENVIRONMENT: ${{ inputs.build-environment }}
           BRANCH: ${{ steps.parse-ref.outputs.branch }}
           # TODO duplicated
-          AWS_DEFAULT_REGION: us-east-1
+          # AWS_DEFAULT_REGION: us-east-1
           PR_NUMBER: ${{ github.event.pull_request.number }}
           SHA1: ${{ github.event.pull_request.head.sha || github.sha }}
           SCCACHE_BUCKET: ossci-compiler-cache-circleci-v2
-          SCCACHE_S3_KEY_PREFIX: ${{ github.workflow }}
-          XLA_CLANG_CACHE_S3_BUCKET_NAME: ossci-compiler-clang-cache-circleci-xla
+          # SCCACHE_S3_KEY_PREFIX: ${{ github.workflow }}
+          # XLA_CLANG_CACHE_S3_BUCKET_NAME: ossci-compiler-clang-cache-circleci-xla
           PR_LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
           TORCH_CUDA_ARCH_LIST: ${{ inputs.cuda-arch-list }}
           DOCKER_IMAGE: ${{ steps.calculate-docker-image.outputs.docker-image }}
@@ -159,14 +168,14 @@ jobs:
           container_name=$(docker run \
             -e BUILD_ENVIRONMENT \
             -e MAX_JOBS="$(nproc --ignore=2)" \
-            -e AWS_DEFAULT_REGION \
+            `# -e AWS_DEFAULT_REGION` \
             -e PR_NUMBER \
             -e SHA1 \
             -e BRANCH \
             -e SCCACHE_BUCKET \
-            -e SCCACHE_S3_KEY_PREFIX \
+            `# -e SCCACHE_S3_KEY_PREFIX` \
             -e XLA_CUDA \
-            -e XLA_CLANG_CACHE_S3_BUCKET_NAME \
+            `# -e XLA_CLANG_CACHE_S3_BUCKET_NAME` \
             -e SKIP_SCCACHE_INITIALIZATION=1 \
             -e TORCH_CUDA_ARCH_LIST \
             -e PR_LABELS \
@@ -177,7 +186,7 @@ jobs:
             --cap-add=SYS_PTRACE \
             --tty \
             --detach \
-            --user jenkins \
+            --user root \
             -v "${GITHUB_WORKSPACE}:/var/lib/jenkins/workspace" \
             -w /var/lib/jenkins/workspace \
             "${DOCKER_IMAGE}"
@@ -189,8 +198,8 @@ jobs:
         run: |
           zip -1 -r artifacts.zip dist/ build/custom_test_artifacts build/lib build/bin .additional_ci_files
 
-      - name: Store PyTorch Build Artifacts on S3
-        uses: seemethere/upload-artifact-s3@v5
+      - name: Store PyTorch Build Artifacts on GHA
+        uses: actions/upload-artifact@v4
         if: inputs.build-generates-artifacts && steps.build.outcome != 'skipped'
         with:
           name: ${{ inputs.build-environment }}
@@ -199,7 +208,7 @@ jobs:
           path: artifacts.zip
 
       - name: Upload sccache stats
-        if: steps.build.outcome != 'skipped'
+        if: false && steps.build.outcome != 'skipped'
         uses: seemethere/upload-artifact-s3@v5
         with:
           s3-prefix: |
@@ -211,3 +220,5 @@ jobs:
       - name: Teardown Linux
         uses: pytorch/test-infra/.github/actions/teardown-linux@main
         if: always()
+        with:
+          skip-wait-ssh: true
