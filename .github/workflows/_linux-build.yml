@@ -198,7 +198,7 @@ jobs:
       - name: Archive artifacts into zip
         if: inputs.build-generates-artifacts && steps.build.outcome != 'skipped'
         run: |
-          zip -1 -r artifacts.zip dist/ build/custom_test_artifacts build/lib build/bin .additional_ci_files
+          tar -cvzf artifacts.tar.gz dist/ build/custom_test_artifacts build/lib build/bin .additional_ci_files
 
       - name: Store PyTorch Build Artifacts on GHA
         uses: actions/upload-artifact@v4
@@ -207,7 +207,7 @@ jobs:
           name: ${{ inputs.build-environment }}
           retention-days: 14
           if-no-files-found: error
-          path: artifacts.zip
+          path: artifacts.tar.gz
 
       - name: Upload sccache stats
         if: false && steps.build.outcome != 'skipped'

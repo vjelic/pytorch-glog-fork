@@ -27,7 +27,7 @@ runs:
 
     - name: Unzip artifacts
       shell: bash
-      run: unzip -o artifacts.zip
+      run: tar -xvzf artifacts.tar.gz
 
     - name: Output disk space left
       shell: bash
