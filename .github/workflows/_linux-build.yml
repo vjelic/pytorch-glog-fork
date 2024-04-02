@@ -85,6 +85,12 @@ jobs:
         uses: pytorch/pytorch/.github/actions/checkout-pytorch@main
         with:
           no-sudo: true
+      
+      - name: Debug code
+        shell: bash
+        run: |
+          id
+          ls -la
 
       - name: Setup Linux
         uses: ./.github/actions/setup-linux
