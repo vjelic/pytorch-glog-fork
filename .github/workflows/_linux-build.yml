@@ -85,9 +85,9 @@ jobs:
             "ubuntu:latest"
           )
           pwd
-          ls -l ${GITHUB_WORKSPACE}
-          docker exec "${container_name}" sh -c 'ls -l && rm -rfv /var/lib/jenkins/workspace/* && ls -l'
-          ls -l ${GITHUB_WORKSPACE}
+          ls -la ${GITHUB_WORKSPACE}
+          docker exec "${container_name}" sh -c 'ls -la && rm -rfv -- ..?* .[!.]* * && ls -la'
+          ls -la ${GITHUB_WORKSPACE}
 
       - name: Setup SSH (Click me for login details)
         if: false
