@@ -6,10 +6,11 @@ The output will be written to automation_logs folder
 """
 
 import argparse
-import subprocess
+import collections
 import os
 import shutil
-
+import subprocess
+from collections import namedtuple
 from datetime import datetime
 from pathlib import Path
 from parse_xml_results import (
@@ -106,13 +107,6 @@ def get_test_running_time(test_case):
   return ""
 
 def summarize_xml_files(path, workflow_name):
-    # results: list of dict
-    pass_dict = {}
-    skip_dict = {}
-    xfail_dict = {}
-    fail_dict = {}
-    error_dict = {}
-    statistics_dict = {}
     # statistics
     TOTAL_TEST_NUM = 0
     TOTAL_PASSED_NUM = 0
@@ -123,59 +117,71 @@ def summarize_xml_files(path, workflow_name):
 
     #parse the xml files
     test_cases = parse_xml_reports_as_dict(-1, -1, 'testcase', workflow_name, path)
-    test_cases_summary_csv = {}
+    test_file_and_status = namedtuple("test_file_and_status", ["file_name", "status"])
+    # results dict
+    res = {}
+    res_item_list = [ "PASSED", "SKIPPED", "XFAILED", "FAILED", "ERROR" ]
+    test_file_items = set()
     for (k,v) in list(test_cases.items()):
-        item_values = {}
-        item_values["test_file"] = k[0]
-        item_values["test_class"] = k[1]
-        item_values["test_name"] = k[2]
+        file_name = k[0]
+        if not file_name in test_file_items:
+            test_file_items.add(file_name)
+            # initialization
+            for item in res_item_list:
+                temp_item = test_file_and_status(file_name, item)
+                res[temp_item] = {}
+            temp_item_statistics = test_file_and_status(file_name, "STATISTICS")
+            res[temp_item_statistics] = {'TOTAL': 0, 'PASSED': 0, 'SKIPPED': 0, 'XFAILED': 0, 'FAILED': 0, 'ERROR': 0}
+
+    for (k,v) in list(test_cases.items()):
+        file_name = k[0]
+        class_name = k[1]
+        test_name = k[2]
+        combined_name = file_name + "::" + class_name + "::" + test_name
         test_status = get_test_status(v)
-        item_values["status"] = test_status
         test_running_time = get_test_running_time(v)
-        item_values["running_time"] = test_running_time
         test_message = get_test_message(v, test_status)
-        item_values["message"] = test_message
+        test_info_value = ""
+        test_tuple_key_status = test_file_and_status(file_name, test_status)
+        test_tuple_key_statistics = test_file_and_status(file_name, "STATISTICS")
         TOTAL_TEST_NUM += 1
-        item_info_key = k[0] + "::" + k[1] + "::" + k[2]
-        item_info_value = ""
+        res[test_tuple_key_statistics]["TOTAL"] += 1
         if test_status == "PASSED":
-            item_info_value = str(test_running_time)
+            test_info_value = str(test_running_time)
+            res[test_tuple_key_status][combined_name] = test_info_value
+            res[test_tuple_key_statistics]["PASSED"] += 1
             TOTAL_PASSED_NUM += 1
-            pass_dict[item_info_key] = item_info_value
         elif test_status == "SKIPPED":
-            item_info_value = str(test_running_time)
+            test_info_value = str(test_running_time)
+            res[test_tuple_key_status][combined_name] = test_info_value
+            res[test_tuple_key_statistics]["SKIPPED"] += 1
             TOTAL_SKIPPED_NUM += 1
-            skip_dict[item_info_key] = item_info_value
         elif test_status == "XFAILED":
-            item_info_value = str(test_running_time)
+            test_info_value = str(test_running_time)
+            res[test_tuple_key_status][combined_name] = test_info_value
+            res[test_tuple_key_statistics]["XFAILED"] += 1
             TOTAL_XFAIL_NUM += 1
-            xfail_dict[item_info_key] = item_info_value
         elif test_status == "FAILED":
-            item_info_value = test_message
+            test_info_value = test_message
+            res[test_tuple_key_status][combined_name] = test_info_value
+            res[test_tuple_key_statistics]["FAILED"] += 1
             TOTAL_FAILED_NUM += 1
-            fail_dict[item_info_key] = item_info_value
         elif test_status == "ERROR":
-            item_info_value = test_message
+            test_info_value = test_message
+            res[test_tuple_key_status][combined_name] = test_info_value
+            res[test_tuple_key_statistics]["ERROR"] += 1
             TOTAL_ERROR_NUM += 1
-            error_dict[item_info_key] = item_info_value
-        test_cases_summary_csv[k] = item_values
 
     # generate statistics_dict
+    statistics_dict = {}
     statistics_dict["TOTAL"] = TOTAL_TEST_NUM
     statistics_dict["PASSED"] = TOTAL_PASSED_NUM
     statistics_dict["SKIPPED"] = TOTAL_SKIPPED_NUM
     statistics_dict["XFAILED"] = TOTAL_XFAIL_NUM
     statistics_dict["FAILED"] = TOTAL_FAILED_NUM
     statistics_dict["ERROR"] = TOTAL_ERROR_NUM
-
-    # generate results
-    res = {}
-    res["pass"] = pass_dict
-    res["skip"] = skip_dict
-    res["xfail"] = xfail_dict
-    res["fail"] = fail_dict
-    res["error"] = error_dict
-    res["statistics"] = statistics_dict
+    total_item = test_file_and_status("all_test_files", "STATISTICS")
+    res[total_item] = statistics_dict
 
     return res
 
@@ -311,49 +317,49 @@ def run_test_and_summarize_results(args):
         if not args.test_config:
             # default test process
             res_default_all = run_entire_tests("default", overall_logs_path_current_run, test_reports_src)
-            res_all_tests_dict["default_all"] = res_default_all
+            res_all_tests_dict["default"] = res_default_all
             # distributed test process
             res_distributed_all = run_entire_tests("distributed", overall_logs_path_current_run, test_reports_src)
-            res_all_tests_dict["distributed_all"] = res_distributed_all
+            res_all_tests_dict["distributed"] = res_distributed_all
             # inductor test process
             res_inductor_all = run_entire_tests("inductor", overall_logs_path_current_run, test_reports_src)
-            res_all_tests_dict["inductor_all"] = res_inductor_all
+            res_all_tests_dict["inductor"] = res_inductor_all
         else:
             workflow_list = []
             for item in args.test_config:
                 workflow_list.append(item)
             if "default" in workflow_list:
                 res_default_all = run_entire_tests("default", overall_logs_path_current_run, test_reports_src)
-                res_all_tests_dict["default_all"] = res_default_all
+                res_all_tests_dict["default"] = res_default_all
             if "distributed" in workflow_list:
                 res_distributed_all = run_entire_tests("distributed", overall_logs_path_current_run, test_reports_src)
-                res_all_tests_dict["distributed_all"] = res_distributed_all
+                res_all_tests_dict["distributed"] = res_distributed_all
             if "inductor" in workflow_list:
                 res_inductor_all = run_entire_tests("inductor", overall_logs_path_current_run, test_reports_src)
-                res_all_tests_dict["inductor_all"] = res_inductor_all
+                res_all_tests_dict["inductor"] = res_inductor_all
     # Run priority test for each workflow
     elif args.priority_test and not args.default_list and not args.distributed_list and not args.inductor_list:
         if not args.test_config:
             # default test process
             res_default_priority = run_priority_tests("default", overall_logs_path_current_run, test_reports_src)
-            res_all_tests_dict["default_priority"] = res_default_priority
+            res_all_tests_dict["default"] = res_default_priority
             # distributed test process
             res_distributed_priority = run_priority_tests("distributed", overall_logs_path_current_run, test_reports_src)
-            res_all_tests_dict["distributed_priority"] = res_distributed_priority
+            res_all_tests_dict["distributed"] = res_distributed_priority
             # will not run inductor priority tests
-            print("Will not run inductor priority tests since they are not defined!")
+            print("Inductor priority tests cannot run since no core tests defined with inductor workflow.")
         else:
             workflow_list = []
             for item in args.test_config:
                 workflow_list.append(item)
             if "default" in workflow_list:
                 res_default_priority = run_priority_tests("default", overall_logs_path_current_run, test_reports_src)
-                res_all_tests_dict["default_priority"] = res_default_priority
+                res_all_tests_dict["default"] = res_default_priority
             if "distributed" in workflow_list:
                 res_distributed_priority = run_priority_tests("distributed", overall_logs_path_current_run, test_reports_src)
-                res_all_tests_dict["distributed_priority"] = res_distributed_priority
+                res_all_tests_dict["distributed"] = res_distributed_priority
             if "inductor" in workflow_list:
-                print("Will not run inductor priority tests since they are not defined!")
+                print("Inductor priority tests cannot run since no core tests defined with inductor workflow.")
     # Run specified tests for each workflow
     elif (args.default_list or args.distributed_list or args.inductor_list) and not args.test_config and not args.priority_test:
         if args.default_list:
@@ -361,19 +367,19 @@ def run_test_and_summarize_results(args):
             for item in args.default_list:
                 default_workflow_list.append(item)
             res_default_selected = run_selected_tests("default", overall_logs_path_current_run, test_reports_src, default_workflow_list)
-            res_all_tests_dict["default_selected"] = res_default_selected
+            res_all_tests_dict["default"] = res_default_selected
         if args.distributed_list:
             distributed_workflow_list = []
             for item in args.distributed_list:
                 distributed_workflow_list.append(item)
             res_distributed_selected = run_selected_tests("distributed", overall_logs_path_current_run, test_reports_src, distributed_workflow_list)
-            res_all_tests_dict["distributed_selected"] = res_distributed_selected
+            res_all_tests_dict["distributed"] = res_distributed_selected
         if args.inductor_list:
             inductor_workflow_list = []
             for item in args.inductor_list:
                  inductor_workflow_list.append(item)
             res_inductor_selected = run_selected_tests("inductor", overall_logs_path_current_run, test_reports_src, inductor_workflow_list)
-            res_all_tests_dict["inductor_selected"] = res_inductor_selected
+            res_all_tests_dict["inductor"] = res_inductor_selected
     else:
         raise Exception("Invalid test configurations!")
 
