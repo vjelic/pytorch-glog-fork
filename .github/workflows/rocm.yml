@@ -36,7 +36,7 @@ jobs:
             -w /var/lib/jenkins/workspace \
             "ubuntu:latest"
           )
-          docker exec -t "${container_name}" sh -c 'rm -rf .'
+          docker exec -t "${container_name}" sh -c 'rm -rf /var/lib/jenkins/workspace/*'
 
   target-determination:
     if: false
