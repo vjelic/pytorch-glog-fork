@@ -36,7 +36,9 @@ jobs:
             -w /var/lib/jenkins/workspace \
             "ubuntu:latest"
           )
-          docker exec -t "${container_name}" sh -c 'rm -rf /var/lib/jenkins/workspace/*'
+          ls -l ${GITHUB_WORKSPACE}
+          docker exec "${container_name}" sh -c 'ls -l && rm -rfv /var/lib/jenkins/workspace/* && ls -l'
+          ls -l ${GITHUB_WORKSPACE}
 
   target-determination:
     if: false
