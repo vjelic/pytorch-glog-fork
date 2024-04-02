@@ -19,27 +19,6 @@ concurrency:
 permissions: read-all
 
 jobs:
-  fix-permissions:
-    name: fix-permissions
-    runs-on: rocm.gfx90a
-    steps:
-      - name: Try to fix workspace permissions using docker container
-        shell: bash
-        run: |
-          container_name=$(docker run \
-            --security-opt seccomp=unconfined \
-            --cap-add=SYS_PTRACE \
-            --tty \
-            --detach \
-            --user root \
-            -v "${GITHUB_WORKSPACE}:/var/lib/jenkins/workspace" \
-            -w /var/lib/jenkins/workspace \
-            "ubuntu:latest"
-          )
-          ls -l ${GITHUB_WORKSPACE}
-          docker exec "${container_name}" sh -c 'ls -l && rm -rfv /var/lib/jenkins/workspace/* && ls -l'
-          ls -l ${GITHUB_WORKSPACE}
-
   target-determination:
     if: false
     name: before-test
