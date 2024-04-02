@@ -71,24 +71,6 @@ jobs:
       docker-image: ${{ steps.calculate-docker-image.outputs.docker-image }}
       test-matrix: ${{ steps.filter.outputs.test-matrix }}
     steps:
-      - name: Try to fix workspace permissions using docker container
-        shell: bash
-        run: |
-          container_name=$(docker run \
-            --security-opt seccomp=unconfined \
-            --cap-add=SYS_PTRACE \
-            --tty \
-            --detach \
-            --user root \
-            -v "${GITHUB_WORKSPACE}:/var/lib/jenkins/workspace" \
-            -w /var/lib/jenkins/workspace \
-            "ubuntu:latest"
-          )
-          pwd
-          ls -la ${GITHUB_WORKSPACE}
-          docker exec "${container_name}" sh -c 'ls -la && rm -rfv -- ..?* .[!.]* * && ls -la'
-          ls -la ${GITHUB_WORKSPACE}
-
       - name: Setup SSH (Click me for login details)
         if: false
         uses: pytorch/test-infra/.github/actions/setup-ssh@main
