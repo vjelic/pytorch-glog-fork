@@ -6,7 +6,6 @@ The output will be written to automation_logs folder
 """
 
 import argparse
-import collections
 import os
 import shutil
 import subprocess
@@ -180,14 +179,12 @@ def summarize_xml_files(path, workflow_name):
     statistics_dict["XFAILED"] = TOTAL_XFAIL_NUM
     statistics_dict["FAILED"] = TOTAL_FAILED_NUM
     statistics_dict["ERROR"] = TOTAL_ERROR_NUM
-    total_item = test_file_and_status("all_test_files", "STATISTICS")
+    total_item = test_file_and_status("config_aggregate", "STATISTICS")
     res[total_item] = statistics_dict
 
     return res
 
 def run_entire_tests(workflow_name, overall_logs_path_current_run, test_reports_src):
-    # test_reports_src = '/var/lib/jenkins/pytorch/test/test-reports/'
-    # overall_logs_path_current_run = "/var/lib/jenkins/pytorch/automation_logs/" + str_current_datetime + "/"
     if os.path.exists(test_reports_src):
         shutil.rmtree(test_reports_src)
 
@@ -210,8 +207,6 @@ def run_entire_tests(workflow_name, overall_logs_path_current_run, test_reports_
     return entire_results_dict
 
 def run_priority_tests(workflow_name, overall_logs_path_current_run, test_reports_src):
-    # test_reports_src = '/var/lib/jenkins/pytorch/test/test-reports/'
-    # overall_logs_path_current_run = "/var/lib/jenkins/pytorch/automation_logs/" + str_current_datetime + "/"
     if os.path.exists(test_reports_src):
         shutil.rmtree(test_reports_src)
 
@@ -239,8 +234,6 @@ def run_priority_tests(workflow_name, overall_logs_path_current_run, test_report
     return priority_results_dict
 
 def run_selected_tests(workflow_name, overall_logs_path_current_run, test_reports_src, selected_list):
-    # test_reports_src = '/var/lib/jenkins/pytorch/test/test-reports/'
-    # overall_logs_path_current_run = "/var/lib/jenkins/pytorch/automation_logs/" + str_current_datetime + "/"
     if os.path.exists(test_reports_src):
         shutil.rmtree(test_reports_src)
 
