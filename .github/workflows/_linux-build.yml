@@ -207,7 +207,7 @@ jobs:
             --tty \
             --detach \
             --user jenkins \
-            -- group-add $(id -gn) \
+            --group-add $(id -gn) \
             -v "${GITHUB_WORKSPACE}:/var/lib/jenkins/workspace" \
             -w /var/lib/jenkins/workspace \
             "${DOCKER_IMAGE}"
