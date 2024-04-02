@@ -194,7 +194,7 @@ jobs:
             --cap-add=SYS_PTRACE \
             --tty \
             --detach \
-            --user jenkins \
+            --user jenkins:$(id -g) \
             -v "${GITHUB_WORKSPACE}:/var/lib/jenkins/workspace" \
             -w /var/lib/jenkins/workspace \
             "${DOCKER_IMAGE}"
