@@ -48,7 +48,7 @@ DISTRIBUTED_CORE_TESTS = [
 test_shell_path = "/var/lib/jenkins/pytorch/.ci/pytorch/test.sh"
 test_run_test_path = "/var/lib/jenkins/pytorch/test/run_test.py"
 repo_test_log_folder_path = "/var/lib/jenkins/pytorch/automation_logs/"
-test_reports_src = '/var/lib/jenkins/pytorch/test/test-reports/'
+test_reports_src = "/var/lib/jenkins/pytorch/test/test-reports/"
 
 
 def parse_xml_reports_as_dict(workflow_run_id, workflow_run_attempt, tag, workflow_name, path="."):
