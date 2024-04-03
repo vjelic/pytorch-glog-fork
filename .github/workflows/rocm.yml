@@ -53,7 +53,7 @@ jobs:
     uses: ./.github/workflows/_rocm-test.yml
     needs:
       - linux-focal-rocm6_0-py3_8-build
-      - target-determination
+      # - target-determination
     with:
       build-environment: linux-focal-rocm6.0-py3.8
       docker-image: ${{ needs.linux-focal-rocm6_0-py3_8-build.outputs.docker-image }}
