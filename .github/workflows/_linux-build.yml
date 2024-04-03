@@ -199,6 +199,10 @@ jobs:
             -w /var/lib/jenkins/workspace \
             "${DOCKER_IMAGE}"
           )
+          #FIXME: remove debug code
+          set -x
+          docker exec "${container_name}" sh -c 'id && ls -la'
+
           docker exec -t "${container_name}" sh -c '.ci/pytorch/build.sh'
 
       - name: Archive artifacts into zip
