@@ -77,12 +77,37 @@ jobs:
         with:
           github-secret: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Try to fix workspace permissions using docker container
+        shell: bash
+        run: |
+          container_name=$(docker run \
+            --security-opt seccomp=unconfined \
+            --cap-add=SYS_PTRACE \
+            --tty \
+            --detach \
+            --user root \
+            -v "${GITHUB_WORKSPACE}:/var/lib/jenkins/workspace" \
+            -w /var/lib/jenkins/workspace \
+            "ubuntu:latest"
+          )
+          set -x
+          pwd
+          ls -la ${GITHUB_WORKSPACE}
+          docker exec "${container_name}" sh -c 'ls -la && rm -rfv -- ..?* .[!.]* * && ls -la'
+          ls -la ${GITHUB_WORKSPACE}
+
       - name: Debug code before checkout
         shell: bash
         run: |
+          set -x
           id
           ls -la
           ls -la build
+          umask
+          getfacl .
+          setfacl -PRdm g:$(id -g):rwX .
+          getfacl .
+          chmod g+s .
 
       # [pytorch repo ref]
       # Use a pytorch/pytorch reference instead of a reference to the local
