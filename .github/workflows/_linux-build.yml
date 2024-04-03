@@ -103,10 +103,8 @@ jobs:
           id
           ls -la
           umask
-          getfacl .
-          setfacl -PRdm g:$(id -g):rwX .
-          getfacl .
-          chmod g+s .
+          umask 0002
+          umask
 
       # [pytorch repo ref]
       # Use a pytorch/pytorch reference instead of a reference to the local
@@ -232,8 +230,7 @@ jobs:
           )
           #FIXME: remove debug code
           set -x
-          docker exec "${container_name}" sh -c 'id && ls -la'
-          chmod -R g+w .
+          docker exec "${container_name}" sh -c 'id && ls -la && umask && umask 0002'
           
           docker exec -t "${container_name}" sh -c '.ci/pytorch/build.sh'
 
