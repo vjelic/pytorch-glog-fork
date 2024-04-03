@@ -97,7 +97,6 @@ jobs:
           ls -la ${GITHUB_WORKSPACE}
 
       - name: Debug code before checkout
-        shell: bash
         run: |
           set -x
           id
@@ -118,7 +117,9 @@ jobs:
       - name: Debug code
         shell: bash
         run: |
+          set -x
           id
+          umask
           ls -la
 
       - name: Setup Linux
