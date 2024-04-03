@@ -77,6 +77,13 @@ jobs:
         with:
           github-secret: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Debug code before checkout
+        shell: bash
+        run: |
+          id
+          ls -la
+          ls -la build
+
       # [pytorch repo ref]
       # Use a pytorch/pytorch reference instead of a reference to the local
       # checkout because when we run this action we don't *have* a local
