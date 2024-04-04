@@ -77,34 +77,6 @@ jobs:
         with:
           github-secret: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Try to fix workspace permissions using docker container
-        shell: bash
-        run: |
-          container_name=$(docker run \
-            --security-opt seccomp=unconfined \
-            --cap-add=SYS_PTRACE \
-            --tty \
-            --detach \
-            --user root \
-            -v "${GITHUB_WORKSPACE}:/var/lib/jenkins/workspace" \
-            -w /var/lib/jenkins/workspace \
-            "ubuntu:latest"
-          )
-          set -x
-          pwd
-          ls -la ${GITHUB_WORKSPACE}
-          docker exec "${container_name}" sh -c 'ls -la && rm -rfv -- ..?* .[!.]* * && ls -la'
-          ls -la ${GITHUB_WORKSPACE}
-
-      - name: Debug code before checkout
-        run: |
-          set -x
-          id
-          ls -la
-          umask
-          umask 0002
-          umask
-
       # [pytorch repo ref]
       # Use a pytorch/pytorch reference instead of a reference to the local
       # checkout because when we run this action we don't *have* a local
@@ -113,14 +85,6 @@ jobs:
         uses: pytorch/pytorch/.github/actions/checkout-pytorch@main
         with:
           no-sudo: true
-      
-      - name: Debug code
-        shell: bash
-        run: |
-          set -x
-          id
-          umask
-          ls -la
 
       - name: Setup Linux
         uses: ./.github/actions/setup-linux
@@ -231,7 +195,7 @@ jobs:
           )
           #FIXME: remove debug code
           set -x
-          docker exec "${container_name}" sh -c 'id && ls -la && umask && umask 0002'
+          docker exec "${container_name}" sh -c 'id && ls -la'
           
           docker exec -t "${container_name}" sh -c '.ci/pytorch/build.sh'
 
