@@ -77,6 +77,12 @@ jobs:
         with:
           github-secret: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Debug code
+        shell: bash
+        run: |
+          ls -la
+          ls -laR build
+
       # [pytorch repo ref]
       # Use a pytorch/pytorch reference instead of a reference to the local
       # checkout because when we run this action we don't *have* a local
@@ -201,6 +207,9 @@ jobs:
           docker exec "${container_name}" sh -c 'id && ls -la'
           
           docker exec -t "${container_name}" sh -c 'umask 0002 && .ci/pytorch/build.sh'
+          docker exec -t "${container_name}" sh -c 'umask; ls -la; ls -Rla build'
+
+          ls -Rla build
 
       - name: Archive artifacts into zip
         if: inputs.build-generates-artifacts && steps.build.outcome != 'skipped'
