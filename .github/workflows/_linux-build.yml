@@ -166,6 +166,9 @@ jobs:
           OUR_GITHUB_JOB_ID: ${{ steps.get-job-id.outputs.job-id }}
           HUGGING_FACE_HUB_TOKEN: ${{ secrets.HUGGING_FACE_HUB_TOKEN }}
         run: |
+          # Grant group write permission, since host and docker users are different
+          chmod -R g+w .
+          
           # detached container should get cleaned up by teardown_ec2_linux
           container_name=$(docker run \
             -e BUILD_ENVIRONMENT \
@@ -197,7 +200,7 @@ jobs:
           set -x
           docker exec "${container_name}" sh -c 'id && ls -la'
           
-          docker exec -t "${container_name}" sh -c '.ci/pytorch/build.sh'
+          docker exec -t "${container_name}" sh -c 'umask 0002 && .ci/pytorch/build.sh'
 
       - name: Archive artifacts into zip
         if: inputs.build-generates-artifacts && steps.build.outcome != 'skipped'

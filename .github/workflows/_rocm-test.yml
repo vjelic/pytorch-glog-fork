@@ -181,6 +181,9 @@ jobs:
         run: |
           set -x
 
+          # Grant group write permission, since host and docker users are different
+          chmod -R g+w .
+
           if [[ $TEST_CONFIG == 'multigpu' ]]; then
             TEST_COMMAND=.ci/pytorch/multigpu-test.sh
           elif [[ $BUILD_ENVIRONMENT == *onnx* ]]; then
