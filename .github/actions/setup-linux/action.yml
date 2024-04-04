@@ -60,8 +60,6 @@ runs:
         env | grep '^CI' >> "/tmp/github_env_${GITHUB_RUN_ID}"
 
     - name: Kill any existing containers, clean up images
-      #FIXME: remove after debug
-      if: false
       shell: bash
       run: |
         # ignore expansion of "docker ps -q" since it could be empty

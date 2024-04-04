@@ -228,7 +228,6 @@ jobs:
 
       - name: Teardown Linux
         uses: pytorch/test-infra/.github/actions/teardown-linux@main
-        #FIXME: remove after debug
-        if: false && always()
+        if: always()
         with:
           skip-wait-ssh: true
