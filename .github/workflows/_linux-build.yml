@@ -77,7 +77,7 @@ jobs:
         with:
           github-secret: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Try to fix workspace permissions using docker container
+      - name: Fix workspace permissions using docker container
         shell: bash
         run: |
           container_name=$(docker run \
@@ -212,13 +212,7 @@ jobs:
             -w /var/lib/jenkins/workspace \
             "${DOCKER_IMAGE}"
           )
-          #FIXME: remove debug code
-          set -x
-          docker exec "${container_name}" sh -c 'id && ls -la'
-          
-          docker exec -t "${container_name}" sh -c 'umask; umask 002; umask; .ci/pytorch/build.sh; umask'
-          docker exec -t "${container_name}" sh -c 'umask; ls -la; ls -Rla build'
-
+          docker exec -t "${container_name}" sh -c '.ci/pytorch/build.sh; chmod -R g+w .'
           ls -Rla build
 
       - name: Archive artifacts into zip
