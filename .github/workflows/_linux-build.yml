@@ -212,7 +212,7 @@ jobs:
             -w /var/lib/jenkins/workspace \
             "${DOCKER_IMAGE}"
           )
-          docker exec -t "${container_name}" sh -c '.ci/pytorch/build.sh; chmod -R g+w .'
+          docker exec -t "${container_name}" sh -c '.ci/pytorch/build.sh; sudo chmod -R g+w .'
           ls -Rla build
 
       - name: Archive artifacts into zip
