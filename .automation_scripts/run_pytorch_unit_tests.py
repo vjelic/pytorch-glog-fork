@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-"""This script parses PyTorch unit tests results based on configurations provided.
-The output will be written to automation_logs folder
+"""This script runs and parses PyTorch unit tests results based on configurations provided.
+The output will be written into .automation_logs folder
 
 """
 
@@ -9,6 +9,7 @@ import argparse
 import os
 import shutil
 import subprocess
+
 from collections import namedtuple
 from datetime import datetime
 from pathlib import Path
@@ -42,13 +43,6 @@ DISTRIBUTED_CORE_TESTS = [
     "distributed/test_c10d_nccl",
     "distributed/test_distributed_spawn"
 ]
-
-# path variables
-test_shell_path = "/var/lib/jenkins/pytorch/.ci/pytorch/test.sh"
-test_run_test_path = "/var/lib/jenkins/pytorch/test/run_test.py"
-repo_test_log_folder_path = "/var/lib/jenkins/pytorch/automation_logs/"
-test_reports_src = "/var/lib/jenkins/pytorch/test/test-reports/"
-
 
 def parse_xml_reports_as_dict(workflow_run_id, workflow_run_attempt, tag, workflow_name, path="."):
     test_cases = {}
@@ -184,7 +178,7 @@ def summarize_xml_files(path, workflow_name):
 
     return res
 
-def run_entire_tests(workflow_name, overall_logs_path_current_run, test_reports_src):
+def run_entire_tests(workflow_name, test_shell_path, overall_logs_path_current_run, test_reports_src):
     if os.path.exists(test_reports_src):
         shutil.rmtree(test_reports_src)
 
@@ -203,10 +197,9 @@ def run_entire_tests(workflow_name, overall_logs_path_current_run, test_reports_
     subprocess.call(test_shell_path, shell=True)
     copied_logs_path_destination = shutil.copytree(test_reports_src, copied_logs_path)
     entire_results_dict = summarize_xml_files(copied_logs_path_destination, workflow_name)
-    
     return entire_results_dict
 
-def run_priority_tests(workflow_name, overall_logs_path_current_run, test_reports_src):
+def run_priority_tests(workflow_name, test_run_test_path, overall_logs_path_current_run, test_reports_src):
     if os.path.exists(test_reports_src):
         shutil.rmtree(test_reports_src)
 
@@ -218,22 +211,24 @@ def run_priority_tests(workflow_name, overall_logs_path_current_run, test_report
         copied_logs_path = overall_logs_path_current_run + "default_xml_results_priority_tests/"
         # use run_test.py for tests execution
         default_priority_test_suites = " ".join(DEFAULT_CORE_TESTS)
-        command = "python " + test_run_test_path + " --include " + default_priority_test_suites + " --continue-through-error --exclude-jit-executor --exclude-distributed-tests --verbose"
+        command = "python " + test_run_test_path + " --include " + default_priority_test_suites + " --exclude-jit-executor --exclude-distributed-tests --verbose"
         subprocess.call(command, shell=True)
+        del os.environ['HIP_VISIBLE_DEVICES']
     elif workflow_name == "distributed":
         os.environ['TEST_CONFIG'] = 'distributed'
         os.environ['HIP_VISIBLE_DEVICES'] = '0,1'
         copied_logs_path = overall_logs_path_current_run + "distributed_xml_results_priority_tests/"
         # use run_test.py for tests execution
         distributed_priority_test_suites = " ".join(DISTRIBUTED_CORE_TESTS)
-        command = "python " + test_run_test_path + " --include " + distributed_priority_test_suites + " --continue-through-error --distributed-tests --verbose"
+        command = "python " + test_run_test_path + " --include " + distributed_priority_test_suites + " --distributed-tests --verbose"
         subprocess.call(command, shell=True)
+        del os.environ['HIP_VISIBLE_DEVICES']
     copied_logs_path_destination = shutil.copytree(test_reports_src, copied_logs_path)
     priority_results_dict = summarize_xml_files(copied_logs_path_destination, workflow_name)
 
     return priority_results_dict
 
-def run_selected_tests(workflow_name, overall_logs_path_current_run, test_reports_src, selected_list):
+def run_selected_tests(workflow_name, test_run_test_path, overall_logs_path_current_run, test_reports_src, selected_list):
     if os.path.exists(test_reports_src):
         shutil.rmtree(test_reports_src)
 
@@ -245,19 +240,20 @@ def run_selected_tests(workflow_name, overall_logs_path_current_run, test_report
         copied_logs_path = overall_logs_path_current_run + "default_xml_results_selected_tests/"
         # use run_test.py for tests execution
         default_selected_test_suites = " ".join(selected_list)
-        command = "python " + test_run_test_path + " --include " + default_selected_test_suites  + " --continue-through-error --exclude-jit-executor --exclude-distributed-tests --verbose"
+        command = "python " + test_run_test_path + " --include " + default_selected_test_suites  + " --exclude-jit-executor --exclude-distributed-tests --verbose"
         subprocess.call(command, shell=True)
+        del os.environ['HIP_VISIBLE_DEVICES']
     elif workflow_name == "distributed":
         os.environ['TEST_CONFIG'] = 'distributed'
         os.environ['HIP_VISIBLE_DEVICES'] = '0,1'
         copied_logs_path = overall_logs_path_current_run + "distributed_xml_results_selected_tests/"
         # use run_test.py for tests execution
         distributed_selected_test_suites = " ".join(selected_list)
-        command = "python " + test_run_test_path + " --include " + distributed_selected_test_suites + " --continue-through-error --distributed-tests --verbose"
+        command = "python " + test_run_test_path + " --include " + distributed_selected_test_suites + " --distributed-tests --verbose"
         subprocess.call(command, shell=True)
+        del os.environ['HIP_VISIBLE_DEVICES']
     elif workflow_name == "inductor":
         os.environ['TEST_CONFIG'] = 'inductor'
-        os.environ['HIP_VISIBLE_DEVICES'] = '0'
         copied_logs_path = overall_logs_path_current_run + "inductor_xml_results_selected_tests/"
         inductor_selected_test_suites = ""
         non_inductor_selected_test_suites = ""
@@ -270,11 +266,11 @@ def run_selected_tests(workflow_name, overall_logs_path_current_run, test_report
                 non_inductor_selected_test_suites += " "
         if inductor_selected_test_suites != "":
             inductor_selected_test_suites = inductor_selected_test_suites[:-1]
-            command = "python " + test_run_test_path + " --include " + non_inductor_selected_test_suites + " --continue-through-error --verbose"
+            command = "python " + test_run_test_path + " --include " + inductor_selected_test_suites + " --verbose"
             subprocess.call(command, shell=True)
         if non_inductor_selected_test_suites != "":
             non_inductor_selected_test_suites = non_inductor_selected_test_suites[:-1]
-            command = "python " + test_run_test_path + " --inductor --include " + non_inductor_selected_test_suites + " --continue-through-error --verbose"
+            command = "python " + test_run_test_path + " --inductor --include " + non_inductor_selected_test_suites + " --verbose"
             subprocess.call(command, shell=True)
     copied_logs_path_destination = shutil.copytree(test_reports_src, copied_logs_path)
     selected_results_dict = summarize_xml_files(copied_logs_path_destination, workflow_name)
@@ -284,6 +280,16 @@ def run_selected_tests(workflow_name, overall_logs_path_current_run, test_report
 def run_test_and_summarize_results(args):
     # copy current environment variables
     _environ = dict(os.environ)
+    
+    # modify path
+    pytorch_root_dir = args.pytorch_root
+    test_shell_path = pytorch_root_dir + "/.ci/pytorch/test.sh"
+    test_run_test_path = pytorch_root_dir + "/test/run_test.py"
+    repo_test_log_folder_path = pytorch_root_dir + "/.automation_logs/"
+    test_reports_src = pytorch_root_dir + "/test/test-reports/"
+
+    # change directory to pytorch root
+    os.chdir(pytorch_root_dir)
 
     # all test results dict
     res_all_tests_dict = {}
@@ -297,6 +303,7 @@ def run_test_and_summarize_results(args):
     os.environ['PYTORCH_TEST_WITH_ROCM'] = '1'
     os.environ['HSA_FORCE_FINE_GRAIN_PCIE'] = '1'
     os.environ['PYTORCH_TESTING_DEVICE_ONLY_FOR'] = 'cuda'
+    os.environ['CONTINUE_THROUGH_ERROR'] = 'True'
 
     # Time stamp
     current_datetime = datetime.now().strftime("%Y%m%d_%H-%M-%S")
@@ -305,39 +312,39 @@ def run_test_and_summarize_results(args):
     str_current_datetime = str(current_datetime)
     overall_logs_path_current_run = repo_test_log_folder_path + str_current_datetime + "/"
     # Run entire tests for each workflow
-    if not args.priority_test and not args.default_list and not args.distributed_list and not args.inductor_list:
+    if not args.priority_tests and not args.default_list and not args.distributed_list and not args.inductor_list:
         # run entire tests for default, distributed and inductor workflows → use test.sh
         if not args.test_config:
             # default test process
-            res_default_all = run_entire_tests("default", overall_logs_path_current_run, test_reports_src)
+            res_default_all = run_entire_tests("default", test_shell_path, overall_logs_path_current_run, test_reports_src)
             res_all_tests_dict["default"] = res_default_all
             # distributed test process
-            res_distributed_all = run_entire_tests("distributed", overall_logs_path_current_run, test_reports_src)
+            res_distributed_all = run_entire_tests("distributed", test_shell_path, overall_logs_path_current_run, test_reports_src)
             res_all_tests_dict["distributed"] = res_distributed_all
             # inductor test process
-            res_inductor_all = run_entire_tests("inductor", overall_logs_path_current_run, test_reports_src)
+            res_inductor_all = run_entire_tests("inductor", test_shell_path, overall_logs_path_current_run, test_reports_src)
             res_all_tests_dict["inductor"] = res_inductor_all
         else:
             workflow_list = []
             for item in args.test_config:
                 workflow_list.append(item)
             if "default" in workflow_list:
-                res_default_all = run_entire_tests("default", overall_logs_path_current_run, test_reports_src)
+                res_default_all = run_entire_tests("default", test_shell_path, overall_logs_path_current_run, test_reports_src)
                 res_all_tests_dict["default"] = res_default_all
             if "distributed" in workflow_list:
-                res_distributed_all = run_entire_tests("distributed", overall_logs_path_current_run, test_reports_src)
+                res_distributed_all = run_entire_tests("distributed", test_shell_path, overall_logs_path_current_run, test_reports_src)
                 res_all_tests_dict["distributed"] = res_distributed_all
             if "inductor" in workflow_list:
-                res_inductor_all = run_entire_tests("inductor", overall_logs_path_current_run, test_reports_src)
+                res_inductor_all = run_entire_tests("inductor", test_shell_path, overall_logs_path_current_run, test_reports_src)
                 res_all_tests_dict["inductor"] = res_inductor_all
     # Run priority test for each workflow
-    elif args.priority_test and not args.default_list and not args.distributed_list and not args.inductor_list:
+    elif args.priority_tests and not args.default_list and not args.distributed_list and not args.inductor_list:
         if not args.test_config:
             # default test process
-            res_default_priority = run_priority_tests("default", overall_logs_path_current_run, test_reports_src)
+            res_default_priority = run_priority_tests("default", test_run_test_path, overall_logs_path_current_run, test_reports_src)
             res_all_tests_dict["default"] = res_default_priority
             # distributed test process
-            res_distributed_priority = run_priority_tests("distributed", overall_logs_path_current_run, test_reports_src)
+            res_distributed_priority = run_priority_tests("distributed", test_run_test_path, overall_logs_path_current_run, test_reports_src)
             res_all_tests_dict["distributed"] = res_distributed_priority
             # will not run inductor priority tests
             print("Inductor priority tests cannot run since no core tests defined with inductor workflow.")
@@ -346,32 +353,32 @@ def run_test_and_summarize_results(args):
             for item in args.test_config:
                 workflow_list.append(item)
             if "default" in workflow_list:
-                res_default_priority = run_priority_tests("default", overall_logs_path_current_run, test_reports_src)
+                res_default_priority = run_priority_tests("default", test_run_test_path, overall_logs_path_current_run, test_reports_src)
                 res_all_tests_dict["default"] = res_default_priority
             if "distributed" in workflow_list:
-                res_distributed_priority = run_priority_tests("distributed", overall_logs_path_current_run, test_reports_src)
+                res_distributed_priority = run_priority_tests("distributed", test_run_test_path, overall_logs_path_current_run, test_reports_src)
                 res_all_tests_dict["distributed"] = res_distributed_priority
             if "inductor" in workflow_list:
                 print("Inductor priority tests cannot run since no core tests defined with inductor workflow.")
     # Run specified tests for each workflow
-    elif (args.default_list or args.distributed_list or args.inductor_list) and not args.test_config and not args.priority_test:
+    elif (args.default_list or args.distributed_list or args.inductor_list) and not args.test_config and not args.priority_tests:
         if args.default_list:
             default_workflow_list = []
             for item in args.default_list:
                 default_workflow_list.append(item)
-            res_default_selected = run_selected_tests("default", overall_logs_path_current_run, test_reports_src, default_workflow_list)
+            res_default_selected = run_selected_tests("default", test_run_test_path, overall_logs_path_current_run, test_reports_src, default_workflow_list)
             res_all_tests_dict["default"] = res_default_selected
         if args.distributed_list:
             distributed_workflow_list = []
             for item in args.distributed_list:
                 distributed_workflow_list.append(item)
-            res_distributed_selected = run_selected_tests("distributed", overall_logs_path_current_run, test_reports_src, distributed_workflow_list)
+            res_distributed_selected = run_selected_tests("distributed", test_run_test_path, overall_logs_path_current_run, test_reports_src, distributed_workflow_list)
             res_all_tests_dict["distributed"] = res_distributed_selected
         if args.inductor_list:
             inductor_workflow_list = []
             for item in args.inductor_list:
                  inductor_workflow_list.append(item)
-            res_inductor_selected = run_selected_tests("inductor", overall_logs_path_current_run, test_reports_src, inductor_workflow_list)
+            res_inductor_selected = run_selected_tests("inductor", test_run_test_path, overall_logs_path_current_run, test_reports_src, inductor_workflow_list)
             res_all_tests_dict["inductor"] = res_inductor_selected
     else:
         raise Exception("Invalid test configurations!")
@@ -385,16 +392,16 @@ def run_test_and_summarize_results(args):
 def parse_args():
     parser = argparse.ArgumentParser(description='Run PyTorch unit tests and generate xml results summary')
     parser.add_argument('--test_config', nargs='+', default=[], type=str, help="test workflows to be executed")
-    parser.add_argument('--priority_test', action='store_true', help="run priority tests only")
+    parser.add_argument('--priority_tests', action='store_true', help="run priority tests only")
     parser.add_argument('--default_list', nargs='+', default=[], help="default tests to be executed")
     parser.add_argument('--distributed_list', nargs='+', default=[], help="distributed tests to be executed")
     parser.add_argument('--inductor_list', nargs='+', default=[], help="inductor tests to be executed")
+    parser.add_argument('--pytorch_root', default='/var/lib/jenkins/pytorch', type=str, help="PyTorch root directory")
     return parser.parse_args()
 
 def main():
     global args
     args = parse_args()
-    all_tests_results = {}
     all_tests_results = run_test_and_summarize_results(args)
     pprint(dict(all_tests_results))
 
