@@ -18,7 +18,7 @@ from torch.testing._internal.common_utils import (
     skipIfRocm,
 )
 
-from torch.testing._internal.inductor_utils import HAS_CUDA
+from torch.testing._internal.inductor_utils import HAS_CUDA, HAS_CPU
 
 torch.set_float32_matmul_precision("high")
 if HAS_CUDA:
