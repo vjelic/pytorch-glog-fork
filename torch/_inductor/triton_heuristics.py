@@ -333,7 +333,7 @@ class CachingAutotuner(KernelInterface):
             )
 
             # Temporary hardcoded warp size for ROCm
-            target = (compile_meta["device_type"], cc) if not torch.version.hip else (compile_meta["device_type"], cc, 64)
+            target = (compile_meta["device_type"], cc) if not torch.version.hip else [compile_meta["device_type"], cc, 64]
             
             options = {
                 "num_warps": compile_meta["num_warps"],
