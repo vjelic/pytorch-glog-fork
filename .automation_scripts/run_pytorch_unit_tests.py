@@ -173,7 +173,8 @@ def summarize_xml_files(path, workflow_name):
     statistics_dict["XFAILED"] = TOTAL_XFAIL_NUM
     statistics_dict["FAILED"] = TOTAL_FAILED_NUM
     statistics_dict["ERROR"] = TOTAL_ERROR_NUM
-    total_item = test_file_and_status("config_aggregate", "STATISTICS")
+    aggregate_item = workflow_name + "_aggregate"
+    total_item = test_file_and_status(aggregate_item, "STATISTICS")
     res[total_item] = statistics_dict
 
     return res
