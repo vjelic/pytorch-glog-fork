@@ -69,6 +69,13 @@ def maybe_set_hip_visible_devies():
             # this is a Process from a parallel Pool, not the MainProcess
             os.environ['HIP_VISIBLE_DEVICES'] = str(p._identity[0] % NUM_PROCS)
 
+def is_gfx94x_arch():
+    if TEST_WITH_ROCM:
+        prop = torch.cuda.get_device_properties(0)
+        if prop.gcnArchName.split(":")[0] in ["gfx940", "gfx941", "gfx942"]:
+            return True
+    return False
+
 
 def strtobool(s):
     if s.lower() in ["", "0", "false", "off"]:
@@ -80,6 +87,7 @@ def discover_tests(
         base_dir: Optional[pathlib.Path] = None,
         blocklisted_patterns: Optional[List[str]] = None,
         blocklisted_tests: Optional[List[str]] = None,
+        blocklisted_tests_inductor: Optional[List[str]] = None,
         extra_tests: Optional[List[str]] = None) -> List[str]:
     """
     Searches for all python files starting with test_ excluding one specified by patterns
@@ -90,6 +98,8 @@ def discover_tests(
             rc |= any(name.startswith(pattern) for pattern in blocklisted_patterns)
         if blocklisted_tests is not None:
             rc |= name in blocklisted_tests
+        if is_gfx94x_arch and os.environ.get('TEST_CONFIG') is not None and os.environ['TEST_CONFIG'] == 'inductor' and blocklisted_tests_inductor is not None:
+            rc |= name in blocklisted_tests_inductor
         return rc
     cwd = pathlib.Path(__file__).resolve().parent if base_dir is None else base_dir
     # This supports symlinks, so we can link domain library tests to PyTorch test directory
@@ -140,6 +150,16 @@ TESTS = discover_tests(
         "distributed/test_c10d_spawn",
         'distributions/test_transforms',
         'distributions/test_utils',
+    ],
+    blocklisted_tests_inductor=[
+        "inductor/test_config",
+        "inductor/test_minifier",
+        "inductor/test_pattern_matcher",
+        "inductor/test_perf",
+        "inductor/test_select_algorithm",
+        "inductor/test_smoke",
+        "inductor/test_torchinductor",
+        "inductor/test_torchinductor_opinfo",
     ],
     extra_tests=[
         "test_cpp_extensions_aot_ninja",
