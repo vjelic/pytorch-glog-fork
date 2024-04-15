@@ -72,7 +72,7 @@ def maybe_set_hip_visible_devies():
 def is_gfx94x_arch():
     if TEST_WITH_ROCM:
         prop = torch.cuda.get_device_properties(0)
-        if prop.gcnArchName.split(":")[0] in ["gfx940", "gfx941", "gfx942"]:
+        if "gfx94" in prop.gcnArchName.split(":")[0]:
             return True
     return False
 
