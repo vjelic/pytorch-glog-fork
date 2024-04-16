@@ -392,11 +392,11 @@ def run_test_and_summarize_results(args):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Run PyTorch unit tests and generate xml results summary')
-    parser.add_argument('--test_config', nargs='+', default=[], type=str, help="test workflows to be executed")
+    parser.add_argument('--test_config', nargs='+', default=[], type=str, help="space-separated list of test workflows to be executed eg. 'default distributed'")
     parser.add_argument('--priority_tests', action='store_true', help="run priority tests only")
-    parser.add_argument('--default_list', nargs='+', default=[], help="default tests to be executed")
-    parser.add_argument('--distributed_list', nargs='+', default=[], help="distributed tests to be executed")
-    parser.add_argument('--inductor_list', nargs='+', default=[], help="inductor tests to be executed")
+    parser.add_argument('--default_list', nargs='+', default=[], help="space-separated list of 'default' config test suites/files to be executed eg. 'test_weak test_dlpack'")
+    parser.add_argument('--distributed_list', nargs='+', default=[], help="space-separated list of 'distributed' config test suites/files to be executed eg. 'distributed/test_c10d_common distributed/test_c10d_nccl'")
+    parser.add_argument('--inductor_list', nargs='+', default=[], help="space-separated list of 'inductor' config test suites/files to be executed eg. 'inductor/test_torchinductor test_ops'")
     parser.add_argument('--pytorch_root', default='/var/lib/jenkins/pytorch', type=str, help="PyTorch root directory")
     return parser.parse_args()
 
