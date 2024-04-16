@@ -35,6 +35,7 @@ from parse_xml_results import (
         parse_xml_report
 )
 from pprint import pprint
+from typing import Any, Dict, List
 
 # unit test status list
 UT_STATUS_LIST = [
@@ -296,12 +297,17 @@ def run_selected_tests(workflow_name, test_run_test_path, overall_logs_path_curr
 
     return selected_results_dict
 
-def run_test_and_summarize_results(args):
+def run_test_and_summarize_results(
+    pytorch_root_dir: str,
+    priority_tests: bool,
+    test_config: List[str],
+    default_list: List[str],
+    distributed_list: List[str],
+    inductor_list: List[str]) -> Dict[str, Any]:
     # copy current environment variables
     _environ = dict(os.environ)
     
     # modify path
-    pytorch_root_dir = args.pytorch_root
     test_shell_path = pytorch_root_dir + "/.ci/pytorch/test.sh"
     test_run_test_path = pytorch_root_dir + "/test/run_test.py"
     repo_test_log_folder_path = pytorch_root_dir + "/.automation_logs/"
@@ -331,9 +337,9 @@ def run_test_and_summarize_results(args):
     str_current_datetime = str(current_datetime)
     overall_logs_path_current_run = repo_test_log_folder_path + str_current_datetime + "/"
     # Run entire tests for each workflow
-    if not args.priority_tests and not args.default_list and not args.distributed_list and not args.inductor_list:
+    if not priority_tests and not default_list and not distributed_list and not inductor_list:
         # run entire tests for default, distributed and inductor workflows → use test.sh
-        if not args.test_config:
+        if not test_config:
             # default test process
             res_default_all = run_entire_tests("default", test_shell_path, overall_logs_path_current_run, test_reports_src)
             res_all_tests_dict["default"] = res_default_all
@@ -345,7 +351,7 @@ def run_test_and_summarize_results(args):
             res_all_tests_dict["inductor"] = res_inductor_all
         else:
             workflow_list = []
-            for item in args.test_config:
+            for item in test_config:
                 workflow_list.append(item)
             if "default" in workflow_list:
                 res_default_all = run_entire_tests("default", test_shell_path, overall_logs_path_current_run, test_reports_src)
@@ -357,8 +363,8 @@ def run_test_and_summarize_results(args):
                 res_inductor_all = run_entire_tests("inductor", test_shell_path, overall_logs_path_current_run, test_reports_src)
                 res_all_tests_dict["inductor"] = res_inductor_all
     # Run priority test for each workflow
-    elif args.priority_tests and not args.default_list and not args.distributed_list and not args.inductor_list:
-        if not args.test_config:
+    elif priority_tests and not default_list and not distributed_list and not inductor_list:
+        if not test_config:
             # default test process
             res_default_priority = run_priority_tests("default", test_run_test_path, overall_logs_path_current_run, test_reports_src)
             res_all_tests_dict["default"] = res_default_priority
@@ -369,7 +375,7 @@ def run_test_and_summarize_results(args):
             print("Inductor priority tests cannot run since no core tests defined with inductor workflow.")
         else:
             workflow_list = []
-            for item in args.test_config:
+            for item in test_config:
                 workflow_list.append(item)
             if "default" in workflow_list:
                 res_default_priority = run_priority_tests("default", test_run_test_path, overall_logs_path_current_run, test_reports_src)
@@ -380,22 +386,22 @@ def run_test_and_summarize_results(args):
             if "inductor" in workflow_list:
                 print("Inductor priority tests cannot run since no core tests defined with inductor workflow.")
     # Run specified tests for each workflow
-    elif (args.default_list or args.distributed_list or args.inductor_list) and not args.test_config and not args.priority_tests:
-        if args.default_list:
+    elif (default_list or distributed_list or inductor_list) and not test_config and not priority_tests:
+        if default_list:
             default_workflow_list = []
-            for item in args.default_list:
+            for item in default_list:
                 default_workflow_list.append(item)
             res_default_selected = run_selected_tests("default", test_run_test_path, overall_logs_path_current_run, test_reports_src, default_workflow_list)
             res_all_tests_dict["default"] = res_default_selected
-        if args.distributed_list:
+        if distributed_list:
             distributed_workflow_list = []
-            for item in args.distributed_list:
+            for item in distributed_list:
                 distributed_workflow_list.append(item)
             res_distributed_selected = run_selected_tests("distributed", test_run_test_path, overall_logs_path_current_run, test_reports_src, distributed_workflow_list)
             res_all_tests_dict["distributed"] = res_distributed_selected
-        if args.inductor_list:
+        if inductor_list:
             inductor_workflow_list = []
-            for item in args.inductor_list:
+            for item in inductor_list:
                  inductor_workflow_list.append(item)
             res_inductor_selected = run_selected_tests("inductor", test_run_test_path, overall_logs_path_current_run, test_reports_src, inductor_workflow_list)
             res_all_tests_dict["inductor"] = res_inductor_selected
@@ -421,7 +427,7 @@ def parse_args():
 def main():
     global args
     args = parse_args()
-    all_tests_results = run_test_and_summarize_results(args)
+    all_tests_results = run_test_and_summarize_results(args.pytorch_root, args.priority_tests, args.test_config, args.default_list, args.distributed_list, args.inductor_list)
     pprint(dict(all_tests_results))
 
 if __name__ == "__main__":
