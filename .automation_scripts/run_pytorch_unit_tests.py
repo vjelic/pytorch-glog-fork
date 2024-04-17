@@ -422,7 +422,7 @@ def parse_args():
     parser.add_argument('--distributed_list', nargs='+', default=[], help="space-separated list of 'distributed' config test suites/files to be executed eg. 'distributed/test_c10d_common distributed/test_c10d_nccl'")
     parser.add_argument('--inductor_list', nargs='+', default=[], help="space-separated list of 'inductor' config test suites/files to be executed eg. 'inductor/test_torchinductor test_ops'")
     parser.add_argument('--pytorch_root', default='/var/lib/jenkins/pytorch', type=str, help="PyTorch root directory")
-    parser.add_argument('--output_example', type=str, help="{'workflow_name': {"
+    parser.add_argument('--example_output', type=str, help="{'workflow_name': {"
                                                             "test_file_and_status(file_name='workflow_aggregate', status='STATISTICS'): {}, "
                                                             "test_file_and_status(file_name='test_file_name_1', status='ERROR'): {}, "
                                                             "test_file_and_status(file_name='test_file_name_1', status='FAILED'): {}, "
