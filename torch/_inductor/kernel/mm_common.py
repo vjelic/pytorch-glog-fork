@@ -137,6 +137,7 @@ mm_kernel_configs = (
         {"config": (128, 64, 32, 4, 8), "cond": True},
         {"config": (128, 128, 32, 2, 8), "cond": True},
         {"config": (128, 128, 32, 3, 4), "cond": True},
+        {"config": (128, 128, 64, 2, 8), "cond": torch.version.hip is not None},
         {"config": (128, 128, 64, 3, 4), "cond": True},
         {"config": (128, 128, 64, 5, 8), "cond": True},
     ]
@@ -184,6 +185,7 @@ int8_mm_kernel_configs = [
     # {"config": (32, 32, 16, 1, 2), "cond": True},
     {"config": (128, 256, 128, 3, 8), "cond": torch.version.hip is None},
     {"config": (256, 128, 128, 3, 8), "cond": torch.version.hip is None},
+    {"config": (128, 128, 64, 2, 8), "cond": torch.version.hip is not None},
 ]
 
 # Mixed precision kernel configs for small sizes of m for mm's like (16, 8192) x (8192, 8192).
