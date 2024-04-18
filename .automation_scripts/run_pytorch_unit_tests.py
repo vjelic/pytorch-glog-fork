@@ -415,22 +415,23 @@ def run_test_and_summarize_results(
     return res_all_tests_dict
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Run PyTorch unit tests and generate xml results summary')
+    parser = argparse.ArgumentParser(description='Run PyTorch unit tests and generate xml results summary', formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('--test_config', nargs='+', default=[], type=str, help="space-separated list of test workflows to be executed eg. 'default distributed'")
     parser.add_argument('--priority_tests', action='store_true', help="run priority tests only")
     parser.add_argument('--default_list', nargs='+', default=[], help="space-separated list of 'default' config test suites/files to be executed eg. 'test_weak test_dlpack'")
     parser.add_argument('--distributed_list', nargs='+', default=[], help="space-separated list of 'distributed' config test suites/files to be executed eg. 'distributed/test_c10d_common distributed/test_c10d_nccl'")
     parser.add_argument('--inductor_list', nargs='+', default=[], help="space-separated list of 'inductor' config test suites/files to be executed eg. 'inductor/test_torchinductor test_ops'")
-    parser.add_argument('--pytorch_root', default='/var/lib/jenkins/pytorch', type=str, help="PyTorch root directory")
-    parser.add_argument('--example_output', type=str, help="{'workflow_name': {"
-                                                            "test_file_and_status(file_name='workflow_aggregate', status='STATISTICS'): {}, "
-                                                            "test_file_and_status(file_name='test_file_name_1', status='ERROR'): {}, "
-                                                            "test_file_and_status(file_name='test_file_name_1', status='FAILED'): {}, "
-                                                            "test_file_and_status(file_name='test_file_name_1', status='PASSED'): {}, "
-                                                            "test_file_and_status(file_name='test_file_name_1', status='SKIPPED'): {}, "
-                                                            "test_file_and_status(file_name='test_file_name_1', status='STATISTICS'): {}}}")
-    parser.add_argument('--example_usages', type=str, help="RUN ALL TESTS: python run_pytorch_unit_tests.py "
-                                                            "RUN PRIORITY TESTS: python run_pytorch_unit_tests.py --test_config distributed --priority_test "
+    parser.add_argument('--pytorch_root', default='.', type=str, help="PyTorch root directory")
+    parser.add_argument('--example_output', type=str, help="{'workflow_name': {\n"
+                                                           "  test_file_and_status(file_name='workflow_aggregate', status='STATISTICS'): {}, \n"
+                                                           "  test_file_and_status(file_name='test_file_name_1', status='ERROR'): {}, \n"
+                                                           "  test_file_and_status(file_name='test_file_name_1', status='FAILED'): {}, \n"
+                                                           "  test_file_and_status(file_name='test_file_name_1', status='PASSED'): {}, \n"
+                                                           "  test_file_and_status(file_name='test_file_name_1', status='SKIPPED'): {}, \n"
+                                                           "  test_file_and_status(file_name='test_file_name_1', status='STATISTICS'): {} \n"
+                                                           "}}\n")
+    parser.add_argument('--example_usages', type=str, help="RUN ALL TESTS: python run_pytorch_unit_tests.py \n"
+                                                            "RUN PRIORITY TESTS: python run_pytorch_unit_tests.py --test_config distributed --priority_test \n"
                                                             "RUN SELECTED TESTS: python run_pytorch_unit_tests.py --default_list test_weak test_dlpack --inductor_list inductor/test_torchinductor")
     return parser.parse_args()
 
