@@ -14,6 +14,7 @@
 #include <ATen/native/cpu/Loops.h>
 #include <ATen/native/batch_norm.h>
 #include <ATen/native/Normalization.h>
+#include <ATen/native/ConvUtils.h>
 #include <ATen/native/Resize.h>
 #include <ATen/native/cpu/mixed_data_type.h>
 #include <c10/util/irange.h>
@@ -522,7 +523,7 @@ BatchNormBackend _select_batch_norm_backend(
       && detail::getCUDAHooks().compiledWithMIOpen()
       && cudnn_enabled
       && ((input.suggest_memory_format() == MemoryFormat::Contiguous )
-        || (input.suggest_memory_format() == MemoryFormat::ChannelsLast && PYTORCH_MIOPEN_SUGGEST_NHWC))
+        || (miopen_conv_use_channels_last(input, weight)))
       && input.suggest_memory_format() != MemoryFormat::ChannelsLast3d
   ) {
     return BatchNormBackend::Miopen;
