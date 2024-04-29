@@ -9,6 +9,7 @@ import itertools
 import warnings
 import pickle
 import re
+import os
 from copy import deepcopy
 from itertools import product
 from functools import partial
@@ -4887,6 +4888,45 @@ tensor(..., device='meta', size=(1,), requires_grad=True)""")
             self.assertEqual(mod.bias.grad, ref_mod.bias.grad)
             self.assertEqual(input.grad, ref_input.grad)
 
+        input = torch.randint(1, 10, (4, 8, 2, 2), dtype=torch.float32, device="cuda")
+        input = input.contiguous(memory_format=torch.channels_last).detach().requires_grad_()
+
+        grad = torch.randint(1, 10, (4, 8, 2, 2), dtype=torch.float32, device="cuda")
+        grad = grad.contiguous(memory_format=torch.channels_last)
+        run_test(input, grad)
+        # see #42588, grad is channels_last contiguous, but grad.suggest_memory_format (rightly) return "contiguous"
+        # not channels_last
+        input = torch.randint(1, 10, (2, 8, 8, 1), dtype=torch.float32, device="cuda")
+        input = input.contiguous(memory_format=torch.channels_last).detach().requires_grad_()
+        grad = torch.randint(1, 10, (2, 8, 8, 1), dtype=torch.float32, device="cuda")
+        grad = grad.permute(0, 2, 1, 3)
+        run_test(input, grad)
+
+    @unittest.skipIf(not TEST_CUDA, "CUDA unavailable")
+    @unittest.skipIf(not TEST_CUDNN, "needs cudnn")
+    def test_batchnorm_miopen_nhwc_compare_cpu(self):
+        def run_test(input, grad_output):
+            c = input.size(1)
+            mod = nn.BatchNorm2d(c).cuda().float()
+            mod.weight.data.uniform_()
+            mod.bias.data.uniform_()
+            ref_input = input.detach().cpu().contiguous().requires_grad_(True)
+            ref_grad = grad.detach().cpu().contiguous()
+            ref_mod = nn.BatchNorm2d(c).cpu().float()
+            ref_mod.load_state_dict(mod.state_dict())
+            out = mod(input)
+            out.backward(grad_output)
+            ref_out = ref_mod(ref_input)
+            ref_out.backward(ref_grad)
+            self.assertTrue(out.is_contiguous(memory_format=torch.channels_last))
+            self.assertTrue(ref_out.is_contiguous())
+            self.assertEqual(out, ref_out)
+            self.assertEqual(mod.weight.grad, ref_mod.weight.grad)
+            self.assertEqual(mod.bias.grad, ref_mod.bias.grad)
+            self.assertEqual(input.grad, ref_input.grad)
+
+        self.assertTrue("PYTORCH_MIOPEN_SUGGEST_NHWC" in os.environ and os.environ["PYTORCH_MIOPEN_SUGGEST_NHWC"] == "1",
+                        "PYTORCH_MIOPEN_SUGGEST_NHWC=1 environment variable is required for this test")
         input = torch.randint(1, 10, (4, 8, 2, 2), dtype=torch.float32, device="cuda")
         input = input.contiguous(memory_format=torch.channels_last).detach().requires_grad_()
 
