@@ -75,7 +75,7 @@ def do_bench(*args, **kwargs):
         try:
             # NB: Lazily load triton, as importing triton is slow
             # see https://github.com/openai/triton/issues/1599
-            from triton.testing import do_bench as triton_do_bench
+            from triton.testing import do_bench_cudagraph as triton_do_bench
         except ImportError as exc:
             raise NotImplementedError("requires Triton") from exc
 
@@ -95,10 +95,16 @@ def do_bench(*args, **kwargs):
 
     triton_do_bench, quantile_field_name = load_triton()
 
-    if quantile_field_name not in kwargs:
-        kwargs[quantile_field_name] = (0.5, 0.2, 0.8)
-    return triton_do_bench(*args, **kwargs)[0]
-
+    #if quantile_field_name not in kwargs:
+    #    kwargs[quantile_field_name] = (0.5, 0.2, 0.8)
+    #return triton_do_bench(*args, **kwargs)[0]
+    benchmarking_stream = torch.cuda.Stream()
+    kwargs.pop('warmup', None)
+    kwargs.pop('percentiles', None)
+    if 'fast_flush' in kwargs:
+        kwargs.pop('fast_flush', None)
+    with torch.cuda.stream(benchmarking_stream):
+        return triton_do_bench(*args, **kwargs)
 
 def cache_dir() -> str:
     cache_dir = os.environ.get("TORCHINDUCTOR_CACHE_DIR")
