@@ -98,7 +98,7 @@ def discover_tests(
             rc |= any(name.startswith(pattern) for pattern in blocklisted_patterns)
         if blocklisted_tests is not None:
             rc |= name in blocklisted_tests
-        if is_gfx94x_arch and os.environ.get('TEST_CONFIG') is not None and os.environ['TEST_CONFIG'] == 'inductor' and blocklisted_tests_inductor is not None:
+        if is_gfx94x_arch and blocklisted_tests_inductor is not None:
             rc |= name in blocklisted_tests_inductor
         return rc
     cwd = pathlib.Path(__file__).resolve().parent if base_dir is None else base_dir
