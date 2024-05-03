@@ -1,4 +1,6 @@
-ubuntu|pytorch|apex|release/1.0.0|06c33eee43f7a22f3ed7d9c3e5be0ddd757dc345|https://github.com/ROCmSoftwarePlatform/apex
-centos|pytorch|apex|release/1.0.0|06c33eee43f7a22f3ed7d9c3e5be0ddd757dc345|https://github.com/ROCmSoftwarePlatform/apex
-ubuntu|pytorch|torchvision|release/0.11.2|cb18e83524eacaa674319a372e8dd853b9bf2f14|https://github.com/ROCmSoftwarePlatform/vision
-centos|pytorch|torchvision|release/0.11.2|cb18e83524eacaa674319a372e8dd853b9bf2f14|https://github.com/ROCmSoftwarePlatform/vision
+ubuntu|pytorch|apex|release/1.0.0|06c33eee43f7a22f3ed7d9c3e5be0ddd757dc345|https://github.com/ROCm/apex
+centos|pytorch|apex|release/1.0.0|06c33eee43f7a22f3ed7d9c3e5be0ddd757dc345|https://github.com/ROCm/apex
+ubuntu|pytorch|torchvision|release/0.11.2|cb18e83524eacaa674319a372e8dd853b9bf2f14|https://github.com/ROCm/vision
+centos|pytorch|torchvision|release/0.11.2|cb18e83524eacaa674319a372e8dd853b9bf2f14|https://github.com/ROCm/vision
+ubuntu|pytorch|torchaudio|release/0.10|d2b8a4194bb573b9d3c858a9e49d8f5420e8d057|https://github.com/ROCm/audio
+centos|pytorch|torchaudio|release/0.10|d2b8a4194bb573b9d3c858a9e49d8f5420e8d057|https://github.com/ROCm/audio
