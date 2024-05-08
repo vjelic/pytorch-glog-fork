@@ -8,12 +8,12 @@
 #include <ATen/TensorIterator.h>
 #include <ATen/TensorMeta.h>
 #include <ATen/TensorOperators.h>
+#include <ATen/TensorUtils.h>
 
 #include <ATen/detail/CUDAHooksInterface.h>
 #include <ATen/native/cpu/Loops.h>
 #include <ATen/native/batch_norm.h>
 #include <ATen/native/Normalization.h>
-#include <ATen/native/ConvUtils.h>
 #include <ATen/native/Resize.h>
 #include <ATen/native/cpu/mixed_data_type.h>
 #include <c10/util/irange.h>
