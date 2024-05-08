@@ -8,7 +8,6 @@
 #include <ATen/TensorIterator.h>
 #include <ATen/TensorMeta.h>
 #include <ATen/TensorOperators.h>
-#include <ATen/TensorUtils.h>
 
 #include <ATen/detail/CUDAHooksInterface.h>
 #include <ATen/native/cpu/Loops.h>
@@ -511,6 +510,10 @@ BatchNormBackend _select_batch_norm_backend(
     return BatchNormBackend::Cudnn;
   }
 
+  // TODO: Remove PYTORCH_MIOPEN_SUGGEST_NHWC once ROCm officially supports NHWC in MIOpen
+  // See #64427
+  static bool PYTORCH_MIOPEN_SUGGEST_NHWC = c10::utils::check_env("PYTORCH_MIOPEN_SUGGEST_NHWC").value_or(false);
+
   if (
       input.is_cuda()
       && input.dim() <= MIOPEN_DIM_MAX
@@ -520,11 +523,11 @@ BatchNormBackend _select_batch_norm_backend(
       && weight.defined() && bias.defined()
       && ((running_mean.defined() && running_var.defined())
         || (!running_mean.defined() && !running_var.defined() && training))
+      && (input.dim() >= 3)
       && detail::getCUDAHooks().compiledWithMIOpen()
       && cudnn_enabled
-      && ((input.suggest_memory_format() == MemoryFormat::Contiguous )
-        || (miopen_conv_use_channels_last(input, weight)))
-      && input.suggest_memory_format() != MemoryFormat::ChannelsLast3d
+      && (input.suggest_memory_format() == MemoryFormat::Contiguous
+        || (input.suggest_memory_format() == MemoryFormat::ChannelsLast && PYTORCH_MIOPEN_SUGGEST_NHWC))
   ) {
     return BatchNormBackend::Miopen;
   }
