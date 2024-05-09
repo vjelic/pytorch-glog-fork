@@ -98,7 +98,7 @@ def discover_tests(
             rc |= any(name.startswith(pattern) for pattern in blocklisted_patterns)
         if blocklisted_tests is not None:
             rc |= name in blocklisted_tests
-        if is_gfx94x_arch and os.environ.get('TEST_CONFIG') is not None and os.environ['TEST_CONFIG'] == 'inductor' and blocklisted_tests_inductor is not None:
+        if is_gfx94x_arch and blocklisted_tests_inductor is not None:
             rc |= name in blocklisted_tests_inductor
         return rc
     cwd = pathlib.Path(__file__).resolve().parent if base_dir is None else base_dir
@@ -160,6 +160,32 @@ TESTS = discover_tests(
         "inductor/test_smoke",
         "inductor/test_torchinductor",
         "inductor/test_torchinductor_opinfo",
+        "distributed/test_dynamo_distributed",
+        "dynamo/test_aot_autograd",
+        "dynamo/test_backends",
+        "dynamo/test_comptime",
+        "dynamo/test_cudagraphs",
+        "dynamo/test_dynamic_shapes",
+        "dynamo/test_export",
+        "dynamo/test_export_mutations",
+        "dynamo/test_functions",
+        "dynamo/test_global",
+        "dynamo/test_global_declaration",
+        "dynamo/test_interop",
+        "dynamo/test_minifier",
+        "dynamo/test_misc",
+        "dynamo/test_model_output",
+        "dynamo/test_modules",
+        "dynamo/test_nops",
+        "dynamo/test_optimizers",
+        "dynamo/test_python_autograd",
+        "dynamo/test_recompile_ux",
+        "dynamo/test_replay_record",
+        "dynamo/test_repros",
+        "dynamo/test_skip_non_tensor",
+        "dynamo/test_subgraphs",
+        "dynamo/test_unspec",
+        "dynamo/test_verify_correctness",
     ],
     extra_tests=[
         "test_cpp_extensions_aot_ninja",
