@@ -4950,8 +4950,6 @@ tensor(..., device='meta', size=(1,), requires_grad=True)""")
             else:
                 os.environ[PYTORCH_MIOPEN_SUGGEST_NHWC] = prev_val
 
-
-
     @unittest.skipIf(not TEST_CUDA, "CUDA unavailable")
     def test_batchnorm_cudnn_half(self):
         # THNN
