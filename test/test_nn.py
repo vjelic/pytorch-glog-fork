@@ -4916,9 +4916,9 @@ tensor(..., device='meta', size=(1,), requires_grad=True)""")
             ref_mod.load_state_dict(mod.state_dict())
             out = mod(input)
             out.backward(grad_output)
-            with torch.backends.cudnn.flags(enabled=False): # force to use native nhwc batchnorm                
+            with torch.backends.cudnn.flags(enabled=False): # force to use native nhwc batchnorm
                 ref_out = ref_mod(ref_input)
-                ref_out.backward(ref_grad)            
+                ref_out.backward(ref_grad)
             self.assertTrue(out.is_contiguous(memory_format=torch.channels_last))
             self.assertTrue(ref_out.is_contiguous(memory_format=torch.channels_last))
             self.assertEqual(out, ref_out)
@@ -4930,7 +4930,6 @@ tensor(..., device='meta', size=(1,), requires_grad=True)""")
         PYTORCH_MIOPEN_SUGGEST_NHWC = "PYTORCH_MIOPEN_SUGGEST_NHWC"
         prev_val = os.getenv(PYTORCH_MIOPEN_SUGGEST_NHWC)
         try:
-            
             os.environ[PYTORCH_MIOPEN_SUGGEST_NHWC] = "1"
             input = torch.randint(1, 10, (4, 8, 2, 2), dtype=torch.float32, device="cuda")
             input = input.contiguous(memory_format=torch.channels_last).detach().requires_grad_()
