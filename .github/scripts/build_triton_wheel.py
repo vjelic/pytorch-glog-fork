@@ -76,8 +76,7 @@ def get_rocm_version() -> str:
             match = RE_PATCH.search(line)
             if match:
                 patch = int(match.group(1))
-        include_patch = True if patch!=0 else False
-        rocm_version = str(major)+"."+str(minor)+("."+str(patch) if include_patch else "")
+        rocm_version = str(major)+"."+str(minor)+"."+str(patch)
     return rocm_version
 
 def build_triton(
