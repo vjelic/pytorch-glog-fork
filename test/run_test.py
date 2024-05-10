@@ -26,6 +26,7 @@ from torch.testing._internal.common_utils import (
     set_cwd,
     parser as common_parser,
     is_slow_gradcheck_env,
+    is_gfx94x_arch,
 )
 import torch.distributed as dist
 from torch.multiprocessing import current_process, get_context
@@ -68,13 +69,6 @@ def maybe_set_hip_visible_devies():
         if p.name != 'MainProcess':
             # this is a Process from a parallel Pool, not the MainProcess
             os.environ['HIP_VISIBLE_DEVICES'] = str(p._identity[0] % NUM_PROCS)
-
-def is_gfx94x_arch():
-    if TEST_WITH_ROCM:
-        prop = torch.cuda.get_device_properties(0)
-        if "gfx94" in prop.gcnArchName.split(":")[0]:
-            return True
-    return False
 
 
 def strtobool(s):

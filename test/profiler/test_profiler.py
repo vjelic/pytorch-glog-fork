@@ -67,6 +67,7 @@ from torch.testing._internal.common_utils import (
     TEST_WITH_CROSSREF,
     TEST_WITH_ROCM,
     TestCase,
+    is_gfx94x_arch,
 )
 
 try:
@@ -78,13 +79,6 @@ except ImportError:
 import pickle
 
 from torch._C._profiler import _ExperimentalConfig, _ExtraFields_PyCall
-
-def is_gfx94x_arch():
-    if TEST_WITH_ROCM:
-        prop = torch.cuda.get_device_properties(0)
-        if "gfx94" in prop.gcnArchName.split(":")[0]:
-            return True
-    return False
 
 @unittest.skipIf(not HAS_PSUTIL, "Requires psutil to run")
 @unittest.skipIf(TEST_WITH_ASAN, "Cannot test with ASAN")
