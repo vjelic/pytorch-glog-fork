@@ -79,6 +79,12 @@ import pickle
 
 from torch._C._profiler import _ExperimentalConfig, _ExtraFields_PyCall
 
+def is_gfx94x_arch():
+    if TEST_WITH_ROCM:
+        prop = torch.cuda.get_device_properties(0)
+        if "gfx94" in prop.gcnArchName.split(":")[0]:
+            return True
+    return False
 
 @unittest.skipIf(not HAS_PSUTIL, "Requires psutil to run")
 @unittest.skipIf(TEST_WITH_ASAN, "Cannot test with ASAN")
@@ -958,6 +964,8 @@ class TestProfiler(TestCase):
 
         if torch.cuda.is_available():
             with TemporaryFileName(mode="w+") as fname:
+                if is_gfx94x_arch:
+                    torch.cuda.set_per_process_memory_fraction(0.8)
                 prof = run_profiler(create_cuda_tensor_oom)
                 check_trace(fname)
 
