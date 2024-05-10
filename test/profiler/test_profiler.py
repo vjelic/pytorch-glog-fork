@@ -57,6 +57,7 @@ from torch.testing._internal.common_utils import (
     TEST_WITH_CROSSREF,
     TEST_WITH_ROCM,
     TestCase,
+    is_gfx94x_arch,
 )
 
 try:
@@ -791,6 +792,8 @@ class TestProfiler(TestCase):
 
         if torch.cuda.is_available():
             with TemporaryFileName(mode="w+") as fname:
+                if is_gfx94x_arch:
+                    torch.cuda.set_per_process_memory_fraction(0.7)
                 prof = run_profiler(create_cuda_tensor_oom)
                 check_trace(fname)
 
