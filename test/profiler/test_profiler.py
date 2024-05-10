@@ -965,7 +965,7 @@ class TestProfiler(TestCase):
         if torch.cuda.is_available():
             with TemporaryFileName(mode="w+") as fname:
                 if is_gfx94x_arch:
-                    torch.cuda.set_per_process_memory_fraction(0.8)
+                    torch.cuda.set_per_process_memory_fraction(0.7)
                 prof = run_profiler(create_cuda_tensor_oom)
                 check_trace(fname)
 
