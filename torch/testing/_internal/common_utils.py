@@ -810,6 +810,13 @@ IS_PPC = platform.machine() == "ppc64le"
 IS_X86 = platform.machine() in ('x86_64', 'i386')
 IS_ARM64 = platform.machine() == 'arm64'
 
+def is_gfx94x_arch():
+    if TEST_WITH_ROCM:
+        prop = torch.cuda.get_device_properties(0)
+        if "gfx94" in prop.gcnArchName.split(":")[0]:
+            return True
+    return False
+
 def is_avx512_vnni_supported():
     if sys.platform != 'linux':
         return False
