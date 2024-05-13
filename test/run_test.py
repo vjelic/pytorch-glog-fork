@@ -69,6 +69,13 @@ def maybe_set_hip_visible_devies():
             # this is a Process from a parallel Pool, not the MainProcess
             os.environ['HIP_VISIBLE_DEVICES'] = str(p._identity[0] % NUM_PROCS)
 
+def is_gfx94x_arch():
+    if TEST_WITH_ROCM:
+        prop = torch.cuda.get_device_properties(0)
+        if "gfx94" in prop.gcnArchName.split(":")[0]:
+            return True
+    return False
+
 
 def strtobool(s):
     if s.lower() in ["", "0", "false", "off"]:
