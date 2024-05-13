@@ -26,7 +26,6 @@ from torch.testing._internal.common_utils import (
     set_cwd,
     parser as common_parser,
     is_slow_gradcheck_env,
-    is_gfx94x_arch,
 )
 import torch.distributed as dist
 from torch.multiprocessing import current_process, get_context
