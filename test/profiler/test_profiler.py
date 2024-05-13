@@ -79,6 +79,7 @@ import pickle
 
 from torch._C._profiler import _ExperimentalConfig, _ExtraFields_PyCall
 
+
 @unittest.skipIf(not HAS_PSUTIL, "Requires psutil to run")
 @unittest.skipIf(TEST_WITH_ASAN, "Cannot test with ASAN")
 @unittest.skipIf(IS_WINDOWS, "Test is flaky on Windows")
