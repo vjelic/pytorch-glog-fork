@@ -72,10 +72,14 @@ def cuda_kernel_driver() -> str:
                 ));
             }
     """
+    prop = torch.cuda.get_device_properties(0)
+    gfx_arch = prop.gcnArchName.split(":")[0]
+
     if torch.version.hip is not None:
         # Replace the warp size from 32 (cuLaunchKernel) to 64 (hipModuleLaunchKernel)
         # The warp size on NV GPU is 32, while the wavefront size on AMD GPU is 64
-        source_codes = source_codes.replace("32*numWarps", "64*numWarps")
+        if gfx_arch not in ["gfx1100", "gfx1101", "gfx1102"]:
+            source_codes = source_codes.replace("32*numWarps", "64*numWarps")
     return source_codes
 
 
