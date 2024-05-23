@@ -20,7 +20,6 @@ from .hipify.hipify_python import GeneratedFileCleaner
 from typing import List, Optional, Union
 
 from setuptools.command.build_ext import build_ext
-from pkg_resources import packaging  # type: ignore[attr-defined]
 
 IS_WINDOWS = sys.platform == 'win32'
 LIB_EXT = '.pyd' if IS_WINDOWS else '.so'
@@ -1978,9 +1977,8 @@ def _write_ninja_file(path,
         # --generate-dependencies-with-compile was added in CUDA 10.2.
         # Compilation will work on earlier CUDA versions but header file
         # dependencies are not correctly computed.
-        required_cuda_version = packaging.version.parse('10.2')
-        has_cuda_version = torch.version.cuda is not None
-        if has_cuda_version and packaging.version.parse(torch.version.cuda) >= required_cuda_version:
+        required_cuda_version = '10.2'
+        if torch.version.cuda is not None and TorchVersion(torch.version.cuda) >= required_cuda_version:
             cuda_compile_rule.append('  depfile = $out.d')
             cuda_compile_rule.append('  deps = gcc')
             # Note: non-system deps with nvcc are only supported
