@@ -22,7 +22,6 @@ from typing import Dict, List, Optional, Union, Tuple
 from torch.torch_version import TorchVersion
 
 from setuptools.command.build_ext import build_ext
-from pkg_resources import packaging  # type: ignore[attr-defined]
 
 IS_WINDOWS = sys.platform == 'win32'
 IS_MACOS = sys.platform.startswith('darwin')
@@ -377,9 +376,11 @@ def _check_cuda_version(compiler_name: str, compiler_version: TorchVersion) -> N
     if cuda_version is None:
         return
 
-    cuda_str_version = cuda_version.group(1)
-    cuda_ver = packaging.version.parse(cuda_str_version)
-    torch_cuda_version = packaging.version.parse(torch.version.cuda)
+    cuda_ver = cuda_str_version = cuda_version.group(1)
+    if torch.version.cuda is None:
+        return
+
+    torch_cuda_version = TorchVersion(torch.version.cuda)
     if cuda_ver != torch_cuda_version:
         # major/minor attributes are only available in setuptools>=49.6.0
         if getattr(cuda_ver, "major", float("nan")) != getattr(torch_cuda_version, "major", float("nan")):
@@ -1104,7 +1105,7 @@ def CUDAExtension(name, sources, *args, **kwargs):
         extra_compile_args_dlink += [f'-L{x}' for x in library_dirs]
         extra_compile_args_dlink += [f'-l{x}' for x in dlink_libraries]
 
-        if (torch.version.cuda is not None) and packaging.version.parse(torch.version.cuda) >= packaging.version.parse('11.2'):
+        if (torch.version.cuda is not None) and TorchVersion(torch.version.cuda) >= '11.2':
             extra_compile_args_dlink += ['-dlto']   # Device Link Time Optimization started from cuda 11.2
 
         extra_compile_args['nvcc_dlink'] = extra_compile_args_dlink
@@ -2143,9 +2144,8 @@ def _write_ninja_file(path,
         # --generate-dependencies-with-compile was added in CUDA 10.2.
         # Compilation will work on earlier CUDA versions but header file
         # dependencies are not correctly computed.
-        required_cuda_version = packaging.version.parse('11.0')
-        has_cuda_version = torch.version.cuda is not None
-        if has_cuda_version and packaging.version.parse(torch.version.cuda) >= required_cuda_version:
+        required_cuda_version = '11.0'
+        if torch.version.cuda is not None and TorchVersion(torch.version.cuda) >= required_cuda_version:
             cuda_compile_rule.append('  depfile = $out.d')
             cuda_compile_rule.append('  deps = gcc')
             # Note: non-system deps with nvcc are only supported
