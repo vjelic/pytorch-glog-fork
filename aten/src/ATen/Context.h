@@ -520,9 +520,6 @@ struct TORCH_API ROCmBackwardPassGuard {
   ROCmBackwardPassGuard();
   ~ROCmBackwardPassGuard();
   static bool is_backward_pass();
-
- private:
-  static thread_local bool is_backward_pass_;
 };
 #endif
 
