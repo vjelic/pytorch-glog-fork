@@ -1,11 +1,8 @@
-from typing import Iterable, Union
-
-from pkg_resources import packaging  # type: ignore[attr-defined]
-
-Version = packaging.version.Version
-InvalidVersion = packaging.version.InvalidVersion
-
+from typing import Any, Iterable
 from .version import __version__ as internal_version
+from ._vendor.packaging.version import Version, InvalidVersion
+
+__all__ = ['TorchVersion']
 
 
 class TorchVersion(str):
@@ -26,7 +23,7 @@ class TorchVersion(str):
             TorchVersion('1.10.0a') > '1.2.1'
     """
     # fully qualified type names here to appease mypy
-    def _convert_to_version(self, inp: Union[packaging.version.Version, str, Iterable]) -> packaging.version.Version:
+    def _convert_to_version(self, inp: Any) -> Any:
         if isinstance(inp, Version):
             return inp
         elif isinstance(inp, str):
