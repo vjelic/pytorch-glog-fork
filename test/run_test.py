@@ -637,6 +637,7 @@ def run_doctests(test_module, test_directory, options):
     pkgpath = pathlib.Path(torch.__file__).parent
 
     #
+    exclude_module_list = ["torch._vendor.*"]
     enabled = {
         # TODO: expose these options to the user
         # Temporary disable all feature-conditional tests
@@ -697,7 +698,7 @@ def run_doctests(test_module, test_directory, options):
     xdoctest_verbose = max(1, options.verbose)
     run_summary = xdoctest.runner.doctest_module(
         os.fspath(pkgpath), config=xdoctest_config, verbose=xdoctest_verbose,
-        command=options.xdoctest_command, argv=[])
+        command=options.xdoctest_command, argv=[], exclude=exclude_module_list)
     result = 1 if run_summary.get('n_failed', 0) else 0
     return result
 
