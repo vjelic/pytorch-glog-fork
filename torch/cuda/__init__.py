@@ -674,7 +674,7 @@ def _raw_device_uuid_amdsmi() -> Optional[List[str]]:
             warnings.warn("Cannot get amd device handler")
             return None
         try:
-            uuid = amdsmi.amdsmi_get_gpu_device_uuid(handler)
+            uuid = amdsmi.amdsmi_get_gpu_asic_info(handler)["asic_serial"][2:]
         except amdsmi.AmdSmiException:
             warnings.warn("Cannot get uuid for amd device")
             return None
@@ -1007,6 +1007,15 @@ def _get_amdsmi_device_index(device: Optional[Union[int, Device]]) -> int:
     visible_devices = _parse_visible_devices()
     if type(visible_devices[0]) is str:
         raise RuntimeError("HIP_VISIBLE_DEVICES should be indices and not strings")
+    
+    # If UUID is provided
+    if any("GPU" in devices for devices in visible_devices):
+        visible_devices = [str(d).replace("GPU-", "", 1) for d in visible_devices]
+        uuids = _raw_device_uuid_amdsmi()
+        if uuids is None:
+            raise RuntimeError("Can't get device UUIDs")
+        visible_devices = _transform_uuid_to_ordinals(visible_devices, uuids)
+
     idx_map = dict(enumerate(cast(List[int], visible_devices)))
     if idx not in idx_map:
         raise RuntimeError(
