@@ -12912,4 +12912,14 @@ instantiate_parametrized_tests(TestNN)
 
 if __name__ == '__main__':
     TestCase._default_dtype_check_enabled = True
-    run_tests()
+    # TODO: Remove PYTORCH_MIOPEN_SUGGEST_NHWC once ROCm officially supports NHWC in MIOpen
+    PYTORCH_MIOPEN_SUGGEST_NHWC = "PYTORCH_MIOPEN_SUGGEST_NHWC"
+    prev_val = os.getenv(PYTORCH_MIOPEN_SUGGEST_NHWC)
+    try:
+        os.environ[PYTORCH_MIOPEN_SUGGEST_NHWC] = "1"
+        run_tests()
+    finally:
+        if prev_val is None:
+            del os.environ[PYTORCH_MIOPEN_SUGGEST_NHWC]
+        else:
+            os.environ[PYTORCH_MIOPEN_SUGGEST_NHWC] = prev_val
