@@ -15,6 +15,8 @@
 // don't build this file as part of CPU build.
 #include <ATen/cuda/CUDAConfig.h>
 
+#include <iostream>
+
 #if !AT_ROCM_ENABLED()
 
 namespace at { namespace native {
@@ -188,11 +190,14 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
 
   checkAllDefined(c, {input, grad_output, weight, save_mean, save_var});
   checkAllSameGPU(c, {input, grad_output, weight, save_mean, save_var});
-  if (input->scalar_type() == ScalarType::Half) {
-    checkScalarType(c, weight, ScalarType::Float);
-  } else {
+  std::cout << "input.dtype==" << input->dtype() << "\n";
+  std::cout << "weight.dtype==" << weight->dtype() << std::endl;
+  // if (input->scalar_type() == ScalarType::Half) {
+  //   // checkScalarType(c, weight, ScalarType::Float);
+  //   checkScalarType(c, weight, ScalarType::Half);
+  // } else {
     checkAllSameType(c, {input, weight});
-  }
+  // }
   checkAllSameType(c, {input, grad_output});
   checkAllSameType(c, {weight, save_mean, save_var});
   checkAllContiguous(c, {save_mean, save_var});

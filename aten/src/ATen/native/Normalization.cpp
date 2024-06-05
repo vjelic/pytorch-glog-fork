@@ -61,6 +61,7 @@
 #include <c10/core/SymIntArrayRef.h>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 static const int MIOPEN_DIM_MAX = 5;
 
@@ -488,8 +489,21 @@ BatchNormBackend _select_batch_norm_backend(
     const Tensor& input, const Tensor& weight, const Tensor& bias, const Tensor& running_mean,
     const Tensor& running_var, bool training, double eps) {
 
+  
   auto& ctx = at::globalContext();
   bool cudnn_enabled = ctx.userEnabledCuDNN();
+  std::cout << "\nBATCHNORM_BACKEND_SELECT: "
+              << "cudnn=" << cudnn_enabled << " "
+              << "i(" 
+                  << " is_cuda=" << input.is_cuda()
+                  << " dtype=" << input.scalar_type() 
+                  << " mf=" << input.suggest_memory_format()
+              << ") "
+              << "w("
+                << "dtype=" << weight.scalar_type() 
+                << " mf=" << weight.suggest_memory_format() 
+              << ") select ";
+            
 
   if (
       input.is_cuda()
@@ -507,6 +521,7 @@ BatchNormBackend _select_batch_norm_backend(
       && cudnn_enabled && detail::getCUDAHooks().versionCuDNN() >= 5110L
       && input.sym_numel() < std::numeric_limits<std::int32_t>::max() // some cuDNN kernels have 32-bit indexing limitations
   ) {
+    std::cout << "CUDNN" << std::endl;
     return BatchNormBackend::Cudnn;
   }
 
@@ -518,9 +533,9 @@ BatchNormBackend _select_batch_norm_backend(
   if (
       input.is_cuda()
       && input.dim() <= MIOPEN_DIM_MAX
-      && input.scalar_type() != at::kDouble
-      && input.scalar_type() != at::kBFloat16
-      && (weight.scalar_type() != at::kHalf)
+      && (input.scalar_type() == at::kDouble || input.scalar_type() == at::kFloat ||input.scalar_type() == at::kHalf)
+      // && input.scalar_type() != at::kBFloat16
+      // && (weight.scalar_type() != at::kHalf)
       && weight.defined() && bias.defined()
       && ((running_mean.defined() && running_var.defined())
         || (!running_mean.defined() && !running_var.defined() && training))
@@ -530,9 +545,10 @@ BatchNormBackend _select_batch_norm_backend(
       && (input.suggest_memory_format() == MemoryFormat::Contiguous
         || (input.suggest_memory_format() == MemoryFormat::ChannelsLast && PYTORCH_MIOPEN_SUGGEST_NHWC))
   ) {
+    std::cout << "MIOPEN" << std::endl;
     return BatchNormBackend::Miopen;
   }
-
+  std::cout << "NATIVE" << std::endl;
   return BatchNormBackend::Native;
 }
 
