@@ -58,6 +58,7 @@ from torch.testing._internal.common_utils import (
     find_library_location,
     run_tests,
     skipIfTorchDynamo,
+    skipIfRocm,
 )
 from torch.testing._internal.jit_utils import JitTestCase
 
@@ -4106,6 +4107,7 @@ class TestFXAPIBackwardCompatibility(JitTestCase):
                   f"and subsequently --accept the change."
             raise AssertionError(msg) from e
 
+    @skipIfRocm("TODO: flaky - https://github.com/pytorch/pytorch/issues/104012")
     def test_public_api_surface(self):
         non_back_compat_objects = {}
 

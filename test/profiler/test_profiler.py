@@ -1163,6 +1163,13 @@ class TestProfiler(TestCase):
             device = torch.device("cuda:0")
             return torch.empty(1024, 1024, 1024, 20, dtype=torch.float32, device=device)
 
+        def calculate_memory_ratio():
+            created_tensor_allocation = 1024 * 1024 * 1024 * 20 * 4
+            device = torch.device("cuda:0")
+            device_total_memory = torch.cuda.mem_get_info(device)[1]
+            ratio = (0.75 * created_tensor_allocation) / device_total_memory
+            return min(ratio, 1)
+
         def check_trace(fname):
             prof.export_chrome_trace(fname)
             with open(fname) as f:
@@ -1186,6 +1193,7 @@ class TestProfiler(TestCase):
 
         if torch.cuda.is_available():
             with TemporaryFileName(mode="w+") as fname:
+                torch.cuda.set_per_process_memory_fraction(calculate_memory_ratio())
                 prof = run_profiler(create_cuda_tensor_oom)
                 check_trace(fname)
 
