@@ -671,15 +671,27 @@ std::tuple<Tensor, Tensor, Tensor> _batch_norm_impl_index_backward(
     }
     return std::make_tuple(grad_input, grad_weight, grad_bias);
   }
-
+  std::cout << "\nBATCHNORM_BACKEND_SELECT: "
+              // << "cudnn=" << cudnn_enabled << " "
+              << "i(" 
+                  << " is_cuda=" << input.is_cuda()
+                  << " dtype=" << input.scalar_type() 
+                  << " mf=" << input.suggest_memory_format()
+              << ") "
+              << "w("
+                << "dtype=" << weight.scalar_type() 
+                << " mf=" << weight.suggest_memory_format() 
+              << ") select ";
   // backward in inference mode is not supported in cudnn, fallback to native
   if (impl_index == 0 || (!train)) {
+    std::cout <<"NATIVE BACKWARD";
     return at::native_batch_norm_backward(grad_output, input, weight, running_mean, running_var, save_mean, save_var_transform, train, epsilon, output_mask);
   } else if (impl_index == 1) {
     // TODO: _batch_norm_impl_index_backward is only used in JIT. cudnn NHWC
     // format conversion is done inside cudnn_batch_norm_backward instead
     return at::cudnn_batch_norm_backward(input, grad_output, weight, running_mean, running_var, save_mean, save_var_transform, epsilon, reservedSpace);
   } else if (impl_index == 2) {
+     std::cout <<"MIOPEN BACKWARD";
     return at::miopen_batch_norm_backward(input, grad_output, weight, running_mean, running_var, save_mean, save_var_transform, epsilon);
   }
   TORCH_INTERNAL_ASSERT(false, "Unsupported impl_index in _batch_norm_impl_index_backward: ", impl_index);

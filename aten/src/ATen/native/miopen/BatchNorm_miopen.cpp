@@ -110,8 +110,10 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
   TensorDescriptor idesc{ *input, 4 };  // input descriptor
   TensorDescriptor wdesc{ expandScale(*weight, input->dim()), 4 };  // descriptor for weight, bias, running_mean, etc.
 
-  Constant one(dataType, 1);
-  Constant zero(dataType, 0);
+  // Constant one(dataType, 1);
+  // Constant zero(dataType, 0);
+  Constant one(miopenFloat, 1);
+  Constant zero(miopenFloat, 0);
   Tensor save_mean, save_var;
 
   if (training) {
@@ -228,8 +230,10 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
   TensorDescriptor idesc{ *input, 4 };  // input, output, grad_output descriptor
   TensorDescriptor wdesc{ expandScale(*weight, input->dim()), 4 };  // descriptor for weight, bias, save_mean, etc.
 
-  Constant one(dataType, 1);
-  Constant zero(dataType, 0);
+  // Constant one(dataType, 1);
+  // Constant zero(dataType, 0);
+  Constant one(miopenFloat, 1);
+  Constant zero(miopenFloat, 0);
 
   MIOPEN_CHECK(miopenBatchNormalizationBackward(
     handle, mode, &one, &zero, &one, &zero,

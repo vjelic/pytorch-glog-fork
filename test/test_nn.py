@@ -8228,6 +8228,8 @@ class TestNNDeviceType(NNTestCase):
     @dtypes(torch.float, torch.double, torch.half)
     def test_batchnorm_nhwc_miopen(self, dtype):
         memory_format=torch.channels_last
+        # memory_format=torch.contiguous_format
+
         def run_test(input, grad_output):
             c = input.size(1)
             mod = nn.BatchNorm2d(c).cuda().to(dtype=input.dtype)
@@ -8237,8 +8239,11 @@ class TestNNDeviceType(NNTestCase):
             ref_grad = grad.detach().clone(memory_format=torch.preserve_format)
             ref_mod = nn.BatchNorm2d(c).cuda().to(dtype=input.dtype)
             ref_mod.load_state_dict(mod.state_dict())
+            print("FORWARD")
             out = mod(input)
+            print("BACKWARD")
             out.backward(grad_output)
+            print("NATIVE...")
             with torch.backends.cudnn.flags(enabled=False): # force to use native nhwc batchnorm
                 ref_out = ref_mod(ref_input)
                 ref_out.backward(ref_grad)
