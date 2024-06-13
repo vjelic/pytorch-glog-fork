@@ -494,12 +494,13 @@ BatchNormBackend _select_batch_norm_backend(
   bool cudnn_enabled = ctx.userEnabledCuDNN();
   std::cout << "\nBATCHNORM_BACKEND_SELECT: "
               << "cudnn=" << cudnn_enabled << " "
-              << "i(" 
-                  << " is_cuda=" << input.is_cuda()
+              << "input(" 
+                  << "is_cuda=" << input.is_cuda()
                   << " dtype=" << input.scalar_type() 
                   << " mf=" << input.suggest_memory_format()
+                  << " dim=" << input.dim()
               << ") "
-              << "w("
+              << "weight("
                 << "dtype=" << weight.scalar_type() 
                 << " mf=" << weight.suggest_memory_format() 
               << ") select ";
@@ -671,7 +672,7 @@ std::tuple<Tensor, Tensor, Tensor> _batch_norm_impl_index_backward(
     }
     return std::make_tuple(grad_input, grad_weight, grad_bias);
   }
-  std::cout << "\nBATCHNORM_BACKEND_SELECT: "
+  std::cout << "\nBATCHNORM_BACKWARD_BACKEND_SELECT: "
               // << "cudnn=" << cudnn_enabled << " "
               << "i(" 
                   << " is_cuda=" << input.is_cuda()
@@ -687,6 +688,7 @@ std::tuple<Tensor, Tensor, Tensor> _batch_norm_impl_index_backward(
     std::cout <<"NATIVE BACKWARD";
     return at::native_batch_norm_backward(grad_output, input, weight, running_mean, running_var, save_mean, save_var_transform, train, epsilon, output_mask);
   } else if (impl_index == 1) {
+    std::cout <<"CUDNN BACKWARD";
     // TODO: _batch_norm_impl_index_backward is only used in JIT. cudnn NHWC
     // format conversion is done inside cudnn_batch_norm_backward instead
     return at::cudnn_batch_norm_backward(input, grad_output, weight, running_mean, running_var, save_mean, save_var_transform, epsilon, reservedSpace);

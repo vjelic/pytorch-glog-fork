@@ -192,8 +192,16 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
 
   checkAllDefined(c, {input, grad_output, weight, save_mean, save_var});
   checkAllSameGPU(c, {input, grad_output, weight, save_mean, save_var});
-  std::cout << "input.dtype==" << input->dtype() << "\n";
-  std::cout << "weight.dtype==" << weight->dtype() << std::endl;
+  std::cout << "MIOPEN_BATCNORM_BACKWARD "
+            << "input("
+              << "dtype=" << input->scalar_type() 
+              << " mf=" << input->suggest_memory_format()
+            << ") "
+            << "weight("
+              << "dtype==" << weight->scalar_type() 
+              << " mf=" << weight->suggest_memory_format()
+            << ")"
+            << std::endl;
   // if (input->scalar_type() == ScalarType::Half) {
   //   // checkScalarType(c, weight, ScalarType::Float);
   //   checkScalarType(c, weight, ScalarType::Half);
