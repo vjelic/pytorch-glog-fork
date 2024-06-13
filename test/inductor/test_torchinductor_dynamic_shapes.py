@@ -241,6 +241,7 @@ class TestInductorDynamic(TestCase):
         self.assertEqual(r, opt_r)
 
     @torch._dynamo.config.patch(capture_scalar_outputs=True)
+    @skipIfRocm(msg="TODO: temp skip on ROCm 6.2")
     def test_unwrap_storage_didnt_work_repro(self, device):
         def f():
             full = torch.full((), 11)

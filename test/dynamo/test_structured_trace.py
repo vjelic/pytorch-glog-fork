@@ -192,6 +192,7 @@ class StructuredTraceTest(TestCase):
         self.assertParses()
 
     @requires_cuda
+    @skipIfRocm(msg="TODO: temp skip on ROCm 6.2")
     def test_cudagraphs(self):
         fn_opt = torch.compile(mode="reduce-overhead")(inductor_schedule_fn)
         fn_opt(torch.ones(1000, 1000, device="cuda"))
