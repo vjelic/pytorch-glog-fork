@@ -15,6 +15,8 @@
 // don't build this file as part of CPU build.
 #include <ATen/cuda/CUDAConfig.h>
 
+#include <iostream>
+
 #if !AT_ROCM_ENABLED()
 
 namespace at { namespace native {
@@ -22,13 +24,13 @@ namespace at { namespace native {
 // See Note [ATen preprocessor philosophy]
 
 std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
-    const Tensor& input, const Tensor& weight, const std::optional<Tensor>& bias_opt, const std::optional<Tensor>& running_mean_opt, const std::optional<Tensor>& running_var_opt,
+    const Tensor& input, const Tensor& weight, const c10::optional<Tensor>& bias_opt, const c10::optional<Tensor>& running_mean_opt, const c10::optional<Tensor>& running_var_opt,
     bool training, double exponential_average_factor, double epsilon) {
   AT_ERROR("miopen_batch_norm: ATen not compiled with MIOpen support");
 }
 
 std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
-    const Tensor& input, const Tensor& grad_output, const Tensor& weight, const std::optional<Tensor>& running_mean_opt, const std::optional<Tensor>& running_var_opt, const std::optional<Tensor>& save_mean_opt, const std::optional<Tensor>& save_var_opt,
+    const Tensor& input, const Tensor& grad_output, const Tensor& weight, const c10::optional<Tensor>& running_mean_opt, const c10::optional<Tensor>& running_var_opt, const c10::optional<Tensor>& save_mean_opt, const c10::optional<Tensor>& save_var_opt,
     double epsilon) {
   AT_ERROR("miopen_batch_norm_backward: ATen not compiled with MIOpen support");
 }
@@ -58,7 +60,7 @@ Tensor expandScale(const Tensor& t, int64_t dim) {
 }  // namespace
 
 std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
-    const Tensor& input_t, const Tensor& weight_t, const std::optional<Tensor>& bias_t_opt, const std::optional<Tensor>& running_mean_t_opt, const std::optional<Tensor>& running_var_t_opt,
+    const Tensor& input_t, const Tensor& weight_t, const c10::optional<Tensor>& bias_t_opt, const c10::optional<Tensor>& running_mean_t_opt, const c10::optional<Tensor>& running_var_t_opt,
     bool training, double exponential_average_factor, double epsilon)
 {
   // See [Note: hacky wrapper removal for optional tensor]
@@ -108,8 +110,10 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
   TensorDescriptor idesc{ *input, 4 };  // input descriptor
   TensorDescriptor wdesc{ expandScale(*weight, input->dim()), 4 };  // descriptor for weight, bias, running_mean, etc.
 
-  Constant one(dataType, 1);
-  Constant zero(dataType, 0);
+  // Constant one(dataType, 1);
+  // Constant zero(dataType, 0);
+  Constant one(miopenFloat, 1);
+  Constant zero(miopenFloat, 0);
   Tensor save_mean, save_var;
 
   if (training) {
@@ -188,11 +192,22 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
 
   checkAllDefined(c, {input, grad_output, weight, save_mean, save_var});
   checkAllSameGPU(c, {input, grad_output, weight, save_mean, save_var});
-  if (input->scalar_type() == ScalarType::Half) {
-    checkScalarType(c, weight, ScalarType::Float);
-  } else {
+  std::cout << "MIOPEN_BATCNORM_BACKWARD "
+            << "input("
+              << "dtype=" << input->scalar_type() 
+              << " mf=" << input->suggest_memory_format()
+            << ") "
+            << "weight("
+              << "dtype==" << weight->scalar_type() 
+              << " mf=" << weight->suggest_memory_format()
+            << ")"
+            << std::endl;
+  // if (input->scalar_type() == ScalarType::Half) {
+  //   // checkScalarType(c, weight, ScalarType::Float);
+  //   checkScalarType(c, weight, ScalarType::Half);
+  // } else {
     checkAllSameType(c, {input, weight});
-  }
+  // }
   checkAllSameType(c, {input, grad_output});
   checkAllSameType(c, {weight, save_mean, save_var});
   checkAllContiguous(c, {save_mean, save_var});
@@ -223,8 +238,10 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
   TensorDescriptor idesc{ *input, 4 };  // input, output, grad_output descriptor
   TensorDescriptor wdesc{ expandScale(*weight, input->dim()), 4 };  // descriptor for weight, bias, save_mean, etc.
 
-  Constant one(dataType, 1);
-  Constant zero(dataType, 0);
+  // Constant one(dataType, 1);
+  // Constant zero(dataType, 0);
+  Constant one(miopenFloat, 1);
+  Constant zero(miopenFloat, 0);
 
   MIOPEN_CHECK(miopenBatchNormalizationBackward(
     handle, mode, &one, &zero, &one, &zero,
