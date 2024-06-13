@@ -8209,7 +8209,7 @@ class TestNNDeviceType(NNTestCase):
             except AssertionError as e:
                 failed = True
                 print(e)
-            
+
             self.assertFalse(failed)
 
         size = (4, 8, 2, 2)
