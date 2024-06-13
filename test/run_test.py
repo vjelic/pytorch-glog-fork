@@ -175,9 +175,10 @@ ROCM_BLOCKLIST = [
     "test_cuda_nvml_based_avail",
     "test_jit_cuda_fuser",
     "distributed/_tensor/test_attention",
-    # python 3.9 image have older version of mypy which doesnt support
-    "test_typing" if sys.version_info.major > 3 or sys.version_info.major == 3 and sys.version_info.minor >= 10 else "",
 ]
+
+if sys.version_info.major < 3 or (sys.version_info.major == 3 and sys.version_info.minor <= 9):
+    ROCM_BLOCKLIST.append("test_typing")
 
 XPU_BLOCKLIST = [
     "test_autograd",
