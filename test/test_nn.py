@@ -8182,17 +8182,41 @@ class TestNNDeviceType(NNTestCase):
             with torch.backends.cudnn.flags(enabled=False): # force to use native nhwc batchnorm
                 ref_out = ref_mod(ref_input)
                 ref_out.backward(ref_grad)
+            failed = False
             self.assertTrue(out.is_contiguous(memory_format=memory_format))
             self.assertTrue(ref_out.is_contiguous(memory_format=memory_format))
-            self.assertEqual(out, ref_out)
-            self.assertEqual(mod.weight.grad, ref_mod.weight.grad)
-            self.assertEqual(mod.bias.grad, ref_mod.bias.grad)
-            self.assertEqual(input.grad, ref_input.grad)
+            try:
+                print("--------------------------- check out")
+                self.assertEqual(out, ref_out)
+            except AssertionError as e:
+                failed = True
+                print(e)
+            try:
+                print("--------------------------- check mod.weight.grad")
+                self.assertEqual(mod.weight.grad, ref_mod.weight.grad)
+            except AssertionError as e:
+                failed = True
+                print(e)
+            try:
+                print("--------------------------- check mod.bias.grad")
+                self.assertEqual(mod.bias.grad, ref_mod.bias.grad)
+            except AssertionError as e:
+                failed = True
+                print(e)
+            try:
+                print("--------------------------- check input.grad")
+                self.assertEqual(input.grad, ref_input.grad)
+            except AssertionError as e:
+                failed = True
+                print(e)
+            
+            self.assertFalse(failed)
 
-        input = torch.randint(1, 10, (4, 8, 2, 2), dtype=dtype, device="cuda")
+        size = (4, 8, 2, 2)
+        input = torch.randint(1, 10, size=size, dtype=dtype, device="cuda")
         input = input.contiguous(memory_format=memory_format).detach().requires_grad_()
 
-        grad = torch.randint(1, 10, (4, 8, 2, 2), dtype=dtype, device="cuda")
+        grad = torch.randint(1, 10, size=size, dtype=dtype, device="cuda")
         grad = grad.contiguous(memory_format=memory_format)
         run_test(input, grad)
         # see #42588, grad is channels_last contiguous, but grad.suggest_memory_format (rightly) return "contiguous"
