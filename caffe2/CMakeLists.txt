@@ -1318,7 +1318,7 @@ if(USE_ROCM)
     ${ROCM_SOURCE_DIR}/rocblas/include
     ${ROCM_SOURCE_DIR}/hipsparse/include
     )
-  if(USE_FLASH_ATTENTION)
+  if(USE_FLASH_ATTENTION AND AOTRITON_ENABLED)
     target_compile_definitions(torch_hip PRIVATE USE_FLASH_ATTENTION)
   endif()
   if(USE_MEM_EFF_ATTENTION AND AOTRITON_ENABLED)
