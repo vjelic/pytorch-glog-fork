@@ -20,7 +20,7 @@
 #include <c10/core/SymInt.h>
 #include <c10/util/string_view.h>
 
-#if USE_ROCM
+#if defined(USE_ROCM) && defined(USE_FLASH_ATTENTION)
 #include <aotriton/flash.h>
 #endif
 
