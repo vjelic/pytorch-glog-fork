@@ -225,7 +225,7 @@ def run_entire_tests(workflow_name, test_shell_path, overall_logs_path_current_r
         os.environ['TEST_CONFIG'] = 'inductor'
         copied_logs_path = overall_logs_path_current_run + "inductor_xml_results_entire_tests/"
     # use test.sh for tests execution
-    subprocess.call(test_shell_path, shell=True)
+    run_command_and_capture_output(test_shell_path)    
     copied_logs_path_destination = shutil.copytree(test_reports_src, copied_logs_path)
     entire_results_dict = summarize_xml_files(copied_logs_path_destination, workflow_name)
     return entire_results_dict
