@@ -201,6 +201,19 @@ def summarize_xml_files(path, workflow_name):
 
     return res
 
+def default_workflow_init():
+        os.environ['TEST_CONFIG'] = 'default'
+        os.environ['HIP_VISIBLE_DEVICES'] = '0'
+
+def distributed_workflow_init():
+        os.environ['TEST_CONFIG'] = 'distributed'
+        os.environ['HIP_VISIBLE_DEVICES'] = '0,1'
+        num_gpus = subprocess.run("rocminfo | grep -c gfx", shell=True, text=True, stdout=subprocess.PIPE)
+        assert int(num_gpus.stdout.strip()) > 1, "ERROR: Need more than 1 GPU to be visible to run distributed workflow!"
+
+def inductor_workflow_init():
+        os.environ['TEST_CONFIG'] = 'inductor'
+
 def run_command_and_capture_output(cmd):
     try:
         print(f"Running command '{cmd}'")
@@ -216,13 +229,13 @@ def run_entire_tests(workflow_name, test_shell_path, overall_logs_path_current_r
     os.mkdir(test_reports_src)
     copied_logs_path = ""
     if workflow_name == "default":
-        os.environ['TEST_CONFIG'] = 'default'
+        default_workflow_init()
         copied_logs_path = overall_logs_path_current_run + "default_xml_results_entire_tests/"
     elif workflow_name == "distributed":
-        os.environ['TEST_CONFIG'] = 'distributed'
+        distributed_workflow_init()
         copied_logs_path = overall_logs_path_current_run + "distributed_xml_results_entire_tests/"
     elif workflow_name == "inductor":
-        os.environ['TEST_CONFIG'] = 'inductor'
+        inductor_workflow_init()
         copied_logs_path = overall_logs_path_current_run + "inductor_xml_results_entire_tests/"
     # use test.sh for tests execution
     run_command_and_capture_output(test_shell_path)
@@ -237,8 +250,7 @@ def run_priority_tests(workflow_name, test_run_test_path, overall_logs_path_curr
     os.mkdir(test_reports_src)
     copied_logs_path = ""
     if workflow_name == "default":
-        os.environ['TEST_CONFIG'] = 'default'
-        os.environ['HIP_VISIBLE_DEVICES'] = '0'
+        default_workflow_init()
         copied_logs_path = overall_logs_path_current_run + "default_xml_results_priority_tests/"
         # use run_test.py for tests execution
         default_priority_test_suites = " ".join(DEFAULT_CORE_TESTS)
@@ -246,8 +258,7 @@ def run_priority_tests(workflow_name, test_run_test_path, overall_logs_path_curr
         run_command_and_capture_output(command)
         del os.environ['HIP_VISIBLE_DEVICES']
     elif workflow_name == "distributed":
-        os.environ['TEST_CONFIG'] = 'distributed'
-        os.environ['HIP_VISIBLE_DEVICES'] = '0,1'
+        distributed_workflow_init()
         copied_logs_path = overall_logs_path_current_run + "distributed_xml_results_priority_tests/"
         # use run_test.py for tests execution
         distributed_priority_test_suites = " ".join(DISTRIBUTED_CORE_TESTS)
@@ -266,8 +277,7 @@ def run_selected_tests(workflow_name, test_run_test_path, overall_logs_path_curr
     os.mkdir(test_reports_src)
     copied_logs_path = ""
     if workflow_name == "default":
-        os.environ['TEST_CONFIG'] = 'default'
-        os.environ['HIP_VISIBLE_DEVICES'] = '0'
+        default_workflow_init()
         copied_logs_path = overall_logs_path_current_run + "default_xml_results_selected_tests/"
         # use run_test.py for tests execution
         default_selected_test_suites = " ".join(selected_list)
@@ -275,8 +285,7 @@ def run_selected_tests(workflow_name, test_run_test_path, overall_logs_path_curr
         run_command_and_capture_output(command)
         del os.environ['HIP_VISIBLE_DEVICES']
     elif workflow_name == "distributed":
-        os.environ['TEST_CONFIG'] = 'distributed'
-        os.environ['HIP_VISIBLE_DEVICES'] = '0,1'
+        distributed_workflow_init()
         copied_logs_path = overall_logs_path_current_run + "distributed_xml_results_selected_tests/"
         # use run_test.py for tests execution
         distributed_selected_test_suites = " ".join(selected_list)
@@ -284,7 +293,7 @@ def run_selected_tests(workflow_name, test_run_test_path, overall_logs_path_curr
         run_command_and_capture_output(command)
         del os.environ['HIP_VISIBLE_DEVICES']
     elif workflow_name == "inductor":
-        os.environ['TEST_CONFIG'] = 'inductor'
+        inductor_workflow_init()
         copied_logs_path = overall_logs_path_current_run + "inductor_xml_results_selected_tests/"
         inductor_selected_test_suites = ""
         non_inductor_selected_test_suites = ""
@@ -348,9 +357,11 @@ def run_test_and_summarize_results(
     str_current_datetime = str(current_datetime)
     overall_logs_path_current_run = repo_test_log_folder_path + str_current_datetime + "/"
     os.mkdir(overall_logs_path_current_run)
+    print("Output directory for current run: ", overall_logs_path_current_run)
 
     global CONSOLIDATED_LOG_FILE_PATH
     CONSOLIDATED_LOG_FILE_PATH = overall_logs_path_current_run + CONSOLIDATED_LOG_FILE_NAME
+    print("Consolidated log file path: ", CONSOLIDATED_LOG_FILE_PATH)
 
     # Run entire tests for each workflow
     if not priority_tests and not default_list and not distributed_list and not inductor_list:
