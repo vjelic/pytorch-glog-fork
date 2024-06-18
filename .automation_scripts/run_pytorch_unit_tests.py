@@ -27,6 +27,7 @@ import argparse
 import os
 import shutil
 import subprocess
+from subprocess import STDOUT, CalledProcessError
 
 from collections import namedtuple
 from datetime import datetime
@@ -62,6 +63,8 @@ DISTRIBUTED_CORE_TESTS = [
     "distributed/test_c10d_nccl",
     "distributed/test_distributed_spawn"
 ]
+
+CONSOLIDATED_LOG_FILE_NAME="pytorch_unit_tests.log"
 
 def parse_xml_reports_as_dict(workflow_run_id, workflow_run_attempt, tag, workflow_name, path="."):
     test_cases = {}
@@ -198,6 +201,14 @@ def summarize_xml_files(path, workflow_name):
 
     return res
 
+def run_command_and_capture_output(cmd):
+    try:
+        print(f"Running command '{cmd}'")
+        with open(CONSOLIDATED_LOG_FILE_PATH, "a+") as output_file:
+            p = subprocess.run(cmd, shell=True, stdout=output_file, stderr=STDOUT, text=True)
+    except CalledProcessError as e:
+        print(f"ERROR: Cmd {cmd} failed with return code: {e.returncode}!")
+
 def run_entire_tests(workflow_name, test_shell_path, overall_logs_path_current_run, test_reports_src):
     if os.path.exists(test_reports_src):
         shutil.rmtree(test_reports_src)
@@ -214,7 +225,7 @@ def run_entire_tests(workflow_name, test_shell_path, overall_logs_path_current_r
         os.environ['TEST_CONFIG'] = 'inductor'
         copied_logs_path = overall_logs_path_current_run + "inductor_xml_results_entire_tests/"
     # use test.sh for tests execution
-    subprocess.call(test_shell_path, shell=True)
+    run_command_and_capture_output(test_shell_path)
     copied_logs_path_destination = shutil.copytree(test_reports_src, copied_logs_path)
     entire_results_dict = summarize_xml_files(copied_logs_path_destination, workflow_name)
     return entire_results_dict
@@ -232,7 +243,7 @@ def run_priority_tests(workflow_name, test_run_test_path, overall_logs_path_curr
         # use run_test.py for tests execution
         default_priority_test_suites = " ".join(DEFAULT_CORE_TESTS)
         command = "python " + test_run_test_path + " --include " + default_priority_test_suites + " --exclude-jit-executor --exclude-distributed-tests --verbose"
-        subprocess.call(command, shell=True)
+        run_command_and_capture_output(command)
         del os.environ['HIP_VISIBLE_DEVICES']
     elif workflow_name == "distributed":
         os.environ['TEST_CONFIG'] = 'distributed'
@@ -241,7 +252,7 @@ def run_priority_tests(workflow_name, test_run_test_path, overall_logs_path_curr
         # use run_test.py for tests execution
         distributed_priority_test_suites = " ".join(DISTRIBUTED_CORE_TESTS)
         command = "python " + test_run_test_path + " --include " + distributed_priority_test_suites + " --distributed-tests --verbose"
-        subprocess.call(command, shell=True)
+        run_command_and_capture_output(command)
         del os.environ['HIP_VISIBLE_DEVICES']
     copied_logs_path_destination = shutil.copytree(test_reports_src, copied_logs_path)
     priority_results_dict = summarize_xml_files(copied_logs_path_destination, workflow_name)
@@ -261,7 +272,7 @@ def run_selected_tests(workflow_name, test_run_test_path, overall_logs_path_curr
         # use run_test.py for tests execution
         default_selected_test_suites = " ".join(selected_list)
         command = "python " + test_run_test_path + " --include " + default_selected_test_suites  + " --exclude-jit-executor --exclude-distributed-tests --verbose"
-        subprocess.call(command, shell=True)
+        run_command_and_capture_output(command)
         del os.environ['HIP_VISIBLE_DEVICES']
     elif workflow_name == "distributed":
         os.environ['TEST_CONFIG'] = 'distributed'
@@ -270,7 +281,7 @@ def run_selected_tests(workflow_name, test_run_test_path, overall_logs_path_curr
         # use run_test.py for tests execution
         distributed_selected_test_suites = " ".join(selected_list)
         command = "python " + test_run_test_path + " --include " + distributed_selected_test_suites + " --distributed-tests --verbose"
-        subprocess.call(command, shell=True)
+        run_command_and_capture_output(command)
         del os.environ['HIP_VISIBLE_DEVICES']
     elif workflow_name == "inductor":
         os.environ['TEST_CONFIG'] = 'inductor'
@@ -287,11 +298,11 @@ def run_selected_tests(workflow_name, test_run_test_path, overall_logs_path_curr
         if inductor_selected_test_suites != "":
             inductor_selected_test_suites = inductor_selected_test_suites[:-1]
             command = "python " + test_run_test_path + " --include " + inductor_selected_test_suites + " --verbose"
-            subprocess.call(command, shell=True)
+            run_command_and_capture_output(command)
         if non_inductor_selected_test_suites != "":
             non_inductor_selected_test_suites = non_inductor_selected_test_suites[:-1]
             command = "python " + test_run_test_path + " --inductor --include " + non_inductor_selected_test_suites + " --verbose"
-            subprocess.call(command, shell=True)
+            run_command_and_capture_output(command)
     copied_logs_path_destination = shutil.copytree(test_reports_src, copied_logs_path)
     selected_results_dict = summarize_xml_files(copied_logs_path_destination, workflow_name)
 
@@ -336,6 +347,11 @@ def run_test_and_summarize_results(
     # performed as Job ID
     str_current_datetime = str(current_datetime)
     overall_logs_path_current_run = repo_test_log_folder_path + str_current_datetime + "/"
+    os.mkdir(overall_logs_path_current_run)
+
+    global CONSOLIDATED_LOG_FILE_PATH
+    CONSOLIDATED_LOG_FILE_PATH = overall_logs_path_current_run + CONSOLIDATED_LOG_FILE_NAME
+
     # Run entire tests for each workflow
     if not priority_tests and not default_list and not distributed_list and not inductor_list:
         # run entire tests for default, distributed and inductor workflows → use test.sh
