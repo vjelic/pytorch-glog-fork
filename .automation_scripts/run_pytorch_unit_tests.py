@@ -207,7 +207,7 @@ def run_command_and_capture_output(cmd):
         with open(CONSOLIDATED_LOG_FILE_PATH, "a+") as output_file:
             p = subprocess.run(cmd, shell=True, stdout=output_file, stderr=STDOUT, text=True)
     except CalledProcessError as e:
-        print(f"Cmd {e.cmd} failed with return code: {e.returncode}")
+        print(f"ERROR: Cmd {cmd} failed with return code: {e.returncode}!")
 
 def run_entire_tests(workflow_name, test_shell_path, overall_logs_path_current_run, test_reports_src):
     if os.path.exists(test_reports_src):
