@@ -8,6 +8,7 @@
 #include <cctype>
 #include <string>
 #include <stdexcept>
+#include <iostream>
 
 #include <ATen/cpu/FlushDenormal.h>
 
@@ -266,15 +267,20 @@ void Context::setLinalgPreferredBackend(at::LinalgBackend b) {
 at::BlasBackend Context::blasPreferredBackend() {
 #ifdef USE_ROCM
   if (blas_preferred_backend == at::BlasBackend::Cublaslt) {
-    static const std::vector<std::string> archs = {"gfx90a", "gfx940", "gfx941", "gfx942"};
-    for (auto index = 0; index < at::getNumGPUs(); index++) {
-      if (!detail::getCUDAHooks().isGPUArch(index, archs)) {
-        TORCH_WARN_ONCE(
-          "Attempting to use hipBLASLt on an unsupported architecture! "
-          "Overriding blas backend to hipblas");
-        blas_preferred_backend = at::BlasBackend::Cublas;
+    static const bool hipblaslt_unsupported = []() {
+      std::cout << "In lambda function" << std::endl;
+      static const std::vector<std::string> archs = {"gfx90a", "gfx940", "gfx941", "gfx942"};
+      for (auto index = 0; index < at::getNumGPUs(); index++) {
+        if (!detail::getCUDAHooks().isGPUArch(index, archs)) {
+          TORCH_WARN_ONCE(
+            "Attempting to use hipBLASLt on an unsupported architecture! "
+            "Overriding blas backend to hipblas");
+	  return true;
+        }
       }
-    }
+      return false;
+    }();
+    if (hipblaslt_unsupported) blas_preferred_backend = at::BlasBackend::Cublas;
   }
 #endif
   return blas_preferred_backend;
