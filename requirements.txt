@@ -10,7 +10,7 @@ setuptools
 tlparse
 types-dataclasses
 typing-extensions>=4.8.0
-sympy
+sympy<=1.12.1
 filelock
 networkx
 jinja2
