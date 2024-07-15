@@ -1,4 +1,5 @@
 # mypy: allow-untyped-defs
+import torch
 import copy
 import itertools
 import logging
@@ -105,6 +106,10 @@ class CoordescTuner:
             "BLOCK_K",
             "num_warps",
         ]
+        if torch.version.hip:
+            out.append("num_stages")
+            out.append("waves_per_eu")
+
         if self.is_mm:
             out.append("num_stages")
 
@@ -115,6 +120,10 @@ class CoordescTuner:
             return val > self.get_config_max(name[0])
         if name == "num_warps":
             return val > self.get_warpsmax()
+        if name == "num_stages":
+            return val > 1
+        if name == "waves_per_eu":
+            return val > 8
 
         return False
 

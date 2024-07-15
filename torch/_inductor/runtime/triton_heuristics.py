@@ -1320,6 +1320,8 @@ def triton_config(
         cfg["YBLOCK"] = y
     if z:
         cfg["ZBLOCK"] = z
+
+    cfg["waves_per_eu"] = int(8 / num_warps)
     check_config(cfg, xnumel=xnumel, ynumel=ynumel, znumel=znumel)
     return Config(cfg, num_warps=num_warps, num_stages=num_stages)
 
@@ -1369,6 +1371,7 @@ def triton_config_reduction(size_hints, x, r, num_stages=1, num_warps=None) -> C
         r = r // 2
 
     cfg = {"XBLOCK": x, "RBLOCK": r}
+    cfg["waves_per_eu"] = int(8 / num_warps)
     check_config(cfg, xnumel=size_hints[0])
     assert x <= TRITON_MAX_BLOCK["X"], f"increase TRITON_MAX_BLOCK['X'] to {x}"
     assert r <= TRITON_MAX_BLOCK["R"], f"increase TRITON_MAX_BLOCK['r'] to {r}"
@@ -1404,6 +1407,7 @@ def triton_config_tiled_reduction(size_hints, x, y, r, num_stages=1):
 
     cfg = {"XBLOCK": x, "YBLOCK": y, "RBLOCK": r}
     num_warps = next_power_of_2(min(max(conditional_product(x, y, r) // 256, 1), 8))
+    cfg["waves_per_eu"] = int(8 / num_warps)
     check_config(cfg, xnumel=size_hints[0], ynumel=size_hints[1])
     assert r <= TRITON_MAX_BLOCK["R"], f"increase TRITON_MAX_BLOCK['r'] to {r}"
     return Config(cfg, num_warps=num_warps, num_stages=num_stages)
