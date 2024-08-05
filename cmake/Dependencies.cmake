@@ -622,6 +622,7 @@ if(USE_XNNPACK AND NOT USE_SYSTEM_XNNPACK)
   if(NOT TARGET XNNPACK)
     set(XNNPACK_LIBRARY_TYPE "static" CACHE STRING "")
     set(XNNPACK_BUILD_BENCHMARKS OFF CACHE BOOL "")
+    set(XNNPACK_USE_SYSTEM_LIBS  ON CACHE BOOL "")
     set(XNNPACK_BUILD_TESTS OFF CACHE BOOL "")
 
     # Disable ARM BF16 and FP16 vector for now; unused and causes build failures because

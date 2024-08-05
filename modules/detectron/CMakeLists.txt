@@ -24,6 +24,11 @@ if(BUILD_CAFFE2_OPS)
       install(FILES $<TARGET_PDB_FILE:caffe2_detectron_ops_gpu> DESTINATION lib OPTIONAL)
     endif()
   elseif(USE_ROCM)
+    SET(THRUST_PATH $ENV{THRUST_PATH})
+    SET(ROCPRIM_PATH $ENV{ROCPRIM_PATH})
+    SET(HIPCUB_PATH $ENV{HIPCUB_PATH})
+    SET(ROCRAND_PATH $ENV{ROCRAND_PATH})
+
     hip_include_directories(${Caffe2_HIP_INCLUDES})
     set_source_files_properties(${Detectron_HIP_SRCS} PROPERTIES HIP_SOURCE_PROPERTY_FORMAT 1)
     HIP_ADD_LIBRARY(
@@ -34,6 +39,11 @@ if(BUILD_CAFFE2_OPS)
     if(USE_MKLDNN)
       target_link_libraries(caffe2_detectron_ops_hip PRIVATE caffe2::mkldnn)
     endif()
+    target_include_directories(caffe2_detectron_ops_hip PRIVATE
+                               ${THRUST_PATH}/include
+                               ${ROCPRIM_PATH}/include
+                               ${HIPCUB_PATH}/include
+                               ${ROCRAND_PATH}/include)
     target_link_libraries(caffe2_detectron_ops_hip PRIVATE torch)
     install(TARGETS caffe2_detectron_ops_hip DESTINATION lib)
   elseif(NOT IOS_PLATFORM)
