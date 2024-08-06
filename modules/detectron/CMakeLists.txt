@@ -34,6 +34,11 @@ if(BUILD_CAFFE2_OPS)
     if(USE_MKLDNN)
       target_link_libraries(caffe2_detectron_ops_hip PRIVATE caffe2::mkldnn)
     endif()
+    target_include_directories(caffe2_detectron_ops_hip PRIVATE
+	                       $ENV{THRUST_PATH}/include
+			       $ENV{ROCPRIM_PATH}/include
+			       $ENV{HIPCUB_PATH}/include
+			       $ENV{ROCRAND_PATH}/include)
     target_link_libraries(caffe2_detectron_ops_hip PRIVATE torch)
     install(TARGETS caffe2_detectron_ops_hip DESTINATION lib)
   elseif(NOT IOS_PLATFORM)
