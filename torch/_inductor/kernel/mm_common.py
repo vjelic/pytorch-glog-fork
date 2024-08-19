@@ -70,6 +70,7 @@ def filtered_configs(
         # each warp computes 16x16 tile = 256
         num_warps = min(num_warps, block_m * block_n // 256)
         if torch.version.hip:
+            wpeu = int(8 / num_warps)
             matrix_instr_nonkdim = 16
             if (
                 block_m % matrix_instr_nonkdim != 0
@@ -84,6 +85,7 @@ def filtered_configs(
                 num_stages=num_stages,
                 num_warps=num_warps,
                 matrix_instr_nonkdim=matrix_instr_nonkdim,
+                waves_per_eu=wpeu,
             )
         else:
             if (block_m, block_n, block_k, num_stages, num_warps, 0) not in used:
@@ -94,11 +96,11 @@ def filtered_configs(
                     BLOCK_K=block_k,
                     num_stages=num_stages,
                     num_warps=num_warps,
+                    waves_per_eu=wpeu,
                 )
 
 
 # List of dictionaries to store the kernel configs. Configs that evaluate to true
-<<<<<<< HEAD
 # will be utilised on the target platform. The configs are as follows:
 # (BLOCK_M, BLOCK_N, BLOCK_K, num_stages, num_warps)
 mm_kernel_configs = (
