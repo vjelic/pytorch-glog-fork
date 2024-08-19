@@ -337,7 +337,6 @@ class CudaReproTests(TestCase):
         out_ref.add_(2)
         # self.assertEqual(out_ref, out)
 
-    @skipIfRocmArch(NAVI_ARCH)
     def test_accuracy_issue1(self):
         class Repro(torch.nn.Module):
             def __init__(self) -> None:
@@ -374,7 +373,6 @@ class CudaReproTests(TestCase):
             assert same_two_models(mod, opt_mod, args), "Dynamo failed"
 
     @config.patch(allow_buffer_reuse=False)
-    @skipIfRocmArch(NAVI_ARCH)
     def test_issue103461(self):
         def forward(add_1):
             var_mean = torch.ops.aten.var_mean.correction(
@@ -873,7 +871,6 @@ class CudaReproTests(TestCase):
             res2 = jit_func(x)
             self.assertEqual(res1, res2)
 
-    @skipIfRocmArch(NAVI_ARCH)
     def test_issue103481(self):
         def fn(x, y):
             # NOTE: 6 dimensions is important! does not fail for 5 dimensions

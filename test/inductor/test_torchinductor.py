@@ -1801,7 +1801,6 @@ class CommonTemplate:
             # make sure things also work if they aren't unrolled
             self.common(fn, (torch.randn(8, 3),))
 
-    @skipIfRocmArch(NAVI_ARCH)
     def test_multilayer_sum_low_prec(self):
         # fp16 nyi for cpu
         if self.device == "cpu":
@@ -1812,7 +1811,6 @@ class CommonTemplate:
 
         self.common(fn, ((torch.rand((10, 3, 352, 352), dtype=torch.float16),)))
 
-    @skipIfRocmArch(NAVI_ARCH)
     def test_multilayer_prime_size(self):
         def fn(a):
             return torch.max(a), torch.sum(a)
@@ -1824,7 +1822,6 @@ class CommonTemplate:
 
     @skip_if_gpu_halide
     @skipCPUIf(IS_MACOS, "fails on macos")
-    @skipIfRocmArch(NAVI_ARCH)
     def test_multilayer_var(self):
         def fn(a):
             return torch.var(a)
@@ -2976,7 +2973,6 @@ class CommonTemplate:
         self.common(fn, (torch.randn(8, 8), torch.randn(8, 8)))
 
     @skip_if_halide  # only 32-bit indexing
-    @skipIfRocmArch(NAVI_ARCH)
     def test_large_tensor_reduction(self):
         if not _has_sufficient_memory(self.device, 4.5 * 1024**3):  # 4.5 GiB
             raise unittest.SkipTest("insufficient memory")
@@ -2998,7 +2994,6 @@ class CommonTemplate:
         self.assertEqual(actual, expect)
 
     @skip_if_gpu_halide  # only 32-bit indexing
-    @skipIfRocmArch(NAVI_ARCH)
     def test_large_broadcast_reduction(self):
         if self.device == "cpu":
             raise unittest.SkipTest("Fails on CPU")
@@ -4160,7 +4155,6 @@ class CommonTemplate:
             check_lowp=False,
         )
 
-    @skipIfRocmArch(NAVI_ARCH)
     def test_conv2d_backward_channels_last(self):
         def fn(grad_output, inp, weight):
             convolution_backward_8 = torch.ops.aten.convolution_backward.default(
@@ -4945,7 +4939,6 @@ class CommonTemplate:
         self.assertEqual(c.stride()[2], 1)
 
     @skip_if_gpu_halide
-    @skipIfRocmArch(NAVI_ARCH)
     def test_std(self):
         def fn(x):
             return (
@@ -4988,7 +4981,6 @@ class CommonTemplate:
 
     # From yolov3
     @with_tf32_off
-    @skipIfRocmArch(NAVI_ARCH)
     def test_batch_norm_2d_2(self):
         if self.device == "cpu":
             raise unittest.SkipTest(f"requires {GPU_TYPE}")
@@ -5135,7 +5127,6 @@ class CommonTemplate:
         self.common(fn, (*inp,))
 
     @skip_if_gpu_halide  # incorrect result on CUDA
-    @skipIfRocmArch(NAVI_ARCH)
     def test_cauchy(self):
         def fn(x, y):
             return torch.sum(1 / (torch.unsqueeze(x, -1) - y))
@@ -6536,7 +6527,6 @@ class CommonTemplate:
         y = fn_compiled(x)
         self.assertTrue(y is not x)
 
-    @skipIfRocmArch(NAVI_ARCH)
     def test_l1_loss(self):
         def fn(a, b):
             return torch.nn.functional.l1_loss(a, b), torch.nn.functional.mse_loss(a, b)
@@ -6939,7 +6929,6 @@ class CommonTemplate:
             fn, (torch.tensor([1, float("inf"), 2, float("-inf"), float("nan")]),)
         )
 
-    @skipIfRocmArch(NAVI_ARCH)
     def test_any(self):
         def fn(x):
             return (
@@ -7707,7 +7696,6 @@ class CommonTemplate:
 
     @skip_if_gpu_halide
     # issue #1150
-    @skipIfRocmArch(NAVI_ARCH)
     def test_dense_mask_index(self):
         r"""
         There will be a little difference for reduce order between aten and inductor
@@ -8715,7 +8703,6 @@ class CommonTemplate:
         b = torch.rand(2, 2, 1, 4, 1).int()
         self.common(fn, (a, b))
 
-    @skipIfRocmArch(NAVI_ARCH)
     def test_argmax_argmin1(self):
         def fn(x):
             return (aten.argmax(x), aten.argmin(x))
@@ -8727,7 +8714,6 @@ class CommonTemplate:
             ],
         )
 
-    @skipIfRocmArch(NAVI_ARCH)
     def test_argmax_argmin2(self):
         def fn(x):
             return (
@@ -8739,7 +8725,6 @@ class CommonTemplate:
 
         self.common(fn, (torch.randn([144, 144]),))
 
-    @skipIfRocmArch(NAVI_ARCH)
     def test_argmax_argmin_with_duplicates(self):
         def fn(x):
             return (
@@ -8762,7 +8747,6 @@ class CommonTemplate:
         self.common(fn, (t1,))
 
     @skip_if_halide  # nan behavior
-    @skipIfRocmArch(NAVI_ARCH)
     def test_argmax_argmin_with_nan(self):
         def fn(x):
             return (
@@ -8886,7 +8870,6 @@ class CommonTemplate:
             ],
         )
 
-    @skipIfRocmArch(NAVI_ARCH)
     def test_tmp_not_defined_issue1(self):
         def forward(
             primals_3,
@@ -9286,7 +9269,6 @@ class CommonTemplate:
                 else:
                     self.assertEqual(len(inps), 0)
 
-    @skipIfRocmArch(NAVI_ARCH)
     def test_dtype_mismatch_issue(self):
         def fn(x):
             attn = torch.nn.functional.pad(x, [0, 1])
@@ -12377,7 +12359,6 @@ if HAS_GPU and not TEST_WITH_ASAN:
 
     class NanCheckerTest(TestCase):
         @config.patch("nan_asserts", True)
-        @skipIfRocmArch(NAVI_ARCH)
         def test_nan_checker_pass(self):
             def f(x):
                 return torch.softmax(x, dim=-1)
