@@ -5410,6 +5410,7 @@ class DistributedTest:
             f"The {BACKEND} backend does not support DistributedDataParallel",
         )
         @skip_if_no_gpu
+        @skip_if_rocm
         def test_DistributedDataParallel(self):
             _group, _group_id, rank = self._init_global_test()
             rank_to_GPU = init_multigpu_helper(dist.get_world_size(), BACKEND)
