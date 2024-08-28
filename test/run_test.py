@@ -4,6 +4,7 @@ import argparse
 import copy
 import glob
 import json
+import numpy
 import os
 import pathlib
 import shutil
@@ -13,6 +14,7 @@ import sys
 import tempfile
 import time
 from datetime import datetime
+from packaging.version import Version
 from typing import Any, cast, Dict, List, NamedTuple, Optional, Union
 
 import pkg_resources
@@ -293,6 +295,9 @@ ROCM_BLOCKLIST = [
     "test_jit_legacy",
     "test_cuda_nvml_based_avail",
 ]
+# Remove test_typing if python version is 3.9.* or less
+if Version(numpy.__version__) < Version('1.21'):
+    ROCM_BLOCKLIST.extend(["test_typing"])
 
 # The tests inside these files should never be run in parallel with each other
 RUN_PARALLEL_BLOCKLIST = [
