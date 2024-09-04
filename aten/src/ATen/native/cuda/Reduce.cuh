@@ -217,10 +217,10 @@ struct ReduceConfig {
 
 std::ostream& operator<<(std::ostream& out, const ReduceConfig& config);
 
-template<int nt, int output_vec_size, typename R>
+template<int nt, int output_vec_size, typename R, bool should_block_x_reduce, bool should_block_y_reduce, bool should_global_reduce, bool accumulate>
 C10_LAUNCH_BOUNDS_2(nt, 4)
 __global__ void reduce_kernel(R reduction) {
-  reduction.template run<output_vec_size>();
+  reduction.template run<output_vec_size, should_block_x_reduce, should_block_y_reduce, should_global_reduce, accumulate>();
 }
 
 template <typename index_t>
@@ -365,7 +365,7 @@ struct ReduceOp {
   void* cta_buf;
   int* semaphores;
   int64_t base_idx;
-  bool accumulate;
+  //bool accumulate;
   bool final_output;
   int noutputs;
 
@@ -400,7 +400,7 @@ struct ReduceOp {
     }
   }
 
-  template <int output_vec_size>
+  template <int output_vec_size, bool should_block_x_reduce, bool should_block_y_reduce, bool should_global_reduce, bool accumulate>
   C10_DEVICE void run() const {
     extern __shared__ char shared_memory[];
     index_t output_idx = config.output_idx<output_vec_size>();
@@ -415,10 +415,10 @@ struct ReduceOp {
       value = thread_reduce<output_vec_size>(input_slice);
     }
 
-    if (config.should_block_y_reduce()) {
+    if constexpr (should_block_y_reduce) {
       value = block_y_reduce<output_vec_size>(value, shared_memory);
     }
-    if (config.should_block_x_reduce()) {
+    if constexpr (should_block_x_reduce) {
       value = block_x_reduce<output_vec_size>(value, shared_memory);
     }
 
@@ -441,10 +441,10 @@ struct ReduceOp {
       acc = (arg_vec_t*)((char*)acc_buf + (base_offsets[0] * numerator / denominator));
     }
 
-    if (config.should_global_reduce()) {
-      value = global_reduce<output_vec_size>(value, acc, shared_memory);
+    if constexpr (should_global_reduce) {
+      value = global_reduce<output_vec_size, accumulate, should_block_x_reduce>(value, acc, shared_memory);
     } else if (config.should_store(output_idx)) {
-      if (accumulate) {
+      if constexpr (accumulate) {
         #pragma unroll
         for (int i = 0; i < output_vec_size; i++) {
           value[i] = ops.translate_idx(value[i], base_idx);
@@ -452,7 +452,7 @@ struct ReduceOp {
       }
 
       if (acc == nullptr) {
-        if (accumulate) {
+        if constexpr (accumulate) {
           value = accumulate_in_output<output_vec_size, can_accumulate_in_output>(out, value);
         }
         if (final_output) {
@@ -464,7 +464,7 @@ struct ReduceOp {
           }
         }
       } else {
-        if (accumulate) {
+        if constexpr (accumulate) {
           #pragma unroll
           for (int i = 0; i < output_vec_size; i++) {
             value[i] = ops.combine((*acc)[i], value[i]);
@@ -779,7 +779,7 @@ struct ReduceOp {
     }
   }
 
-  template <int output_vec_size>
+  template <int output_vec_size, bool accumulate, bool should_block_x_reduce>
   C10_DEVICE at::detail::Array<arg_t, output_vec_size> global_reduce(at::detail::Array<arg_t, output_vec_size> value, at::detail::Array<arg_t, output_vec_size> *acc, char* shared_memory) const {
     using arg_vec_t = at::detail::Array<arg_t, output_vec_size>;
     using out_ptr_vec_t = at::detail::Array<out_scalar_t*, output_vec_size>;
@@ -808,7 +808,7 @@ struct ReduceOp {
 
     if (is_last_block_done) {
       value = ident;
-      if (config.should_block_x_reduce()) {
+      if constexpr (should_block_x_reduce) {
         index_t input_offset = threadIdx.x + threadIdx.y * blockDim.x;
         index_t step = blockDim.x * blockDim.y;
         for (; input_offset < config.ctas_per_output; input_offset += step) {
@@ -832,11 +832,11 @@ struct ReduceOp {
         }
       }
       value = block_y_reduce(value, shared_memory);
-      if (config.should_block_x_reduce()) {
+      if constexpr (should_block_x_reduce) {
         value = block_x_reduce<output_vec_size>(value, shared_memory);
       }
       if (should_store) {
-        if (accumulate) {
+        if constexpr (accumulate) {
           #pragma unroll
           for (int i = 0; i < output_vec_size; i++) {
             value[i] = ops.translate_idx(value[i], base_idx);
@@ -844,7 +844,7 @@ struct ReduceOp {
         }
 
         if (acc == nullptr) {
-          if (accumulate) {
+          if constexpr (accumulate) {
             value = accumulate_in_output<output_vec_size, can_accumulate_in_output>(out, value);
           }
           if (final_output) {
@@ -856,7 +856,7 @@ struct ReduceOp {
             }
           }
         } else {
-          if (accumulate) {
+          if constexpr (accumulate) {
             #pragma unroll
             for (int i = 0; i < output_vec_size; i++) {
               value[i] = ops.combine((*acc)[i], value[i]);
@@ -876,25 +876,280 @@ struct ReduceOp {
 };
 
 template<int max_threads, typename R>
-static void launch_reduce_kernel(const ReduceConfig& config, const R& reduction) {
+static void launch_reduce_kernel(const ReduceConfig& config, const R& reduction, bool accumulate) {
   dim3 block = config.block();
   dim3 grid = config.grid();
 
   auto stream = at::cuda::getCurrentCUDAStream();
   int shared_memory = config.shared_memory_size();
 
-  switch(config.output_vec_size) {
-  case 4:
-    reduce_kernel<max_threads / 4, 4, R><<<grid, block, shared_memory, stream>>>(reduction);
-    C10_CUDA_KERNEL_LAUNCH_CHECK();
-    break;
-  case 2:
-    reduce_kernel<max_threads / 2, 2, R><<<grid, block, shared_memory, stream>>>(reduction);
-    C10_CUDA_KERNEL_LAUNCH_CHECK();
-    break;
-  default:
-    reduce_kernel<max_threads / 1, 1, R><<<grid, block, shared_memory, stream>>>(reduction);
-    C10_CUDA_KERNEL_LAUNCH_CHECK();
+  if (config.should_block_x_reduce()) {
+    if (config.should_block_y_reduce()) {
+      if (config.should_global_reduce()) {
+        if (accumulate) {
+          switch(config.output_vec_size) {
+          case 4:
+            reduce_kernel<max_threads / 4, 4, R, true, true, true, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          case 2:
+            reduce_kernel<max_threads / 2, 2, R, true, true, true, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          default:
+            reduce_kernel<max_threads / 1, 1, R, true, true, true, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+          }
+        }
+        else {
+          switch(config.output_vec_size) {
+          case 4:
+            reduce_kernel<max_threads / 4, 4, R, true, true, true, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          case 2:
+            reduce_kernel<max_threads / 2, 2, R, true, true, true, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          default:
+            reduce_kernel<max_threads / 1, 1, R, true, true, true, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+          }
+        }
+      }
+      else {
+        if (accumulate) {
+          switch(config.output_vec_size) {
+          case 4:
+            reduce_kernel<max_threads / 4, 4, R, true, true, false, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          case 2:
+            reduce_kernel<max_threads / 2, 2, R, true, true, false, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          default:
+            reduce_kernel<max_threads / 1, 1, R, true, true, false, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+          }
+        }
+        else {
+          switch(config.output_vec_size) {
+          case 4:
+            reduce_kernel<max_threads / 4, 4, R, true, true, false, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          case 2:
+            reduce_kernel<max_threads / 2, 2, R, true, true, false, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          default:
+            reduce_kernel<max_threads / 1, 1, R, true, true, false, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+          }
+        }
+      }
+    }
+    else {
+      if (config.should_global_reduce()) {
+        if (accumulate) {
+          switch(config.output_vec_size) {
+          case 4:
+            reduce_kernel<max_threads / 4, 4, R, true, false, true, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          case 2:
+            reduce_kernel<max_threads / 2, 2, R, true, false, true, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          default:
+            reduce_kernel<max_threads / 1, 1, R, true, false, true, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+          }
+        }
+        else {
+          switch(config.output_vec_size) {
+          case 4:
+            reduce_kernel<max_threads / 4, 4, R, true, false, true, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          case 2:
+            reduce_kernel<max_threads / 2, 2, R, true, false, true, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          default:
+            reduce_kernel<max_threads / 1, 1, R, true, false, true, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+          }
+        }
+      }
+      else {
+        if (accumulate) {
+          switch(config.output_vec_size) {
+          case 4:
+            reduce_kernel<max_threads / 4, 4, R, true, false, false, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          case 2:
+            reduce_kernel<max_threads / 2, 2, R, true, false, false, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          default:
+            reduce_kernel<max_threads / 1, 1, R, true, false, false, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+          }
+        }
+        else {
+          switch(config.output_vec_size) {
+          case 4:
+            reduce_kernel<max_threads / 4, 4, R, true, false, false, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          case 2:
+            reduce_kernel<max_threads / 2, 2, R, true, false, false, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          default:
+            reduce_kernel<max_threads / 1, 1, R, true, false, false, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+          }
+        }
+      }
+    }
+  }
+  else {
+    if (config.should_block_y_reduce()) {
+      if (config.should_global_reduce()) {
+        if (accumulate) {
+          switch(config.output_vec_size) {
+          case 4:
+            reduce_kernel<max_threads / 4, 4, R, false, true, true, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          case 2:
+            reduce_kernel<max_threads / 2, 2, R, false, true, true, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          default:
+            reduce_kernel<max_threads / 1, 1, R, false, true, true, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+          }
+        }
+        else {
+          switch(config.output_vec_size) {
+          case 4:
+            reduce_kernel<max_threads / 4, 4, R, false, true, true, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          case 2:
+            reduce_kernel<max_threads / 2, 2, R, false, true, true, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          default:
+            reduce_kernel<max_threads / 1, 1, R, false, true, true, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+          }
+        }
+      }
+      else {
+        if (accumulate) {
+          switch(config.output_vec_size) {
+          case 4:
+            reduce_kernel<max_threads / 4, 4, R, false, true, false, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          case 2:
+            reduce_kernel<max_threads / 2, 2, R, false, true, false, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          default:
+            reduce_kernel<max_threads / 1, 1, R, false, true, false, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+          }
+        }
+        else {
+          switch(config.output_vec_size) {
+          case 4:
+            reduce_kernel<max_threads / 4, 4, R, false, true, false, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          case 2:
+            reduce_kernel<max_threads / 2, 2, R, false, true, false, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          default:
+            reduce_kernel<max_threads / 1, 1, R, false, true, false, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+          }
+        }
+      }
+    }
+    else {
+      if (config.should_global_reduce()) {
+        if (accumulate) {
+          switch(config.output_vec_size) {
+          case 4:
+            reduce_kernel<max_threads / 4, 4, R, false, false, true, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          case 2:
+            reduce_kernel<max_threads / 2, 2, R, false, false, true, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          default:
+            reduce_kernel<max_threads / 1, 1, R, false, false, true, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+          }
+        }
+        else {
+          switch(config.output_vec_size) {
+          case 4:
+            reduce_kernel<max_threads / 4, 4, R, false, false, true, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          case 2:
+            reduce_kernel<max_threads / 2, 2, R, false, false, true, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          default:
+            reduce_kernel<max_threads / 1, 1, R, false, false, true, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+          }
+        }
+      }
+      else {
+        if (accumulate) {
+          switch(config.output_vec_size) {
+          case 4:
+            reduce_kernel<max_threads / 4, 4, R, false, false, false, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          case 2:
+            reduce_kernel<max_threads / 2, 2, R, false, false, false, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          default:
+            reduce_kernel<max_threads / 1, 1, R, false, false, false, true><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+          }
+        }
+        else {
+          switch(config.output_vec_size) {
+          case 4:
+            reduce_kernel<max_threads / 4, 4, R, false, false, false, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          case 2:
+            reduce_kernel<max_threads / 2, 2, R, false, false, false, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+            break;
+          default:
+            reduce_kernel<max_threads / 1, 1, R, false, false, false, false><<<grid, block, shared_memory, stream>>>(reduction);
+            C10_CUDA_KERNEL_LAUNCH_CHECK();
+          }
+        }
+      }
+    }
   }
 }
 
@@ -1226,10 +1481,10 @@ inline void gpu_reduce_kernel(TensorIterator& iter, const ops_t& ops, ident_t id
       ident,
       noutputs,
       base_idx);
-  reduce.accumulate = iter.should_accumulate();
+  //reduce.accumulate = iter.should_accumulate();
   reduce.final_output = iter.is_final_output();
 
-  launch_reduce_kernel<mnt_wrapper<scalar_t>::MAX_NUM_THREADS>(config, reduce);
+  launch_reduce_kernel<mnt_wrapper<scalar_t>::MAX_NUM_THREADS>(config, reduce, iter.should_accumulate());
 }
 
 //TODO this is 100 lines of almost-copy-paste, because we have to have different template args for this function

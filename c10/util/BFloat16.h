@@ -28,33 +28,13 @@ inline C10_HOST_DEVICE float f32_from_bits(uint16_t src) {
   float res = 0;
   uint32_t tmp = src;
   tmp <<= 16;
-
-#if defined(USE_ROCM)
-  float* tempRes;
-
-  // We should be using memcpy in order to respect the strict aliasing rule
-  // but it fails in the HIP environment.
-  tempRes = reinterpret_cast<float*>(&tmp);
-  res = *tempRes;
-#else
   std::memcpy(&res, &tmp, sizeof(tmp));
-#endif
-
   return res;
 }
 
 inline C10_HOST_DEVICE uint16_t bits_from_f32(float src) {
   uint32_t res = 0;
-
-#if defined(USE_ROCM)
-  // We should be using memcpy in order to respect the strict aliasing rule
-  // but it fails in the HIP environment.
-  uint32_t* tempRes = reinterpret_cast<uint32_t*>(&src);
-  res = *tempRes;
-#else
   std::memcpy(&res, &src, sizeof(res));
-#endif
-
   return res >> 16;
 }
 
