@@ -352,7 +352,6 @@ elseif(WIN32)
     find_package_and_print_version(hipsolver REQUIRED)
 
     list(APPEND CMAKE_MODULE_PATH ${ROCM_PATH}/cmake)
-    set(HIP_PLATFORM AMD)
     find_package_and_print_version(HIP MODULE REQUIRED)
 
     find_library(PYTORCH_HIP_LIBRARIES amdhip64 HINTS ${ROCM_PATH}/lib)
