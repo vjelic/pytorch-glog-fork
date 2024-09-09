@@ -284,7 +284,7 @@ inline void errorIfCapturingNonCapturableNCCL(c10::cuda::CaptureStatus status) {
 
 } // namespace
 
-const int64_t ProcessGroupNCCL::kWatchdogThreadSleepMillis = 1000;
+const int64_t ProcessGroupNCCL::kWatchdogThreadSleepMillis = 100;
 constexpr int64_t kSynchronizeBusyWaitMillis = 10;
 thread_local uint64_t ProcessGroupNCCL::ncclActiveGroupCounter_ = 0;
 
