@@ -144,7 +144,7 @@ def summarize_xml_files(path, workflow_name):
     res = {}
     res_item_list = [ "PASSED", "SKIPPED", "XFAILED", "FAILED", "ERROR" ]
     test_file_items = set()
-    for (k,v) in list(test_cases.items()):
+    for (k,v) in list(test_suites.items()):
         file_name = k[0]
         if not file_name in test_file_items:
             test_file_items.add(file_name)
@@ -154,13 +154,14 @@ def summarize_xml_files(path, workflow_name):
                 res[temp_item] = {}
             temp_item_statistics = test_file_and_status(file_name, "STATISTICS")
             res[temp_item_statistics] = {'TOTAL': 0, 'PASSED': 0, 'SKIPPED': 0, 'XFAILED': 0, 'FAILED': 0, 'ERROR': 0, 'EXECUTION_TIME': 0}
-
-    for (k,v) in list(test_suites.items()):
-        file_name = k[0]
-        test_tuple_key_statistics = test_file_and_status(file_name, "STATISTICS")
-        test_running_time = get_test_file_running_time(v)
-        res[test_tuple_key_statistics]["EXECUTION_TIME"] += test_running_time
-        TOTAL_EXECUTION_TIME += test_running_time
+            test_running_time = get_test_file_running_time(v)
+            res[temp_item_statistics]["EXECUTION_TIME"] += test_running_time
+            TOTAL_EXECUTION_TIME += test_running_time
+        else:
+            test_tuple_key_statistics = test_file_and_status(file_name, "STATISTICS")
+            test_running_time = get_test_file_running_time(v)
+            res[test_tuple_key_statistics]["EXECUTION_TIME"] += test_running_time
+            TOTAL_EXECUTION_TIME += test_running_time
 
     for (k,v) in list(test_cases.items()):
         file_name = k[0]
@@ -326,13 +327,17 @@ def run_selected_tests(workflow_name, test_run_test_path, overall_logs_path_curr
 
     return selected_results_dict
 
-def run_test_and_summarize_results(
-    pytorch_root_dir: str,
-    priority_tests: bool,
-    test_config: List[str],
-    default_list: List[str],
-    distributed_list: List[str],
-    inductor_list: List[str]) -> Dict[str, Any]:
+def run_test_and_summarize_results() -> Dict[str, Any]:
+    # parse args
+    args = parse_args()
+    pytorch_root_dir = str(args.pytorch_root)
+    priority_tests = bool(args.priority_tests)
+    test_config = list[str](args.test_config)
+    default_list = list[str](args.default_list)
+    distributed_list = list[str](args.distributed_list)
+    inductor_list = list[str](args.inductor_list)
+    skip_rerun = bool(args.skip_rerun)
+
     # copy current environment variables
     _environ = dict(os.environ)
     
@@ -341,12 +346,17 @@ def run_test_and_summarize_results(
     test_run_test_path = pytorch_root_dir + "/test/run_test.py"
     repo_test_log_folder_path = pytorch_root_dir + "/.automation_logs/"
     test_reports_src = pytorch_root_dir + "/test/test-reports/"
+    run_test_python_file = pytorch_root_dir + "/test/run_test.py"
 
     # change directory to pytorch root
     os.chdir(pytorch_root_dir)
 
     # all test results dict
     res_all_tests_dict = {}
+
+    # patterns
+    search_text = "--reruns=2"
+    replace_text = "--reruns=0"
 
     # create logs folder
     if not os.path.exists(repo_test_log_folder_path):
@@ -358,6 +368,13 @@ def run_test_and_summarize_results(
     os.environ['HSA_FORCE_FINE_GRAIN_PCIE'] = '1'
     os.environ['PYTORCH_TESTING_DEVICE_ONLY_FOR'] = 'cuda'
     os.environ['CONTINUE_THROUGH_ERROR'] = 'True'
+    if skip_rerun:
+        # modify run_test.py in-place
+        with open(run_test_python_file, 'r') as file:
+            data = file.read()
+            data = data.replace(search_text, replace_text)
+        with open(run_test_python_file, 'w') as file:
+            file.write(data)
 
     # Time stamp
     current_datetime = datetime.now().strftime("%Y%m%d_%H-%M-%S")
@@ -455,6 +472,15 @@ def run_test_and_summarize_results(
     os.environ.clear()
     os.environ.update(_environ)
 
+    # restore files
+    if skip_rerun:
+        # modify run_test.py in-place
+        with open(run_test_python_file, 'r') as file:
+            data = file.read()
+            data = data.replace(replace_text, search_text)
+        with open(run_test_python_file, 'w') as file:
+            file.write(data)
+
     return res_all_tests_dict
 
 def parse_args():
@@ -465,6 +491,7 @@ def parse_args():
     parser.add_argument('--distributed_list', nargs='+', default=[], help="space-separated list of 'distributed' config test suites/files to be executed eg. 'distributed/test_c10d_common distributed/test_c10d_nccl'")
     parser.add_argument('--inductor_list', nargs='+', default=[], help="space-separated list of 'inductor' config test suites/files to be executed eg. 'inductor/test_torchinductor test_ops'")
     parser.add_argument('--pytorch_root', default='.', type=str, help="PyTorch root directory")
+    parser.add_argument('--skip_rerun', action='store_true', help="skip rerun process")
     parser.add_argument('--example_output', type=str, help="{'workflow_name': {\n"
                                                            "  test_file_and_status(file_name='workflow_aggregate', status='STATISTICS'): {}, \n"
                                                            "  test_file_and_status(file_name='test_file_name_1', status='ERROR'): {}, \n"
@@ -484,9 +511,7 @@ def check_num_gpus_for_distributed():
     assert num_gpus_visible > 1, "Number of visible GPUs should be >1 to run distributed unit tests"
 
 def main():
-    global args
-    args = parse_args()
-    all_tests_results = run_test_and_summarize_results(args.pytorch_root, args.priority_tests, args.test_config, args.default_list, args.distributed_list, args.inductor_list)
+    all_tests_results = run_test_and_summarize_results()
     pprint(dict(all_tests_results))
 
 if __name__ == "__main__":
