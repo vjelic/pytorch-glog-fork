@@ -408,7 +408,7 @@ class CachingAutotuner(KernelInterface):
                 "num_stages": compile_meta["num_stages"],
                 "debug": compile_meta["debug"],
             }
-            if self.device_props.type != "hip":
+            if self.device_props.type == "hip":
                 if "waves_per_eu" in compile_meta:
                     options["waves_per_eu"] = compile_meta["waves_per_eu"]
                 if "matrix_instr_nonkdim" in compile_meta:
@@ -1242,6 +1242,8 @@ def triton_config(
     if z:
         cfg["ZBLOCK"] = z
     assert x <= TRITON_MAX_BLOCK["X"], f"increase TRITON_MAX_BLOCK['X'] to {x}"
+
+    cfg["waves_per_eu"] = int(8 / num_warps)
     check_config(cfg, xnumel=xnumel, ynumel=ynumel, znumel=znumel)
     return Config(cfg, num_warps=num_warps, num_stages=num_stages)
 
@@ -1283,6 +1285,7 @@ def triton_config_reduction(
         r = r // 2
 
     cfg = {"XBLOCK": x, "RBLOCK": r}
+    cfg["waves_per_eu"] = int(8 / num_warps)
     check_config(cfg, xnumel=size_hints[0])
     assert x <= TRITON_MAX_BLOCK["X"], f"increase TRITON_MAX_BLOCK['X'] to {x}"
     assert r <= TRITON_MAX_BLOCK["R"], f"increase TRITON_MAX_BLOCK['r'] to {r}"
@@ -1315,6 +1318,8 @@ def triton_config_tiled_reduction(size_hints, x, y, r, num_stages=1):
 
     cfg = {"XBLOCK": x, "YBLOCK": y, "RBLOCK": r}
     num_warps = _num_warps(conditional_product(x, y, r) // 256, min_num_warps=1)
+    num_warps = next_power_of_2(min(max(conditional_product(x, y, r) // 256, 1), 8))
+    cfg["waves_per_eu"] = int(8 / num_warps)
     check_config(cfg, xnumel=size_hints[0], ynumel=size_hints[1])
     assert r <= TRITON_MAX_BLOCK["R"], f"increase TRITON_MAX_BLOCK['r'] to {r}"
     return Config(cfg, num_warps=num_warps, num_stages=num_stages)

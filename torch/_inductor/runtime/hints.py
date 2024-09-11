@@ -72,7 +72,7 @@ else:
     )
 
 
-_NUM_THREADS_PER_WARP = 32
+_NUM_THREADS_PER_WARP = 64
 
 
 class HeuristicType(Enum):
@@ -111,6 +111,10 @@ class DeviceProperties(typing.NamedTuple):
         from torch._dynamo.device_interface import get_interface_for_device
 
         device_type = device.type if torch.version.hip is None else "hip"
+
+        if torch.version.hip and device_type == "cuda":
+            device_type = "hip"
+
         device_interface = get_interface_for_device(device)
         if device_type == "cuda":
             props = device_interface.get_device_properties(device)
