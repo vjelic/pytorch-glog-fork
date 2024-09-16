@@ -7,6 +7,8 @@ if(NOT __AOTRITON_INCLUDED)
   add_library(__caffe2_aotriton INTERFACE)
   # Note it is INSTALL"ED"
   if(DEFINED ENV{AOTRITON_INSTALLED_PREFIX})
+    install(DIRECTORY $ENV{AOTRITON_INSTALLED_PREFIX}
+            DESTINATION ${__AOTRITON_INSTALL_DIR})
     set(__AOTRITON_INSTALL_DIR "$ENV{AOTRITON_INSTALLED_PREFIX}")
     message(STATUS "Using Preinstalled AOTriton at ${__AOTRITON_INSTALL_DIR}")
   else()
