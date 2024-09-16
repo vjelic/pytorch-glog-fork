@@ -177,8 +177,8 @@ mha_fwd(const at::Tensor &q,         // batch_size x seqlen_q x num_heads x head
     philox_state = gen->philox_cuda_state(counter_offset);
     if (at::cuda::currentStreamCaptureStatus() == at::cuda::CaptureStatus::None) {
       auto [seed, offset] = at::cuda::philox::unpack(philox_state);
-      seed_t = at::scalar_tensor(at::Scalar(static_cast<int64_t>(seed)), at::dtype(at::kLong));
-      offset_t = at::scalar_tensor(at::Scalar(static_cast<int64_t>(offset)), at::dtype(at::kLong));
+      seed_t = at::scalar_tensor(at::Scalar(static_cast<int64_t>(seed)), at::dtype(at::kLong).device(at::kCUDA));
+      offset_t = at::scalar_tensor(at::Scalar(static_cast<int64_t>(offset)), at::dtype(at::kLong).device(at::kCUDA));
     } else {
       // See Note [CUDA Graph-safe RNG states] about the design
       use_philox_state = true;
@@ -192,17 +192,6 @@ mha_fwd(const at::Tensor &q,         // batch_size x seqlen_q x num_heads x head
     } else {
       seed_t = at::empty({}, at::dtype(at::kLong).device(at::kCUDA));
       offset_t = at::empty({}, at::dtype(at::kLong).device(at::kCUDA));
-    }
-  }
-
-  at::PhiloxCudaState philox_args;
-  if (p_dropout > 0.0) {
-    if (at::cuda::currentStreamCaptureStatus() ==
-        at::cuda::CaptureStatus::None)
-    {
-      philox_args = at::PhiloxCudaState(*seed_t.data_ptr<int64_t>(), *offset_t.data_ptr<int64_t>());
-    } else { // dropout + capture
-      philox_args = at::PhiloxCudaState(seed_t.data_ptr<int64_t>(), offset_t.data_ptr<int64_t>(), 0);
     }
   }
 
@@ -405,17 +394,6 @@ mha_bwd(const at::Tensor &dout,  // batch_size x seqlen_q x num_heads, x head_si
   } else {
     dk_expanded = dk;
     dv_expanded = dv;
-  }
-
-  at::PhiloxCudaState philox_args;
-  if (p_dropout > 0.0) {
-    if (at::cuda::currentStreamCaptureStatus() ==
-        at::cuda::CaptureStatus::None)
-    {
-      philox_args = at::PhiloxCudaState(*philox_seed.data_ptr<int64_t>(), *philox_offset.data_ptr<int64_t>());
-    } else { // dropout + capture
-      philox_args = at::PhiloxCudaState(philox_seed.data_ptr<int64_t>(), philox_offset.data_ptr<int64_t>(), 0);
-    }
   }
 
   at::Tensor q_t = q.permute({0,2,1,3});
