@@ -233,6 +233,7 @@ bool check_mem_efficient_hardware_support(sdp_params const& params, bool debug) 
   using sm90 = SMVersion<9, 0>;
   auto dprops = at::cuda::getCurrentDeviceProperties();
 #if USE_ROCM
+
 #if USE_AOTRITON
   auto stream = at::cuda::getCurrentCUDAStream().stream();
   if (hipSuccess != aotriton::v2::flash::check_gpu(stream)) {
@@ -253,8 +254,12 @@ bool check_mem_efficient_hardware_support(sdp_params const& params, bool debug) 
     }
   }
 #else
+  if (debug) {
+    TORCH_WARN("USE_AOTRITON = 0 ");
+  }
   return false;
 #endif
+
 #else
   if (!check_sm_version<sm50, sm90>(dprops)) {
     if (debug) {
@@ -267,9 +272,8 @@ bool check_mem_efficient_hardware_support(sdp_params const& params, bool debug) 
     }
     return false;
   }
-  return true;
 #endif
-  return false;
+  return true;
 }
 
 bool check_requires_grad_and_head_dim_gt192_constraints_on_sm86_89(
