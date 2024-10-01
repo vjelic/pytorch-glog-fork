@@ -542,15 +542,29 @@ struct ReduceOp {
       value_list[i] = ident;
     }
 
-    while (idx * input_vec_size + input_vec_size - 1 < end) {
-      const auto values_vec = memory::load_vector<input_vec_size>(data, idx);
-      #pragma unroll
-      for (index_t i = 0; i < input_vec_size; i++) {
-        value_list[i] = ops.reduce(value_list[i], values_vec.val[i], shift + idx * input_vec_size + i);
+    #define UNRL 8
+    if (((idx+(UNRL-1)*stride)*input_vec_size + input_vec_size -1) >= end) {
+      while (idx * input_vec_size + input_vec_size - 1 < end) {
+	const auto values_vec = memory::load_vector<input_vec_size>(data, idx);
+        #pragma unroll
+	for (index_t i = 0; i < input_vec_size; i++)
+	  value_list[i] = ops.reduce(value_list[i], values_vec.val[i], shift + idx * input_vec_size + i);
+	idx += stride;
       }
-      idx += stride;
+    } else { // unrolled version
+      while (idx * input_vec_size + input_vec_size - 1 < end) {
+	load_t values_vec[UNRL];
+	for (int j=0; j<UNRL; j++)
+          values_vec[j] = memory::load_vector<input_vec_size>(data, idx+j*stride);
+	asm("s_waitcnt vmcnt(0)"); // prevent instructions from crossing this dep line
+        #pragma unroll
+	for (index_t i = 0; i < input_vec_size; i++) {
+	  for (int j=0; j<UNRL; j++)
+	    value_list[i] = ops.reduce(value_list[i], values_vec[j].val[i], shift + (idx+j*stride) * input_vec_size + i);
+	}
+	idx += UNRL*stride;
+      }
     }
-
     // tail
     index_t tail_start = end - end % input_vec_size;
     if (config.should_reduce_tail()) {
