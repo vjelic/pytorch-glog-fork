@@ -1091,16 +1091,10 @@ ReduceConfig setReduceConfig(const TensorIterator& iter){
     config.output_mult[0] = config.split_output(block_width);
   }
 
-#ifdef USE_ROCM
-  // AMD gpus perform better with fewer thread blocks
-  constexpr int min_values_per_thread = 128;
-  constexpr int max_values_per_thread = 1024;
-#else
   constexpr int min_values_per_thread = 16;
   constexpr int max_values_per_thread = 256;
-#endif
 
-  if (config.values_per_thread() >= block_height * min_values_per_thread || config.values_per_thread() >= max_values_per_thread) {
+  if (config.values_per_thread() >= block_height * 16 || config.values_per_thread() >= max_values_per_thread) {
     // Divide the input across warps in a thread-block, if that leaves at least
     // 16 elements to be summed by each thread. This will require inter-warp
     // reduction using shared memory.
@@ -1110,7 +1104,14 @@ ReduceConfig setReduceConfig(const TensorIterator& iter){
     config.output_mult[1] = config.split_output(block_height);
   }
 
-  const int blocks_per_sm = at::cuda::getCurrentDeviceProperties()->maxThreadsPerMultiProcessor / config.num_threads;
+  int max_threads_per_mp = at::cuda::getCurrentDeviceProperties()->maxThreadsPerMultiProcessor;
+#ifdef USE_ROCM
+  if (iter.ndim() == 1)
+    max_threads_per_mp = 512;
+  if (iter.ndim() == 2)
+    max_threads_per_mp = 256;
+#endif
+  const int blocks_per_sm = max_threads_per_mp / config.num_threads;
   const int num_mp = at::cuda::getCurrentDeviceProperties()->multiProcessorCount;
   const int target_grid_size = num_mp * blocks_per_sm;
   int grid = config.grid().x;
