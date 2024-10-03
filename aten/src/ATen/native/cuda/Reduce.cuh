@@ -542,7 +542,7 @@ struct ReduceOp {
       value_list[i] = ident;
     }
 
-    #define UNRL 8
+    #define UNRL 4
     if (((idx+(UNRL-1)*stride)*input_vec_size + input_vec_size -1) >= end) {
       while (idx * input_vec_size + input_vec_size - 1 < end) {
 	const auto values_vec = memory::load_vector<input_vec_size>(data, idx);
