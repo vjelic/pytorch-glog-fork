@@ -56,11 +56,11 @@ static llvm::JITTargetAddress toAddress(T* Ptr) {
 // Get subtarget features for the host.
 static llvm::SubtargetFeatures getHostSubtargetFeatures() {
   llvm::SubtargetFeatures subtargetFeatures;
-  #if LLVM_VERSION_MAJOR >= 19
-  const auto featureMap = llvm::sys::getHostCPUFeatures();
+#if LLVM_VERSION_MAJOR >= 19
+  const auto featureMap = llvm::sys::getHostCPUFeatures();
 #else
-  llvm::StringMap<bool> featureMap;
-  llvm::sys::getHostCPUFeatures(featureMap);
+  llvm::StringMap<bool> featureMap;
+  llvm::sys::getHostCPUFeatures(featureMap);
 #endif
   for (auto& feature : featureMap) {
     subtargetFeatures.AddFeature(feature.first(), feature.second);
