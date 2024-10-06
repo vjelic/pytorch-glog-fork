@@ -12530,6 +12530,9 @@ op_db: List[OpInfo] = [
            check_batched_forward_grad=False,
            supports_out=False,
            skips=(
+               # Compiler upgrade on ROCm. SWDEV-460452
+               DecorateInfo(unittest.skip('Skipped on ROCm!'), 'TestCommon', 'test_non_standard_bool_values',
+                            dtypes=[torch.bool], active_if=TEST_WITH_ROCM),
            )),
     OpInfo('masked_select',
            dtypes=all_types_and_complex_and(torch.bool, torch.half, torch.bfloat16),
@@ -16832,6 +16835,11 @@ op_db: List[OpInfo] = [
            supports_fwgrad_bwgrad=True,
            check_batched_forward_grad=False,
            check_batched_gradgrad=False,  # vmap complains of the sizes
+           skips=(
+               # Compiler upgrade on ROCm. SWDEV-460452
+               DecorateInfo(unittest.skip('Skipped on ROCm!'), 'TestCommon', 'test_non_standard_bool_values',
+                            dtypes=[torch.bool], active_if=TEST_WITH_ROCM),
+           ),
            sample_inputs_func=sample_inputs_put),
     OpInfo('take',
            dtypes=all_types_and_complex_and(torch.bool, torch.float16, torch.bfloat16),
@@ -16845,6 +16853,11 @@ op_db: List[OpInfo] = [
            supports_forward_ad=True,
            supports_fwgrad_bwgrad=True,
            sample_inputs_func=sample_inputs_scatter,
+           skips=(
+               # Compiler upgrade on ROCm. SWDEV-460452
+               DecorateInfo(unittest.skip('Skipped on ROCm!'), 'TestCommon', 'test_non_standard_bool_values',
+                            dtypes=[torch.bool], active_if=TEST_WITH_ROCM),
+           ),
            error_inputs_func=error_inputs_scatter_and_scatter_add),
     UnaryUfuncInfo(
         'bfloat16',
@@ -17630,6 +17643,11 @@ op_db: List[OpInfo] = [
            error_inputs_func=error_inputs_scatter_and_scatter_add,
            supports_forward_ad=True,
            supports_fwgrad_bwgrad=True,
+           skips=(
+                # Compiler upgrade on ROCm. SWDEV-460452
+                DecorateInfo(unittest.skip('Skipped on ROCm!'), 'TestCommon', 'test_non_standard_bool_values',
+                             dtypes=[torch.bool], active_if=TEST_WITH_ROCM),
+           )
            ),
     OpInfo('stack',
            dtypes=all_types_and_complex_and(torch.complex32, torch.bool, torch.float16, torch.bfloat16),
@@ -18125,12 +18143,22 @@ op_db: List[OpInfo] = [
            supports_forward_ad=True,
            supports_fwgrad_bwgrad=True,
            error_inputs_func=error_inputs_tril_triu,
+           skips=(
+               # Compiler upgrade on ROCm. SWDEV-460452
+               DecorateInfo(unittest.skip('Skipped on ROCm!'), 'TestCommon', 'test_non_standard_bool_values',
+                            dtypes=[torch.bool], active_if=TEST_WITH_ROCM),
+           ),
            sample_inputs_func=sample_inputs_tril_triu),
     OpInfo('triu',
            dtypes=all_types_and_complex_and(torch.bool, torch.half, torch.bfloat16, torch.chalf),
            supports_forward_ad=True,
            supports_fwgrad_bwgrad=True,
            error_inputs_func=error_inputs_tril_triu,
+           skips=(
+               # Compiler upgrade on ROCm. SWDEV-460452
+               DecorateInfo(unittest.skip('Skipped on ROCm!'), 'TestCommon', 'test_non_standard_bool_values',
+                            dtypes=[torch.bool], active_if=TEST_WITH_ROCM),
+           ),
            sample_inputs_func=sample_inputs_tril_triu),
     OpInfo('triu_indices',
            dtypes=_dispatch_dtypes((torch.int32, torch.int64)),
@@ -19657,6 +19685,11 @@ op_db: List[OpInfo] = [
         dtypes=all_types_and(torch.float16, torch.bfloat16, torch.bool),
         supports_forward_ad=True,
         supports_fwgrad_bwgrad=True,
+        skips=(
+            # Compiler upgrade on ROCm. SWDEV-460452
+            DecorateInfo(unittest.skip('Skipped on ROCm!'), 'TestCommon', 'test_non_standard_bool_values',
+                         dtypes=[torch.bool], active_if=TEST_WITH_ROCM),
+        ),
         sample_inputs_func=sample_inputs_scatter_reduce,
     ),
     OpInfo(
