@@ -173,6 +173,8 @@ file(GLOB flash_attention_cuda_cpp "native/transformers/cuda/flash_attn/*.cpp")
 
 # flash_attention sources
 file(GLOB flash_attention_hip_hip "native/transformers/hip/flash_attn/*.hip")
+file(GLOB flash_attention_hip_ck_hip "native/transformers/hip/flash_attn/ck/*.hip")
+file(GLOB flash_attention_hip_aot_hip "native/transformers/hip/flash_attn/aot/*.hip")
 file(GLOB flash_attention_src_hip_hip "native/transformers/hip/flash_attn/src/*.hip")
 
 #Mem_eff attention sources
@@ -188,6 +190,8 @@ if(USE_FLASH_ATTENTION)
   list(APPEND ATen_ATTENTION_KERNEL_SRCS ${flash_attention_cuda_kernels_cu})
 
   list(APPEND native_transformers_hip_hip ${flash_attention_hip_hip})
+  list(APPEND native_transformers_hip_hip ${flash_attention_hip_ck_hip})
+  list(APPEND native_transformers_hip_hip ${flash_attention_hip_aot_hip})
   list(APPEND native_transformers_src_hip_hip ${flash_attention_src_hip_hip})
 endif()
 
@@ -314,6 +318,12 @@ if(USE_ROCM)
   list(APPEND ATen_HIP_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/hip)
   list(APPEND ATen_HIP_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/composable_kernel/include)
   list(APPEND ATen_HIP_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/composable_kernel/library/include)
+  # Next two lines are needed because TunableOp uses third-party/fmt
+  list(APPEND ATen_HIP_INCLUDE $<TARGET_PROPERTY:fmt::fmt-header-only,INTERFACE_INCLUDE_DIRECTORIES>)
+  list(APPEND ATen_HIP_DEPENDENCY_LIBS fmt::fmt-header-only)
+if(USE_FLASH_ATTENTION)
+  list(APPEND ATen_HIP_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/native/transformers/hip/flash_attn/ck)
+endif()
   list(APPEND ATen_HIP_SRCS
     ${ATen_HIP_SRCS}
     ${hip_hip}
