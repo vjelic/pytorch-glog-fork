@@ -61,6 +61,7 @@
 #include <c10/core/SymIntArrayRef.h>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 static const int MIOPEN_DIM_MAX = 5;
 
@@ -487,7 +488,7 @@ std::tuple<Tensor, Tensor, Tensor> batch_norm_backward_cpu_template(
 BatchNormBackend _select_batch_norm_backend(
     const Tensor& input, const Tensor& weight, const Tensor& bias, const Tensor& running_mean,
     const Tensor& running_var, bool training, double eps) {
-
+  std :: cout << "********************* _select_batch_norm_backend" << std::endl;
   auto& ctx = at::globalContext();
   bool cudnn_enabled = ctx.userEnabledCuDNN();
 
@@ -514,13 +515,22 @@ BatchNormBackend _select_batch_norm_backend(
   // See #64427
   // non static variable is used to be able to change environment variable in runtime for testing
   bool PYTORCH_MIOPEN_SUGGEST_NHWC = c10::utils::check_env("PYTORCH_MIOPEN_SUGGEST_NHWC").value_or(false);
-
+  std::cout << "***** SUGGEST_NHWC=" << PYTORCH_MIOPEN_SUGGEST_NHWC 
+            << " dim=" << input.dim()
+            << " memory_format=" << input.suggest_memory_format()
+            << " input.dtype=" << input.scalar_type()
+            << " weight.dtype=" << weight.scalar_type()
+            << " bias.dtype=" << bias.scalar_type()
+            << " running_mean.dtype=" << running_mean.scalar_type() 
+            << " running_var.dtype=" << running_var.scalar_type()
+            << " training=" << training
+            << std::endl;
   if (
       input.is_cuda()
       && input.dim() <= MIOPEN_DIM_MAX
       && input.scalar_type() != at::kDouble
-      && input.scalar_type() != at::kBFloat16
-      && (weight.scalar_type() != at::kHalf)
+      // && input.scalar_type() != at::kBFloat16
+      // && (weight.scalar_type() != at::kHalf)
       && weight.defined() && bias.defined()
       && ((running_mean.defined() && running_var.defined())
         || (!running_mean.defined() && !running_var.defined() && training))
@@ -530,9 +540,11 @@ BatchNormBackend _select_batch_norm_backend(
       && (input.suggest_memory_format() == MemoryFormat::Contiguous
         || (input.suggest_memory_format() == MemoryFormat::ChannelsLast && PYTORCH_MIOPEN_SUGGEST_NHWC))
   ) {
+    std::cout << "***** BatchNormBackend::Miopen" << std::endl;
     return BatchNormBackend::Miopen;
   }
 
+  std::cout << "***** BatchNormBackend::Native" << std::endl;
   return BatchNormBackend::Native;
 }
 
@@ -546,6 +558,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, int64_t> _batch_norm_impl_index(
     const Tensor& input, const std::optional<Tensor>& weight_opt /* optional */, const std::optional<Tensor>& bias_opt /* optional */, const std::optional<Tensor>& running_mean_opt /* optional */, const std::optional<Tensor>& running_var_opt /* optional */,
     bool training, double momentum, double eps, bool cudnn_enabled) {
   // See [Note: hacky wrapper removal for optional tensor]
+    std :: cout << "********************* _batch_norm_impl_index" << std::endl;
+
   c10::MaybeOwned<Tensor> weight_maybe_owned = at::borrow_from_optional_tensor(weight_opt);
   const Tensor& weight = *weight_maybe_owned;
   const Tensor& bias = c10::value_or_else(bias_opt, [] {return Tensor();});
@@ -606,7 +620,23 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, int64_t> _batch_norm_impl_index(
   Tensor reserve = at::empty({0}, input.options().dtype(kByte));
 
   if (backend == BatchNormBackend::Miopen) {
-    return std::tuple_cat(
+    if ( (input.scalar_type() == at::kBFloat16) &&
+         (input.suggest_memory_format() == MemoryFormat::ChannelsLast))
+    {
+         return std::tuple_cat(
+             at::miopen_batch_norm(
+               input.contiguous(input.suggest_memory_format()), 
+               weight.to(at::kFloat).contiguous(), 
+               bias.to(at::kFloat).contiguous(),
+               running_mean.defined() ? running_mean.to(at::kFloat).contiguous() : running_mean,
+               running_var.defined() ? running_var.to(at::kFloat).contiguous() : running_var,
+               training, momentum, eps),
+             std::tuple<Tensor>(reserve),
+             std::make_tuple(2));
+    }
+    else
+    {
+      return std::tuple_cat(
              at::miopen_batch_norm(
                input.contiguous(input.suggest_memory_format()), weight.contiguous(), bias.contiguous(),
                running_mean.defined() ? running_mean.contiguous() : running_mean,
@@ -614,6 +644,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, int64_t> _batch_norm_impl_index(
                training, momentum, eps),
              std::tuple<Tensor>(reserve),
              std::make_tuple(2));
+    }
   }
 
   return std::tuple_cat(
@@ -628,6 +659,7 @@ std::tuple<Tensor, Tensor, Tensor> _batch_norm_impl_index_backward(
     const Tensor& input, const Tensor& grad_output, const std::optional<Tensor>& weight_opt /* optional */, const std::optional<Tensor>& running_mean_opt /* optional */, const std::optional<Tensor>& running_var_opt /* optional */, const std::optional<Tensor>& save_mean_opt /* optional */, const std::optional<Tensor>& save_var_transform_opt /* optional */,
     bool train, double epsilon, std::array<bool, 3> output_mask, const Tensor &reservedSpace) {
   // See [Note: hacky wrapper removal for optional tensor]
+  std :: cout << "********************* _batch_norm_impl_index_backward" << std::endl;
   c10::MaybeOwned<Tensor> weight_maybe_owned = at::borrow_from_optional_tensor(weight_opt);
   const Tensor& weight = *weight_maybe_owned;
   const Tensor& running_mean = c10::value_or_else(running_mean_opt, [] {return Tensor();});
@@ -674,6 +706,9 @@ Tensor batch_norm(
     const Tensor& input, const std::optional<Tensor>& weight_opt, const std::optional<Tensor>& bias_opt,
     const std::optional<Tensor>& running_mean_opt, const std::optional<Tensor>& running_var_opt,
     bool training, double momentum, double eps, bool cudnn_enabled) {
+  
+  std :: cout << "********************* batch_norm" << std::endl;
+
   const Tensor& weight = c10::value_or_else(weight_opt, [] {return Tensor();});
   const Tensor& bias = c10::value_or_else(bias_opt, [] {return Tensor();});
   const Tensor& running_mean = c10::value_or_else(running_mean_opt, [] {return Tensor();});

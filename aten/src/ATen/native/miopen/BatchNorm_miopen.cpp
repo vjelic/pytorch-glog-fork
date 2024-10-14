@@ -15,6 +15,8 @@
 // don't build this file as part of CPU build.
 #include <ATen/cuda/CUDAConfig.h>
 
+#include <iostream>
+
 #if !AT_ROCM_ENABLED()
 
 namespace at { namespace native {
@@ -61,6 +63,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
     const Tensor& input_t, const Tensor& weight_t, const std::optional<Tensor>& bias_t_opt, const std::optional<Tensor>& running_mean_t_opt, const std::optional<Tensor>& running_var_t_opt,
     bool training, double exponential_average_factor, double epsilon)
 {
+  std::cout << "$$$$$ miopen_batch_norm" << std::endl;
   // See [Note: hacky wrapper removal for optional tensor]
   c10::MaybeOwned<Tensor> bias_t_maybe_owned = at::borrow_from_optional_tensor(bias_t_opt);
   const Tensor& bias_t = *bias_t_maybe_owned;
@@ -74,15 +77,25 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
             running_var{ running_var_t, "running_var", 5 };
   CheckedFrom c = "miopen_batch_norm";
 
+  std::cout << "$$$$$" 
+            << " dim=" << input->dim()
+            << " memory_format=" << input->suggest_memory_format()
+            << " input.dtype=" << input->scalar_type()
+            << " weight.dtype=" << weight->scalar_type()
+            << " bias.dtype=" << bias->scalar_type()
+            << " running_mean.dtype=" << running_mean->scalar_type() 
+            << " running_var.dtype=" << running_var->scalar_type()
+            << " training=" << training
+            << std::endl;
   checkAllDefined(c, {input, weight, bias});
   if (!training) {
     checkAllDefined(c, {running_mean, running_var});
   }
   checkAllSameGPU(c, {input, weight, bias, running_mean, running_var});
-  if (input->scalar_type() != ScalarType::Half) {
-    checkAllSameType(c, {input, weight});
-  }
-  checkAllSameType(c, {weight, bias, running_mean, running_var});
+  // if (input->scalar_type() != ScalarType::Half || input->scalar_type() != ScalarType::BFloat16) {
+  //   checkAllSameType(c, {input, weight});
+  // }
+  // checkAllSameType(c, {weight, bias, running_mean, running_var});
   checkAllContiguous(c, {weight, bias, running_mean, running_var});
   TORCH_CHECK(input->is_contiguous(input->suggest_memory_format()));
   checkDimRange(c, input, 2, 6 /* exclusive */);
@@ -167,6 +180,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
     const std::optional<Tensor>& save_mean_t_opt,
     const std::optional<Tensor>& save_var_t_opt,
     double epsilon) {
+  std::cout << "$$$$$ miopen_batch_norm_backward" << std::endl;
   // See [Note: hacky wrapper removal for optional tensor]
   const Tensor& running_mean =
       c10::value_or_else(running_mean_opt, [] { return Tensor(); });
@@ -188,13 +202,13 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
 
   checkAllDefined(c, {input, grad_output, weight, save_mean, save_var});
   checkAllSameGPU(c, {input, grad_output, weight, save_mean, save_var});
-  if (input->scalar_type() == ScalarType::Half) {
-    checkScalarType(c, weight, ScalarType::Float);
-  } else {
-    checkAllSameType(c, {input, weight});
-  }
-  checkAllSameType(c, {input, grad_output});
-  checkAllSameType(c, {weight, save_mean, save_var});
+  // // if (input->scalar_type() == ScalarType::Half) {
+  // //   checkScalarType(c, weight, ScalarType::Float);
+  // // } else {
+  //   checkAllSameType(c, {input, weight});
+  // // }
+  // checkAllSameType(c, {input, grad_output});
+  // checkAllSameType(c, {weight, save_mean, save_var});
   checkAllContiguous(c, {save_mean, save_var});
   TORCH_CHECK(input->is_contiguous(input->suggest_memory_format()));
   TORCH_CHECK(grad_output->is_contiguous(input->suggest_memory_format()));

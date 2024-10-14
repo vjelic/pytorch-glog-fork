@@ -8278,7 +8278,7 @@ class TestNNDeviceType(NNTestCase):
 
 
     @onlyCUDA
-    @dtypes(torch.float)
+    @dtypes(torch.float, torch.float16, torch.bfloat16)
     def test_batchnorm_nhwc_miopen(self, dtype):
         # TODO: Remove PYTORCH_MIOPEN_SUGGEST_NHWC once ROCm officially supports NHWC in MIOpen
         PYTORCH_MIOPEN_SUGGEST_NHWC = "PYTORCH_MIOPEN_SUGGEST_NHWC"
@@ -8293,7 +8293,7 @@ class TestNNDeviceType(NNTestCase):
                 os.environ[PYTORCH_MIOPEN_SUGGEST_NHWC] = prev_val
 
     @onlyCUDA
-    @dtypes(torch.float)
+    @dtypes(torch.float, torch.float16, torch.bfloat16)
     def test_batchnorm_nchw_miopen(self, dtype):
         self.batchnorm2d_miopen(dtype, torch.contiguous_format)
 
