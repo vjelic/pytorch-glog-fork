@@ -51,7 +51,6 @@ install_ubuntu() {
     $ccache_deps \
     $numpy_deps \
     ${deploy_deps} \
-    ${cmake3} \
     apt-transport-https \
     autoconf \
     automake \
