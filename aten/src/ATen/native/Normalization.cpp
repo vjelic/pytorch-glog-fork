@@ -515,30 +515,33 @@ BatchNormBackend _select_batch_norm_backend(
   // See #64427
   // non static variable is used to be able to change environment variable in runtime for testing
   bool PYTORCH_MIOPEN_SUGGEST_NHWC = c10::utils::check_env("PYTORCH_MIOPEN_SUGGEST_NHWC").value_or(false);
-  std::cout << "***** SUGGEST_NHWC=" << PYTORCH_MIOPEN_SUGGEST_NHWC 
+  std::cout << "**+** SUGGEST_NHWC=" << PYTORCH_MIOPEN_SUGGEST_NHWC 
+            << " cudnn_enabled=" << cudnn_enabled
             << " dim=" << input.dim()
             << " memory_format=" << input.suggest_memory_format()
             << " input.dtype=" << input.scalar_type()
-            << " weight.dtype=" << weight.scalar_type()
-            << " bias.dtype=" << bias.scalar_type()
-            << " running_mean.dtype=" << running_mean.scalar_type() 
-            << " running_var.dtype=" << running_var.scalar_type()
+            << " weight.dtype=" << (weight.defined()?"+":"-") << weight.scalar_type()
+            << " bias.dtype=" << (bias.defined()?"+":"-") << bias.scalar_type()
+            << " running_mean.dtype=" << (running_mean.defined()?"+":"-") << running_mean.scalar_type() 
+            << " running_var.dtype=" << (running_mean.defined()?"+":"-") << running_mean.scalar_type()
             << " training=" << training
             << std::endl;
   if (
       input.is_cuda()
-      && input.dim() <= MIOPEN_DIM_MAX
-      && input.scalar_type() != at::kDouble
-      // && input.scalar_type() != at::kBFloat16
-      // && (weight.scalar_type() != at::kHalf)
-      && weight.defined() && bias.defined()
-      && ((running_mean.defined() && running_var.defined())
-        || (!running_mean.defined() && !running_var.defined() && training))
-      && (input.dim() >= 3)
       && detail::getCUDAHooks().compiledWithMIOpen()
       && cudnn_enabled
-      && (input.suggest_memory_format() == MemoryFormat::Contiguous
-        || (input.suggest_memory_format() == MemoryFormat::ChannelsLast && PYTORCH_MIOPEN_SUGGEST_NHWC))
+      && input.dim() <= MIOPEN_DIM_MAX
+      && (input.dim() >= 3)      
+      && 
+      (
+        (input.scalar_type() == at::kFloat && input.suggest_memory_format() == MemoryFormat::Contiguous && weight.scalar_type() == at::kFloat)
+        ||
+        (input.scalar_type() == at::kFloat && input.suggest_memory_format() == MemoryFormat::ChannelsLast && PYTORCH_MIOPEN_SUGGEST_NHWC && weight.scalar_type() == at::kFloat)
+        ||
+        (input.scalar_type() == at::kBFloat16 && input.suggest_memory_format() == MemoryFormat::ChannelsLast && PYTORCH_MIOPEN_SUGGEST_NHWC && weight.scalar_type() == at::kBFloat16)
+      )
+      && weight.defined() && bias.defined()
+      && ((running_mean.defined() && running_var.defined()) || (!running_mean.defined() && !running_var.defined() && training))
   ) {
     std::cout << "***** BatchNormBackend::Miopen" << std::endl;
     return BatchNormBackend::Miopen;

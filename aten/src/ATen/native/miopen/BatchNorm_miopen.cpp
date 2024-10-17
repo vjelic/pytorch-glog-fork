@@ -256,6 +256,19 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
   Constant one(dataType, 1);
   Constant zero(dataType, 0);
 
+  std::cout 
+    << "##### miopenBatchNormalizationBackward "
+    << " mode=" << mode
+    << " input=" << input->scalar_type()
+    << " grad_output=" << grad_output->scalar_type()
+    << " grad_input=" << grad_input_t.scalar_type()
+    << " weight=" << weight->scalar_type()
+    << " grad_weight=" << grad_weight_t.scalar_type()
+    << " grad_bias=" << grad_bias_t.scalar_type()
+    << " epsilon=" << epsilon
+    << " save_mean=" << save_mean->scalar_type()
+    << " save_var=" << save_var->scalar_type()
+    << std::endl;
   MIOPEN_CHECK(miopenBatchNormalizationBackward(
     handle, mode, &one, &zero, &one, &zero,
     idesc.desc(), input->const_data_ptr(),
