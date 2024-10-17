@@ -626,8 +626,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, int64_t> _batch_norm_impl_index(
          return std::tuple_cat(
              at::miopen_batch_norm(
                input.contiguous(input.suggest_memory_format()), 
-               weight.to(at::kFloat).contiguous(), 
-               bias.to(at::kFloat).contiguous(),
+               weight.to(at::kBFloat16).contiguous(), 
+               bias.to(at::kBFloat16).contiguous(),
                running_mean.defined() ? running_mean.to(at::kFloat).contiguous() : running_mean,
                running_var.defined() ? running_var.to(at::kFloat).contiguous() : running_var,
                training, momentum, eps),
@@ -656,7 +656,13 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, int64_t> _batch_norm_impl_index(
 
 std::tuple<Tensor, Tensor, Tensor> _batch_norm_impl_index_backward(
     int64_t impl_index,
-    const Tensor& input, const Tensor& grad_output, const std::optional<Tensor>& weight_opt /* optional */, const std::optional<Tensor>& running_mean_opt /* optional */, const std::optional<Tensor>& running_var_opt /* optional */, const std::optional<Tensor>& save_mean_opt /* optional */, const std::optional<Tensor>& save_var_transform_opt /* optional */,
+    const Tensor& input, 
+    const Tensor& grad_output, 
+    const std::optional<Tensor>& weight_opt /* optional */, 
+    const std::optional<Tensor>& running_mean_opt /* optional */, 
+    const std::optional<Tensor>& running_var_opt /* optional */, 
+    const std::optional<Tensor>& save_mean_opt /* optional */, 
+    const std::optional<Tensor>& save_var_transform_opt /* optional */,
     bool train, double epsilon, std::array<bool, 3> output_mask, const Tensor &reservedSpace) {
   // See [Note: hacky wrapper removal for optional tensor]
   std :: cout << "********************* _batch_norm_impl_index_backward" << std::endl;
