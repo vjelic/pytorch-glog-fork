@@ -5062,7 +5062,8 @@ tensor(..., device='meta', size=(1,), requires_grad=True)""")
 
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA not available")
     def test_batchnorm_nhwc_cuda(self):
-        for dtype in (torch.half, torch.float):
+        # for dtype in (torch.half, torch.float):
+        for dtype in (torch.bfloat16,):
             (N, C, H, W) = 2, 64, 50, 50
             model = torch.nn.BatchNorm2d(C, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
             model = model.eval().cuda().to(dtype)

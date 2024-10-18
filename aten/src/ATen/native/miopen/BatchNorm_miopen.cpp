@@ -129,9 +129,9 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
 
   if (training) {
     int64_t num_features = input_t.size(1);
-    save_mean = at::empty({ num_features }, weight_t.options());
-    save_var = at::empty({ num_features }, weight_t.options());
-    std::cout << "##### miopenBatchNormalizationForwardTraining " 
+    save_mean = at::empty({ num_features }, weight_t.options()).to(at::kFloat);
+    save_var = at::empty({ num_features }, weight_t.options()).to(at::kFloat);;
+    std::cout << "##### miopenBatchNormalizationForward Training " 
             << " training=" << training
             << " mode=" << mode
             << " input=" << input->scalar_type()
@@ -161,13 +161,27 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
       epsilon,
       save_mean.mutable_data_ptr(),
       save_var.mutable_data_ptr()));
-  } else {
-    save_mean = at::empty({0}, weight_t.options());
-    save_var = at::empty({0}, weight_t.options());
+  } else {    
+    save_mean = at::empty({0}, weight_t.options()).to(at::kFloat);
+    save_var = at::empty({0}, weight_t.options()).to(at::kFloat);
+    std::cout << "##### miopenBatchNormalizationForward Inference " 
+            << " training=" << training
+            << " mode=" << mode
+            << " input=" << input->scalar_type()
+            << " output=" << output->scalar_type()
+            << " weight=" << weight->scalar_type()
+            << " bias=" << bias->scalar_type()
+            // << " eaf=" << exponential_average_factor
+            << " running_mean=" << running_mean->scalar_type()
+            << " running_var=" << running_var->scalar_type()
+            // << " epsilon=" << epsilon
+            << " save_mean=" << save_mean.scalar_type()
+            << " save_var=" << save_var.scalar_type()            
+            << std::endl;
     MIOPEN_CHECK(miopenBatchNormalizationForwardInference(
       handle, mode, &one, &zero,
       idesc.desc(), input->const_data_ptr(),
-      idesc.desc(), output->data_ptr(),
+      odesc.desc(), output->data_ptr(),
       wdesc.desc(),
       // NOTE: MIOpen docs say that the bnScale and bnBias args are only inputs,
       // not outputs. However, unfortunately the function signature only takes
