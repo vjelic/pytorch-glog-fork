@@ -538,6 +538,8 @@ BatchNormBackend _select_batch_norm_backend(
         ||
         (input.scalar_type() == at::kFloat && input.suggest_memory_format() == MemoryFormat::ChannelsLast && PYTORCH_MIOPEN_SUGGEST_NHWC && weight.scalar_type() == at::kFloat)
         ||
+        (input.scalar_type() == at::kHalf && input.suggest_memory_format() == MemoryFormat::Contiguous /* && weight.scalar_type() == at::kFloat*/)
+        ||
         (input.scalar_type() == at::kBFloat16 && input.suggest_memory_format() == MemoryFormat::ChannelsLast && PYTORCH_MIOPEN_SUGGEST_NHWC && weight.scalar_type() == at::kBFloat16)
       )
       && weight.defined() && bias.defined()
@@ -561,7 +563,18 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, int64_t> _batch_norm_impl_index(
     const Tensor& input, const std::optional<Tensor>& weight_opt /* optional */, const std::optional<Tensor>& bias_opt /* optional */, const std::optional<Tensor>& running_mean_opt /* optional */, const std::optional<Tensor>& running_var_opt /* optional */,
     bool training, double momentum, double eps, bool cudnn_enabled) {
   // See [Note: hacky wrapper removal for optional tensor]
-    std :: cout << "********************* _batch_norm_impl_index" << std::endl;
+    std :: cout 
+      << "********************* _batch_norm_impl_index" 
+      << " input=" << input.scalar_type()
+      << " weight=" << (weight_opt.has_value() ? weight_opt.value().scalar_type() : at::ScalarType::Undefined)  
+      << " bias=" << (bias_opt.has_value() ? bias_opt.value().scalar_type() : at::ScalarType::Undefined)
+      << " running_mean=" << (running_mean_opt.has_value() ? running_mean_opt.value().scalar_type() : at::ScalarType::Undefined)
+      << " running_var=" << (running_var_opt.has_value() ? running_var_opt.value().scalar_type() : at::ScalarType::Undefined)
+      << " training=" << training
+      // << " momentum=" << momentum
+      // << " eps=" << eps
+      << " cudnn_enabled=" << cudnn_enabled
+      << std::endl;
 
   c10::MaybeOwned<Tensor> weight_maybe_owned = at::borrow_from_optional_tensor(weight_opt);
   const Tensor& weight = *weight_maybe_owned;
@@ -716,7 +729,18 @@ Tensor batch_norm(
     const std::optional<Tensor>& running_mean_opt, const std::optional<Tensor>& running_var_opt,
     bool training, double momentum, double eps, bool cudnn_enabled) {
   
-  std :: cout << "********************* batch_norm" << std::endl;
+  std :: cout 
+    << "********************* batch_norm" 
+    << " input=" << input.scalar_type()
+    << " weight=" << (weight_opt.has_value() ? weight_opt.value().scalar_type() : at::ScalarType::Undefined)
+    << " bias=" << (bias_opt.has_value() ? bias_opt.value().scalar_type() : at::ScalarType::Undefined)
+    << " running_mean=" << (running_mean_opt.has_value() ? running_mean_opt.value().scalar_type() : at::ScalarType::Undefined)
+    << " running_var=" << (running_var_opt.has_value() ? running_var_opt.value().scalar_type() : at::ScalarType::Undefined)
+    << " training=" << training
+    // << " momentum=" << momentum
+    // << " eps=" << eps
+    << " cudnn_enabled=" << cudnn_enabled
+    << std::endl;
 
   const Tensor& weight = c10::value_or_else(weight_opt, [] {return Tensor();});
   const Tensor& bias = c10::value_or_else(bias_opt, [] {return Tensor();});

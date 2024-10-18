@@ -63,7 +63,17 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
     const Tensor& input_t, const Tensor& weight_t, const std::optional<Tensor>& bias_t_opt, const std::optional<Tensor>& running_mean_t_opt, const std::optional<Tensor>& running_var_t_opt,
     bool training, double exponential_average_factor, double epsilon)
 {
-  std::cout << "$$$$$ miopen_batch_norm" << std::endl;
+  std::cout 
+    << "$$$$$ miopen_batch_norm" 
+    << " input_t=" << input_t.scalar_type()
+    << " weight_t=" << weight_t.scalar_type()
+    << " bias_t_opt=" << (bias_t_opt.has_value() ? bias_t_opt.value().scalar_type() : at::ScalarType::Undefined)
+    << " running_mean_t_opt=" << (running_mean_t_opt.has_value() ? running_mean_t_opt.value().scalar_type() : at::ScalarType::Undefined)
+    << " running_var_t_opt=" << (running_var_t_opt.has_value() ? running_var_t_opt.value().scalar_type() : at::ScalarType::Undefined)
+    << " training=" << training
+    // << " exponential_average_factor=" << exponential_average_factor
+    // << " epsilon=" << epsilon
+    << std::endl;
   // See [Note: hacky wrapper removal for optional tensor]
   c10::MaybeOwned<Tensor> bias_t_maybe_owned = at::borrow_from_optional_tensor(bias_t_opt);
   const Tensor& bias_t = *bias_t_maybe_owned;
@@ -119,6 +129,8 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
 
   auto handle = getMiopenHandle();
   auto dataType = getMiopenDataType(*input);
+  auto weight_c = weight->to(at::kBFloat16);
+  auto bias_c = bias->to(at::kBFloat16);
   TensorDescriptor idesc{ *input, 4 };  // input descriptor
   TensorDescriptor odesc{ *output, 4 };  // output descriptor 
   TensorDescriptor wdesc{ expandScale(*weight, input->dim()), 4 };  // descriptor for weight, bias, running_mean, etc.
@@ -136,8 +148,8 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
             << " mode=" << mode
             << " input=" << input->scalar_type()
             << " output=" << output->scalar_type()
-            << " weight=" << weight->scalar_type()
-            << " bias=" << bias->scalar_type()
+            << " weight=" << weight_c.scalar_type()
+            << " bias=" << bias_c.scalar_type()
             // << " eaf=" << exponential_average_factor
             << " running_mean=" << running_mean->scalar_type()
             << " running_var=" << running_var->scalar_type()
@@ -153,8 +165,8 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
       // NOTE: MIOpen docs say that the bnScale and bnBias args are only inputs,
       // not outputs. However, unfortunately the function signature only takes
       // non-const pointers, presumably by accident
-      const_cast<void*>(weight->const_data_ptr()),
-      const_cast<void*>(bias->const_data_ptr()),
+      const_cast<void*>(weight_c.const_data_ptr()),
+      const_cast<void*>(bias_c.const_data_ptr()),
       exponential_average_factor,
       at::maybe_data_ptr(running_mean),
       at::maybe_data_ptr(running_var),
@@ -162,6 +174,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
       save_mean.mutable_data_ptr(),
       save_var.mutable_data_ptr()));
   } else {    
+
     save_mean = at::empty({0}, weight_t.options()).to(at::kFloat);
     save_var = at::empty({0}, weight_t.options()).to(at::kFloat);
     std::cout << "##### miopenBatchNormalizationForward Inference " 
@@ -210,7 +223,17 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
     const std::optional<Tensor>& save_mean_t_opt,
     const std::optional<Tensor>& save_var_t_opt,
     double epsilon) {
-  std::cout << "$$$$$ miopen_batch_norm_backward" << std::endl;
+  std::cout 
+    << "$$$$$ miopen_batch_norm_backward" 
+    << " input_t=" << input_t.scalar_type()
+    << " grad_output_t=" << grad_output_t.scalar_type()
+    << " weight_t=" << weight_t.scalar_type()
+    << " running_mean_opt=" << (running_mean_opt.has_value() ? running_mean_opt.value().scalar_type() : at::ScalarType::Undefined)
+    << " running_var_opt=" << (running_var_opt.has_value() ? running_var_opt.value().scalar_type() : at::ScalarType::Undefined)
+    << " save_mean_t_opt=" << (save_mean_t_opt.has_value() ? save_mean_t_opt.value().scalar_type() : at::ScalarType::Undefined)
+    << " save_var_t_opt=" << (save_var_t_opt.has_value() ? save_var_t_opt.value().scalar_type() : at::ScalarType::Undefined)
+    // << " epsilon=" << epsilon
+    << std::endl;
   // See [Note: hacky wrapper removal for optional tensor]
   const Tensor& running_mean =
       c10::value_or_else(running_mean_opt, [] { return Tensor(); });
@@ -258,8 +281,8 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
 
   auto grad_input_t = at::empty(
       input->sizes(), input->options(), input->suggest_memory_format());
-  auto grad_weight_t = at::empty(weight->sizes(), weight->options());
-  auto grad_bias_t   = at::empty(weight->sizes(), weight->options());
+  auto grad_weight_t = at::empty(weight->sizes(), weight->options()).to(at::kFloat);
+  auto grad_bias_t   = at::empty(weight->sizes(), weight->options()).to(at::kFloat);
 
   auto handle = getMiopenHandle();
   auto dataType = getMiopenDataType(*input);
@@ -279,7 +302,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
     << " weight=" << weight->scalar_type()
     << " grad_weight=" << grad_weight_t.scalar_type()
     << " grad_bias=" << grad_bias_t.scalar_type()
-    << " epsilon=" << epsilon
+    // << " epsilon=" << epsilon
     << " save_mean=" << save_mean->scalar_type()
     << " save_var=" << save_var->scalar_type()
     << std::endl;
