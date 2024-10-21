@@ -1,0 +1,53 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "bf16",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/test",
+            "program": "test_nn.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-v",
+                "-k",
+                "test_batchnorm_nhwc_miopen_cuda_bfloat16"
+            ],
+            "env": {
+                "MIOPEN_ENABLE_LOGGING_CMD": "1"
+            }
+        },
+        {
+            "name": "fp16",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/test",
+            "program": "test_nn.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-v",
+                "-k",
+                "test_batchnorm_nchw_miopen_cuda_float16"
+            ],
+            "env": {
+                "MIOPEN_ENABLE_LOGGING_CMD": "1"
+            }
+        },
+        {
+            "name": "eval",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/test",
+            "program": "test_nn.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-v",
+                "-k",
+                "test_batchnorm_nhwc_cuda"
+            ]
+        }
+    ]
+}

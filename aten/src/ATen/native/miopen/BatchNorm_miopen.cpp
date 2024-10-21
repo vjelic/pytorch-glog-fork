@@ -129,8 +129,8 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
 
   auto handle = getMiopenHandle();
   auto dataType = getMiopenDataType(*input);
-  auto weight_c = weight->to(at::kBFloat16);
-  auto bias_c = bias->to(at::kBFloat16);
+  // auto weight_c = weight->to(at::kBFloat16);
+  // auto bias_c = bias->to(at::kBFloat16);
   TensorDescriptor idesc{ *input, 4 };  // input descriptor
   TensorDescriptor odesc{ *output, 4 };  // output descriptor 
   TensorDescriptor wdesc{ expandScale(*weight, input->dim()), 4 };  // descriptor for weight, bias, running_mean, etc.
@@ -141,6 +141,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
 
   if (training) {
     int64_t num_features = input_t.size(1);
+    //TODO: temporary hack to define save_mean and save_var for BF16 NHWC batchnorm on ROCm
     save_mean = at::empty({ num_features }, weight_t.options()).to(at::kFloat);
     save_var = at::empty({ num_features }, weight_t.options()).to(at::kFloat);;
     std::cout << "##### miopenBatchNormalizationForward Training " 
@@ -148,8 +149,8 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
             << " mode=" << mode
             << " input=" << input->scalar_type()
             << " output=" << output->scalar_type()
-            << " weight=" << weight_c.scalar_type()
-            << " bias=" << bias_c.scalar_type()
+            << " weight=" << weight->scalar_type()
+            << " bias=" << bias->scalar_type()
             // << " eaf=" << exponential_average_factor
             << " running_mean=" << running_mean->scalar_type()
             << " running_var=" << running_var->scalar_type()
@@ -165,8 +166,8 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
       // NOTE: MIOpen docs say that the bnScale and bnBias args are only inputs,
       // not outputs. However, unfortunately the function signature only takes
       // non-const pointers, presumably by accident
-      const_cast<void*>(weight_c.const_data_ptr()),
-      const_cast<void*>(bias_c.const_data_ptr()),
+      const_cast<void*>(weight->const_data_ptr()),
+      const_cast<void*>(bias->const_data_ptr()),
       exponential_average_factor,
       at::maybe_data_ptr(running_mean),
       at::maybe_data_ptr(running_var),

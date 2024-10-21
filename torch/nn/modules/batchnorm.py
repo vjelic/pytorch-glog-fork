@@ -185,6 +185,15 @@ class _BatchNorm(_NormBase):
         else:
             bn_training = (self.running_mean is None) and (self.running_var is None)
 
+        # ROCM only
+        if input.device.type == "cuda" and input.dtype == torch.bfloat16 \
+            and input.is_contiguous(memory_format=torch.channels_last):
+            # NOTE: This is a workaround for a BF16 NHWC in ROCm batchnorm implementation
+
+            self.weight = self.weight.to(torch.bfloat16)
+            self.bias = self.bias.to(torch.bfloat16)
+            self.running_mean = self.running_mean.to(torch.float32)
+            self.running_var = self.running_var.to(torch.float32)
         r"""
         Buffers are only updated if they are to be tracked and we are in training mode. Thus they only need to be
         passed when the update should occur (i.e. in training mode when they are tracked), or when buffer stats are
