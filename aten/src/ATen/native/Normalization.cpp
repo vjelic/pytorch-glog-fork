@@ -635,23 +635,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, int64_t> _batch_norm_impl_index(
 
   Tensor reserve = at::empty({0}, input.options().dtype(kByte));
 
-  if (backend == BatchNormBackend::Miopen) {
-    if ( (input.scalar_type() == at::kBFloat16) &&
-         (input.suggest_memory_format() == MemoryFormat::ChannelsLast))
-    {
-         return std::tuple_cat(
-             at::miopen_batch_norm(
-               input.contiguous(input.suggest_memory_format()), 
-               weight.to(at::kBFloat16).contiguous(), 
-               bias.to(at::kBFloat16).contiguous(),
-               running_mean.defined() ? running_mean.to(at::kFloat).contiguous() : running_mean,
-               running_var.defined() ? running_var.to(at::kFloat).contiguous() : running_var,
-               training, momentum, eps),
-             std::tuple<Tensor>(reserve),
-             std::make_tuple(2));
-    }
-    else
-    {
+  if (backend == BatchNormBackend::Miopen) {  
       return std::tuple_cat(
              at::miopen_batch_norm(
                input.contiguous(input.suggest_memory_format()), weight.contiguous(), bias.contiguous(),
@@ -660,7 +644,6 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, int64_t> _batch_norm_impl_index(
                training, momentum, eps),
              std::tuple<Tensor>(reserve),
              std::make_tuple(2));
-    }
   }
 
   return std::tuple_cat(

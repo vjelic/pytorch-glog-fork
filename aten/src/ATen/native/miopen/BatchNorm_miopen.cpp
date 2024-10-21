@@ -282,6 +282,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
 
   auto grad_input_t = at::empty(
       input->sizes(), input->options(), input->suggest_memory_format());
+    
   auto grad_weight_t = at::empty(weight->sizes(), weight->options()).to(at::kFloat);
   auto grad_bias_t   = at::empty(weight->sizes(), weight->options()).to(at::kFloat);
 
