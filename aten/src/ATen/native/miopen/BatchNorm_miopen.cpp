@@ -219,7 +219,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
       save_mean.mutable_data_ptr(),
       save_var.mutable_data_ptr()));
   } else {    
-    
+
     if (input->scalar_type() == at::kBFloat16 && input->suggest_memory_format() == MemoryFormat::ChannelsLast)
     {
       save_mean = at::ones({ num_features }, weight_t.options()).to(at::kFloat);
@@ -340,8 +340,17 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
   auto grad_input_t = at::empty(
       input->sizes(), input->options(), input->suggest_memory_format());
     
-  auto grad_weight_t = at::empty(weight->sizes(), weight->options()).to(at::kFloat);
-  auto grad_bias_t   = at::empty(weight->sizes(), weight->options()).to(at::kFloat);
+  // auto grad_weight_t = at::empty(weight->sizes(), weight->options());
+  // auto grad_bias_t   = at::empty(weight->sizes(), weight->options());
+  auto grad_weight_t = at::ones(weight->sizes(), weight->options());
+  auto grad_bias_t   = at::ones(weight->sizes(), weight->options());
+
+  if (input->scalar_type() == at::kBFloat16 && input->suggest_memory_format() == MemoryFormat::ChannelsLast)
+  {
+    grad_weight_t = grad_weight_t.to(at::kFloat);
+    grad_bias_t   = grad_bias_t.to(at::kFloat);
+    grad_input_t = grad_input_t.to(at::kFloat);
+  }
 
   auto handle = getMiopenHandle();
   auto dataType = getMiopenDataType(*input);
