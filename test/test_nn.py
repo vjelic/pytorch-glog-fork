@@ -8258,7 +8258,7 @@ class TestNNDeviceType(NNTestCase):
             time.sleep(1)
 
             if input.dtype == torch.bfloat16 and memory_format==torch.channels_last:
-                grad_output = grad_output.to(torch.float).contiguous(memory_format=torch.contiguous_format)
+                grad_output = grad_output.to(torch.float) # .contiguous(memory_format=torch.channels_last)
             out.backward(grad_output)
             with torch.backends.cudnn.flags(enabled=False): # force to use native nhwc batchnorm
                 print("---------------- ref_forward ----------------")

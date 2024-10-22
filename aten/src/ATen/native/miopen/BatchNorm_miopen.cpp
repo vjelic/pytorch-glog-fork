@@ -173,20 +173,14 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
 
   if (training) {
     int64_t num_features = input_t.size(1);
-    //TODO: temporary hack to define save_mean and save_var for BF16 NHWC batchnorm on ROCm
+    // save_mean = at::empty({ num_features }, weight_t.options());
+    // save_var = at::empty({ num_features }, weight_t.options());
+    save_mean = at::ones({ num_features }, weight_t.options());
+    save_var = at::ones({ num_features }, weight_t.options());
     if (input->scalar_type() == at::kBFloat16 && input->suggest_memory_format() == MemoryFormat::ChannelsLast)
     {
-      save_mean = at::ones({ num_features }, weight_t.options()).to(at::kFloat);
-      save_var = at::ones({ num_features }, weight_t.options()).to(at::kFloat);
-      // save_mean = at::empty({ num_features }, weight_t.options()).to(at::kFloat);
-      // save_var = at::empty({ num_features }, weight_t.options()).to(at::kFloat);
-    }
-    else
-    {
-      // save_mean = at::empty({ num_features }, weight_t.options());
-      // save_var = at::empty({ num_features }, weight_t.options());
-      save_mean = at::ones({ num_features }, weight_t.options());
-      save_var = at::ones({ num_features }, weight_t.options());
+      save_mean = save_mean.to(at::kFloat);
+      save_var = save_var.to(at::kFloat);
     }
     std::cout << "##### miopenBatchNormalizationForward Training " 
             << " training=" << training
@@ -220,21 +214,15 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
       save_var.mutable_data_ptr()));
   } else {    
 
+    // save_mean = at::empty({ num_features }, weight_t.options());
+    // save_var = at::empty({ num_features }, weight_t.options());
+    save_mean = at::ones({ num_features }, weight_t.options());
+    save_var = at::ones({ num_features }, weight_t.options());
     if (input->scalar_type() == at::kBFloat16 && input->suggest_memory_format() == MemoryFormat::ChannelsLast)
     {
-      save_mean = at::ones({ num_features }, weight_t.options()).to(at::kFloat);
-      save_var = at::ones({ num_features }, weight_t.options()).to(at::kFloat);
-      // save_mean = at::empty({ num_features }, weight_t.options()).to(at::kFloat);
-      // save_var = at::empty({ num_features }, weight_t.options()).to(at::kFloat);
+      save_mean = save_mean.to(at::kFloat);
+      save_var = save_var.to(at::kFloat);
     }
-    else
-    {
-      // save_mean = at::empty({ num_features }, weight_t.options());
-      // save_var = at::empty({ num_features }, weight_t.options());
-      save_mean = at::ones({ num_features }, weight_t.options());
-      save_var = at::ones({ num_features }, weight_t.options());
-    }
-
     std::cout << "##### miopenBatchNormalizationForward Inference " 
             << " training=" << training
             << " mode=" << mode

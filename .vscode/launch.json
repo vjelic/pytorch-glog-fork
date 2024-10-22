@@ -37,6 +37,38 @@
             }
         },
         {
+            "name": "fp32 nChw",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/test",
+            "program": "test_nn.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-v",
+                "-k",
+                "test_batchnorm_nchw_miopen_cuda_float32"
+            ],
+            "env": {
+                "MIOPEN_ENABLE_LOGGING_CMD": "1"
+            }
+        },
+        {
+            "name": "fp32 nHwc",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/test",
+            "program": "test_nn.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-v",
+                "-k",
+                "test_batchnorm_nhwc_miopen_cuda_float32"
+            ],
+            "env": {
+                "MIOPEN_ENABLE_LOGGING_CMD": "1"
+            }
+        },
+        {
             "name": "eval",
             "type": "debugpy",
             "request": "launch",
