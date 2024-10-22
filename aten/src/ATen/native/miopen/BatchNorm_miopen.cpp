@@ -164,7 +164,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
   // auto weight_c = weight->to(at::kBFloat16);
   // auto bias_c = bias->to(at::kBFloat16);
   TensorDescriptor idesc{ *input, 4 };  // input descriptor
-  TensorDescriptor odesc{ *output, 4 };  // output descriptor 
+  // TensorDescriptor odesc{ *output, 4 };  // output descriptor 
   TensorDescriptor wdesc{ expandScale(*weight, input->dim()), 4 };  // descriptor for weight, bias, running_mean, etc.
 
   Constant one(dataType, 1);
@@ -205,7 +205,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
     MIOPEN_CHECK(miopenBatchNormalizationForwardTraining(
       handle, mode, &one, &zero,
       idesc.desc(), input->const_data_ptr(),
-      odesc.desc(), output->data_ptr(),
+      idesc.desc(), output->data_ptr(),
       wdesc.desc(),
       // NOTE: MIOpen docs say that the bnScale and bnBias args are only inputs,
       // not outputs. However, unfortunately the function signature only takes
@@ -252,7 +252,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
     MIOPEN_CHECK(miopenBatchNormalizationForwardInference(
       handle, mode, &one, &zero,
       idesc.desc(), input->const_data_ptr(),
-      odesc.desc(), output->data_ptr(),
+      idesc.desc(), output->data_ptr(),
       wdesc.desc(),
       // NOTE: MIOpen docs say that the bnScale and bnBias args are only inputs,
       // not outputs. However, unfortunately the function signature only takes
