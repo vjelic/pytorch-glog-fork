@@ -7,6 +7,7 @@
 #include <ATen/NativeFunctions.h>
 #else
 #include <ATen/ops/empty.h>
+#include <ATen/ops/ones.h>
 #include <ATen/ops/miopen_batch_norm_native.h>
 #include <ATen/ops/miopen_batch_norm_backward_native.h>
 #endif
@@ -111,23 +112,23 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
               << " dtype=" << running_var->scalar_type()
               << " sizes=" << running_var->sizes()
               << " strides=" << running_var->strides()
-            << " ]\nweight.grad["
-              << " dtype=" << weight->grad().scalar_type()
-              << " sizes=" << weight->grad().sizes()
-              << " strides=" << weight->grad().strides()
-            << " ]\nbias.grad["
-              << " dtype=" << bias->grad().scalar_type()
-              << " sizes=" << bias->grad().sizes()
-              << " strides=" << bias->grad().strides()
-            << " ]\nrunning_mean.grad["
-              << " dtype=" << running_mean->grad().scalar_type()
-              << " sizes=" << running_mean->grad().sizes()
-              << " strides=" << running_mean->grad().strides()
-            << " ]\nrunning_var.grad["
-              << " dtype=" << running_var->grad().scalar_type()
-              << " sizes=" << running_var->grad().sizes()
-              << " strides=" << running_var->grad().strides()
-            << " ]"
+            // << " ]\nweight.grad["
+            //   << " dtype=" << weight->grad().scalar_type()
+            //   << " sizes=" << weight->grad().sizes()
+            //   << " strides=" << weight->grad().strides()
+            // << " ]\nbias.grad["
+            //   << " dtype=" << bias->grad().scalar_type()
+            //   << " sizes=" << bias->grad().sizes()
+            //   << " strides=" << bias->grad().strides()
+            // << " ]\nrunning_mean.grad["
+            //   << " dtype=" << running_mean->grad().scalar_type()
+            //   << " sizes=" << running_mean->grad().sizes()
+            //   << " strides=" << running_mean->grad().strides()
+            // << " ]\nrunning_var.grad["
+            //   << " dtype=" << running_var->grad().scalar_type()
+            //   << " sizes=" << running_var->grad().sizes()
+            //   << " strides=" << running_var->grad().strides()
+            // << " ]"
             << std::endl;
   checkAllDefined(c, {input, weight, bias});
   if (!training) {
@@ -173,8 +174,20 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
   if (training) {
     int64_t num_features = input_t.size(1);
     //TODO: temporary hack to define save_mean and save_var for BF16 NHWC batchnorm on ROCm
-    save_mean = at::empty({ num_features }, weight_t.options()).to(at::kFloat);
-    save_var = at::empty({ num_features }, weight_t.options()).to(at::kFloat);;
+    if (input->scalar_type() == at::kBFloat16 && input->suggest_memory_format() == MemoryFormat::ChannelsLast)
+    {
+      save_mean = at::ones({ num_features }, weight_t.options()).to(at::kFloat);
+      save_var = at::ones({ num_features }, weight_t.options()).to(at::kFloat);
+      // save_mean = at::empty({ num_features }, weight_t.options()).to(at::kFloat);
+      // save_var = at::empty({ num_features }, weight_t.options()).to(at::kFloat);
+    }
+    else
+    {
+      // save_mean = at::empty({ num_features }, weight_t.options());
+      // save_var = at::empty({ num_features }, weight_t.options());
+      save_mean = at::ones({ num_features }, weight_t.options());
+      save_var = at::ones({ num_features }, weight_t.options());
+    }
     std::cout << "##### miopenBatchNormalizationForward Training " 
             << " training=" << training
             << " mode=" << mode
@@ -206,9 +219,22 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
       save_mean.mutable_data_ptr(),
       save_var.mutable_data_ptr()));
   } else {    
+    
+    if (input->scalar_type() == at::kBFloat16 && input->suggest_memory_format() == MemoryFormat::ChannelsLast)
+    {
+      save_mean = at::ones({ num_features }, weight_t.options()).to(at::kFloat);
+      save_var = at::ones({ num_features }, weight_t.options()).to(at::kFloat);
+      // save_mean = at::empty({ num_features }, weight_t.options()).to(at::kFloat);
+      // save_var = at::empty({ num_features }, weight_t.options()).to(at::kFloat);
+    }
+    else
+    {
+      // save_mean = at::empty({ num_features }, weight_t.options());
+      // save_var = at::empty({ num_features }, weight_t.options());
+      save_mean = at::ones({ num_features }, weight_t.options());
+      save_var = at::ones({ num_features }, weight_t.options());
+    }
 
-    save_mean = at::empty({0}, weight_t.options()).to(at::kFloat);
-    save_var = at::empty({0}, weight_t.options()).to(at::kFloat);
     std::cout << "##### miopenBatchNormalizationForward Inference " 
             << " training=" << training
             << " mode=" << mode
