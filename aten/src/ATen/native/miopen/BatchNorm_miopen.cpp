@@ -87,16 +87,47 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
             running_var{ running_var_t, "running_var", 5 };
   CheckedFrom c = "miopen_batch_norm";
 
-  std::cout << "$$$$$" 
+  std::cout << "$$$$$"
+            << " training=" << training 
             << " dim=" << input->dim()
             << " memory_format=" << input->suggest_memory_format()
-            << " input.dtype=" << input->scalar_type()
-            << " weight.dtype=" << weight->scalar_type()
-            << " weight.grad.dtype=" << weight->grad().scalar_type()
-            << " bias.dtype=" << bias->scalar_type()
-            << " running_mean.dtype=" << running_mean->scalar_type() 
-            << " running_var.dtype=" << running_var->scalar_type()
-            << " training=" << training
+            << "\ninput["
+              << " dtype=" << input->scalar_type()
+              << " sizes=" << input->sizes()
+              << " strides=" << input->strides()
+            << " ]\nweight["
+              << " dtype=" << weight->scalar_type()
+              << " sizes=" << weight->sizes()
+              << " strides=" << weight->strides()
+            << " ]\nbias["
+              << " dtype=" << bias->scalar_type()
+              << " sizes=" << bias->sizes()
+              << " strides=" << bias->strides()
+            << " ]\nrunning_mean["
+              << " dtype=" << running_mean->scalar_type()
+              << " sizes=" << running_mean->sizes()
+              << " strides=" << running_mean->strides()
+            << " ]\nrunning_var["
+              << " dtype=" << running_var->scalar_type()
+              << " sizes=" << running_var->sizes()
+              << " strides=" << running_var->strides()
+            << " ]\nweight.grad["
+              << " dtype=" << weight->grad().scalar_type()
+              << " sizes=" << weight->grad().sizes()
+              << " strides=" << weight->grad().strides()
+            << " ]\nbias.grad["
+              << " dtype=" << bias->grad().scalar_type()
+              << " sizes=" << bias->grad().sizes()
+              << " strides=" << bias->grad().strides()
+            << " ]\nrunning_mean.grad["
+              << " dtype=" << running_mean->grad().scalar_type()
+              << " sizes=" << running_mean->grad().sizes()
+              << " strides=" << running_mean->grad().strides()
+            << " ]\nrunning_var.grad["
+              << " dtype=" << running_var->grad().scalar_type()
+              << " sizes=" << running_var->grad().sizes()
+              << " strides=" << running_var->grad().strides()
+            << " ]"
             << std::endl;
   checkAllDefined(c, {input, weight, bias});
   if (!training) {
