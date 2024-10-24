@@ -890,6 +890,7 @@ void validate_outputs(
         (input_is_complex == grad_is_complex));
     if (c10::typeMetaToScalarType(metadata.options().dtype()) !=
         grad.scalar_type()) {
+          std::cout << "^^^^ cast grad from "<< grad.scalar_type() << " to " << metadata.options().dtype() << std::endl; 
       grad = grad.to(c10::typeMetaToScalarType(metadata.options().dtype()));
     }
     if (grad.dtype() != metadata.dtype()) {

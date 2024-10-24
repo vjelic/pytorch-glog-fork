@@ -8241,58 +8241,70 @@ class TestNNDeviceType(NNTestCase):
             self.assertEqual(scipy_ary, gridsample_ary.reshape_as(scipy_ary))
 
     def batchnorm2d_miopen(self, dtype, memory_format):
-        def run_test(input, grad_output):
+        def run_test(input, grad_output, enable_native = True, enable_cpu = False):
             c = input.size(1)
             mod = nn.BatchNorm2d(c, device='cuda', dtype=input.dtype, memory_format=memory_format)
             mod.weight.data.uniform_()
             mod.bias.data.uniform_()
-            # ref_input = input.detach().clone(memory_format=torch.preserve_format).requires_grad_(True)
-            # cpu_input = input.detach().clone(memory_format=torch.preserve_format).cpu().requires_grad_(True)
-            # ref_grad = grad.detach().clone(memory_format=torch.preserve_format)
-            # cpu_grad = grad.detach().cpu().clone(memory_format=torch.preserve_format)
-            # ref_mod = nn.BatchNorm2d(c).cuda().to(dtype=input.dtype)
-            # ref_mod.load_state_dict(mod.state_dict())
-            # cpu_mod = nn.BatchNorm2d(c).cpu().to(dtype=input.dtype)
-            # cpu_mod.load_state_dict(mod.state_dict())
+            if enable_native:
+                ref_input = input.detach().clone(memory_format=torch.preserve_format).requires_grad_(True)
+                ref_grad = grad.detach().clone(memory_format=torch.preserve_format)
+                ref_mod = nn.BatchNorm2d(c).cuda().to(dtype=input.dtype)
+                ref_mod.load_state_dict(mod.state_dict())
+
+            if enable_cpu:
+                cpu_input = input.detach().clone(memory_format=torch.preserve_format).cpu().requires_grad_(True)
+                cpu_grad = grad.detach().cpu().clone(memory_format=torch.preserve_format)
+                cpu_mod = nn.BatchNorm2d(c).cpu().to(dtype=input.dtype)
+                cpu_mod.load_state_dict(mod.state_dict())
+
             print("---------------- forward ----------------")
             time.sleep(1)
             out = mod(input)
             # return
-            # print("---------------- cpu_forward ----------------")
-            # time.sleep(1)
-            # cpu_out = cpu_mod(cpu_input)
-            # print("---------------- ref_forward ----------------")
-            # with torch.backends.cudnn.flags(enabled=False): # force to use native nhwc batchnorm
-                # time.sleep(1)
-                # ref_out = ref_mod(ref_input)
+            if enable_cpu:
+                print("---------------- cpu_forward ----------------")
+                time.sleep(1)
+                cpu_out = cpu_mod(cpu_input)
+            if enable_native:
+                print("---------------- ref_forward ----------------")
+                with torch.backends.cudnn.flags(enabled=False): # force to use native nhwc batchnorm
+                    time.sleep(1)
+                    ref_out = ref_mod(ref_input)
             
             print("---------------- backward ----------------")
             time.sleep(1)
-            if input.dtype == torch.bfloat16 and memory_format==torch.channels_last:
-                grad_output = grad_output.to(torch.float) # .contiguous(memory_format=torch.channels_last)
+            # if input.dtype == torch.bfloat16 and memory_format==torch.channels_last:
+            #     grad_output = grad_output.to(torch.float) # .contiguous(memory_format=torch.channels_last)
             out.backward(grad_output)
-            # print("---------------- cpu_backward ----------------")
-            # time.sleep(1)
-            # cpu_out.backward(cpu_grad)
-            # with torch.backends.cudnn.flags(enabled=False): # force to use native nhwc batchnorm
-            #     # print("---------------- ref_forward ----------------")
-            #     # time.sleep(1)
-            #     # ref_out = ref_mod(ref_input)
-                # print("---------------- ref_backward ----------------")
-                # time.sleep(1)
-                # ref_out.backward(ref_grad)
+            if enable_cpu:
+                print("---------------- cpu_backward ----------------")
+                time.sleep(1)
+                cpu_out.backward(cpu_grad)
+            if enable_native:
+                print("---------------- ref_backward ----------------")
+                time.sleep(1)
+                ref_out.backward(ref_grad)
             print("---------------- check ----------------")    
             time.sleep(1)
             self.assertTrue(out.is_contiguous(memory_format=memory_format))
-            # self.assertTrue(ref_out.is_contiguous(memory_format=memory_format))
-            # self.assertTrue(cpu_out.is_contiguous(memory_format=memory_format))
-            # self.assertEqual(out, ref_out)
-            # self.assertEqual(out, cpu_out)
-            # # self.assertEqual(mod.weight.grad, ref_mod.weight.grad)
-            # # self.assertEqual(mod.bias.grad, ref_mod.bias.grad)
-            # # self.assertEqual(mod.running_mean, ref_mod.running_mean)
-            # # self.assertEqual(mod.running_var, ref_mod.running_var)
-            # # self.assertEqual(input.grad, ref_input.grad)
+            if enable_cpu:
+                self.assertTrue(cpu_out.is_contiguous(memory_format=memory_format))
+                self.assertEqual(out, cpu_out)
+                self.assertEqual(mod.weight.grad, cpu_mod.weight.grad)
+                self.assertEqual(mod.bias.grad, cpu_mod.bias.grad)
+                self.assertEqual(mod.running_mean, cpu_mod.running_mean)
+                self.assertEqual(mod.running_var, cpu_mod.running_var)
+                self.assertEqual(input.grad, cpu_input.grad)
+            if enable_native:
+                self.assertTrue(ref_out.is_contiguous(memory_format=memory_format))
+                self.assertEqual(out, ref_out)            
+                self.assertEqual(mod.weight.grad, ref_mod.weight.grad)
+                self.assertEqual(mod.bias.grad, ref_mod.bias.grad)
+                self.assertEqual(mod.running_mean, ref_mod.running_mean)
+                self.assertEqual(mod.running_var, ref_mod.running_var)
+                self.assertEqual(input.grad, ref_input.grad)
+            print("---------------- end ----------------")
 
         size = (4, 8, 2, 2)
         input = torch.randint(1, 10, size=size, dtype=dtype, device="cuda")

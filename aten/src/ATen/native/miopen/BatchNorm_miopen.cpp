@@ -296,8 +296,26 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
   const Tensor& save_var_t =
       c10::value_or_else(save_var_t_opt, [] { return Tensor(); });
 
-  auto grad_output_contig =
-      grad_output_t.contiguous(input_t.suggest_memory_format());
+  // auto grad_output_contig =
+  //     grad_output_t.contiguous(input_t.suggest_memory_format());
+
+  at::Tensor grad_input_t, grad_weight_t, grad_bias_t, grad_output_contig;
+
+  if (input_t.scalar_type() == at::kBFloat16 && input_t.suggest_memory_format() == MemoryFormat::ChannelsLast)
+  {
+    grad_input_t  = at::empty(input_t.sizes(), at::kFloat, input_t.layout(), input_t.device(), input_t.is_pinned(), MemoryFormat::ChannelsLast);
+    grad_weight_t = at::empty(weight_t.sizes(), at::kFloat, weight_t.layout(), weight_t.device(), weight_t.is_pinned(), MemoryFormat::Contiguous);
+    grad_bias_t   = at::empty(weight_t.sizes(), at::kFloat, weight_t.layout(), weight_t.device(), weight_t.is_pinned(), MemoryFormat::Contiguous);
+    grad_output_contig = grad_output_t.to(at::kFloat).contiguous(MemoryFormat::ChannelsLast);
+  }
+  else
+  {
+    grad_input_t = at::empty(input_t.sizes(), input_t.options(), input_t.suggest_memory_format());
+    grad_weight_t = at::empty(weight_t.sizes(), weight_t.options());
+    grad_bias_t = at::empty(weight_t.sizes(), weight_t.options());
+    grad_output_contig = grad_output_t.contiguous(input_t.suggest_memory_format());
+  }
+
   TensorArg input{ input_t, "input", 1 },
             grad_output{ grad_output_contig, "grad_output", 2 },
             weight{ weight_t, "weight", 3 },
@@ -331,25 +349,11 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
     mode = miopenBNSpatial;
   }
 
-  auto grad_input_t = at::empty(
-      input->sizes(), input->options(), input->suggest_memory_format());
-    
-  auto grad_weight_t = at::empty(weight->sizes(), weight->options());
-  auto grad_bias_t   = at::empty(weight->sizes(), weight->options());
-  // auto grad_weight_t = at::ones(weight->sizes(), weight->options());
-  // auto grad_bias_t   = at::ones(weight->sizes(), weight->options());
-
-  if (input->scalar_type() == at::kBFloat16 && input->suggest_memory_format() == MemoryFormat::ChannelsLast)
-  {
-    grad_weight_t = grad_weight_t.to(at::kFloat);
-    grad_bias_t   = grad_bias_t.to(at::kFloat);
-    grad_input_t = grad_input_t.to(at::kFloat);
-  }
-
   auto handle = getMiopenHandle();
   auto dataType = getMiopenDataType(*input);
 
   TensorDescriptor idesc{ *input, 4 };  // input, output, grad_output descriptor
+  TensorDescriptor gdesc{ *grad_output, 4 };  // grad_input descriptor
   TensorDescriptor wdesc{ expandScale(*weight, input->dim()), 4 };  // descriptor for weight, bias, save_mean, etc.
 
   Constant one(dataType, 1);
@@ -371,8 +375,8 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
   MIOPEN_CHECK(miopenBatchNormalizationBackward(
     handle, mode, &one, &zero, &one, &zero,
     idesc.desc(), input->const_data_ptr(),
-    idesc.desc(), grad_output->const_data_ptr(),
-    idesc.desc(), grad_input_t.data_ptr(),
+    gdesc.desc(), grad_output->const_data_ptr(),
+    gdesc.desc(), grad_input_t.data_ptr(),
     wdesc.desc(), weight->const_data_ptr(),
     grad_weight_t.data_ptr(),
     grad_bias_t.data_ptr(),
