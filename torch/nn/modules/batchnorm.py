@@ -5,7 +5,6 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F, init
 from torch.nn.parameter import Parameter, UninitializedBuffer, UninitializedParameter
-import torch.version
 
 from ._functions import SyncBatchNorm as sync_batch_norm
 from .lazy import LazyModuleMixin
@@ -45,9 +44,7 @@ class _NormBase(Module):
         track_running_stats: bool = True,
         device=None,
         dtype=None,
-        memory_format=None
     ) -> None:
-        # factory_kwargs = {"device": device, "dtype": dtype, "memory_format": memory_format}
         factory_kwargs = {"device": device, "dtype": dtype}
         super().__init__()
         self.num_features = num_features
@@ -153,9 +150,8 @@ class _BatchNorm(_NormBase):
         track_running_stats: bool = True,
         device=None,
         dtype=None,
-        memory_format=None
     ) -> None:
-        factory_kwargs = {"device": device, "dtype": dtype, "memory_format": memory_format}
+        factory_kwargs = {"device": device, "dtype": dtype}
         super().__init__(
             num_features, eps, momentum, affine, track_running_stats, **factory_kwargs
         )
@@ -193,14 +189,19 @@ class _BatchNorm(_NormBase):
         if torch.version.hip \
            and torch._C._get_cudnn_enabled() \
            and input.device.type == "cuda" \
-           and input.dtype == torch.bfloat16 \
            and input.is_contiguous(memory_format=torch.channels_last):
-                # NOTE: This is a workaround for a BF16 NHWC in ROCm batchnorm implementation
-
-                self.weight = self.weight.to(torch.bfloat16)
-                self.bias = self.bias.to(torch.bfloat16)
-                self.running_mean = self.running_mean.to(torch.float32)
-                self.running_var = self.running_var.to(torch.float32)
+                if input.dtype == torch.bfloat16 :
+                    # NOTE: This is a workaround for a BF16 NHWC in ROCm batchnorm implementation
+                    self.weight = self.weight.to(torch.bfloat16)
+                    self.bias = self.bias.to(torch.bfloat16)
+                    self.running_mean = self.running_mean.to(torch.float32)
+                    self.running_var = self.running_var.to(torch.float32)
+                elif input.dtype == torch.float16:
+                    # NOTE: This is a workaround for a FP16 NHWC in ROCm batchnorm implementation
+                    self.weight = self.weight.to(torch.float16)
+                    self.bias = self.bias.to(torch.float16)
+                    self.running_mean = self.running_mean.to(torch.float32)
+                    self.running_var = self.running_var.to(torch.float32)
         r"""
         Buffers are only updated if they are to be tracked and we are in training mode. Thus they only need to be
         passed when the update should occur (i.e. in training mode when they are tracked), or when buffer stats are

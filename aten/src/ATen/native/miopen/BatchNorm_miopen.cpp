@@ -64,8 +64,8 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
     const Tensor& input_t, const Tensor& weight_t, const std::optional<Tensor>& bias_t_opt, const std::optional<Tensor>& running_mean_t_opt, const std::optional<Tensor>& running_var_t_opt,
     bool training, double exponential_average_factor, double epsilon)
 {
-  std::cout 
-    << "$$$$$ miopen_batch_norm" 
+  std::cout
+    << "$$$$$ miopen_batch_norm"
     << " input_t=" << input_t.scalar_type()
     << " weight_t=" << weight_t.scalar_type()
     << " bias_t_opt=" << (bias_t_opt.has_value() ? bias_t_opt.value().scalar_type() : at::ScalarType::Undefined)
@@ -89,7 +89,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
   CheckedFrom c = "miopen_batch_norm";
 
   std::cout << "$$$$$"
-            << " training=" << training 
+            << " training=" << training
             << " dim=" << input->dim()
             << " memory_format=" << input->suggest_memory_format()
             << "\ninput["
@@ -164,7 +164,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
   // auto weight_c = weight->to(at::kBFloat16);
   // auto bias_c = bias->to(at::kBFloat16);
   TensorDescriptor idesc{ *input, 4 };  // input descriptor
-  // TensorDescriptor odesc{ *output, 4 };  // output descriptor 
+  // TensorDescriptor odesc{ *output, 4 };  // output descriptor
   TensorDescriptor wdesc{ expandScale(*weight, input->dim()), 4 };  // descriptor for weight, bias, running_mean, etc.
 
   Constant one(dataType, 1);
@@ -177,12 +177,12 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
     save_var = at::empty({ num_features }, weight_t.options());
     // save_mean = at::ones({ num_features }, weight_t.options());
     // save_var = at::ones({ num_features }, weight_t.options());
-    if (input->scalar_type() == at::kBFloat16 && input->suggest_memory_format() == MemoryFormat::ChannelsLast)
+    if ((input->scalar_type() == at::kBFloat16 || input->scalar_type() == at::kHalf) && input->suggest_memory_format() == MemoryFormat::ChannelsLast)
     {
       save_mean = save_mean.to(at::kFloat);
       save_var = save_var.to(at::kFloat);
     }
-    std::cout << "##### miopenBatchNormalizationForward Training " 
+    std::cout << "##### miopenBatchNormalizationForward Training "
             << " training=" << training
             << " mode=" << mode
             << " input=" << input->scalar_type()
@@ -194,7 +194,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
             << " running_var=" << running_var->scalar_type()
             // << " epsilon=" << epsilon
             << " save_mean=" << save_mean.scalar_type()
-            << " save_var=" << save_var.scalar_type()            
+            << " save_var=" << save_var.scalar_type()
             << std::endl;
     MIOPEN_CHECK(miopenBatchNormalizationForwardTraining(
       handle, mode, &one, &zero,
@@ -212,18 +212,18 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
       epsilon,
       save_mean.mutable_data_ptr(),
       save_var.mutable_data_ptr()));
-  } else {    
+  } else {
 
     save_mean = at::empty({ num_features }, weight_t.options());
     save_var = at::empty({ num_features }, weight_t.options());
     // save_mean = at::ones({ num_features }, weight_t.options());
     // save_var = at::ones({ num_features }, weight_t.options());
-    if (input->scalar_type() == at::kBFloat16 && input->suggest_memory_format() == MemoryFormat::ChannelsLast)
+    if ((input->scalar_type() == at::kBFloat16 || input->scalar_type() == at::kHalf) && input->suggest_memory_format() == MemoryFormat::ChannelsLast)
     {
       save_mean = save_mean.to(at::kFloat);
       save_var = save_var.to(at::kFloat);
     }
-    std::cout << "##### miopenBatchNormalizationForward Inference " 
+    std::cout << "##### miopenBatchNormalizationForward Inference "
             << " training=" << training
             << " mode=" << mode
             << " input=" << input->scalar_type()
@@ -235,7 +235,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
             << " running_var=" << running_var->scalar_type()
             // << " epsilon=" << epsilon
             << " save_mean=" << save_mean.scalar_type()
-            << " save_var=" << save_var.scalar_type()            
+            << " save_var=" << save_var.scalar_type()
             << std::endl;
     MIOPEN_CHECK(miopenBatchNormalizationForwardInference(
       handle, mode, &one, &zero,
@@ -255,7 +255,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
   // save_mean and save_var can be undefined
   // If this causes problems, we can initialize them to empty tensors
   // of the correct type
-  std::cout << "##### miopenBatchNormalizationForward RETURN" 
+  std::cout << "##### miopenBatchNormalizationForward RETURN"
             << " training=" << training
             << " output=" << output->scalar_type()
             << " save_mean=" << save_mean.scalar_type()
@@ -275,8 +275,8 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
     const std::optional<Tensor>& save_mean_t_opt,
     const std::optional<Tensor>& save_var_t_opt,
     double epsilon) {
-  std::cout 
-    << "$$$$$ miopen_batch_norm_backward" 
+  std::cout
+    << "$$$$$ miopen_batch_norm_backward"
     << " input_t=" << input_t.scalar_type()
     << " grad_output_t=" << grad_output_t.scalar_type()
     << " weight_t=" << weight_t.scalar_type()
@@ -301,8 +301,12 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
 
   at::Tensor grad_input_t, grad_weight_t, grad_bias_t, grad_output_contig;
 
-  if (input_t.scalar_type() == at::kBFloat16 && input_t.suggest_memory_format() == MemoryFormat::ChannelsLast)
+  if ((input_t.scalar_type() == at::kBFloat16 || input_t.scalar_type() == at::kHalf) && input_t.suggest_memory_format() == MemoryFormat::ChannelsLast)
   {
+    std::cout << "##### miopen_batch_norm_backward (BF16/FP16 NHWC)"
+              << " input_t=" << input_t.scalar_type() << " : " // << (at::MemoryFormat) input_t.suggest_memory_format()
+              << " weight_t=" << weight_t.scalar_type() << " : "// << (at::MemoryFormat) weight_t.suggest_memory_format()
+              << std::endl;
     grad_input_t  = at::empty(input_t.sizes(), at::kFloat, input_t.layout(), input_t.device(), input_t.is_pinned(), MemoryFormat::ChannelsLast);
     grad_weight_t = at::empty(weight_t.sizes(), at::kFloat, weight_t.layout(), weight_t.device(), weight_t.is_pinned(), MemoryFormat::Contiguous);
     grad_bias_t   = at::empty(weight_t.sizes(), at::kFloat, weight_t.layout(), weight_t.device(), weight_t.is_pinned(), MemoryFormat::Contiguous);
@@ -310,7 +314,11 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
   }
   else
   {
-    grad_input_t = at::empty(input_t.sizes(), input_t.options(), input_t.suggest_memory_format());
+    std::cout << "##### miopen_batch_norm_backward non (BF16/FP16 NHWC)"
+              << " input_t=" << input_t.scalar_type() << " : " << (at::MemoryFormat) input_t.suggest_memory_format()
+              << " weight_t=" << weight_t.scalar_type() << " : " << weight_t.suggest_memory_format()
+              << std::endl;
+    grad_input_t = at::empty(input_t.sizes(), input_t.scalar_type(), input_t.layout(), input_t.device(), input_t.is_pinned(), input_t.suggest_memory_format());
     grad_weight_t = at::empty(weight_t.sizes(), weight_t.options());
     grad_bias_t = at::empty(weight_t.sizes(), weight_t.options());
     grad_output_contig = grad_output_t.contiguous(input_t.suggest_memory_format());
@@ -359,7 +367,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
   Constant one(dataType, 1);
   Constant zero(dataType, 0);
 
-  std::cout 
+  std::cout
     << "##### miopenBatchNormalizationBackward "
     << " mode=" << mode
     << " input=" << input->scalar_type()
@@ -383,11 +391,11 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
     epsilon,
     save_mean->const_data_ptr(),
     save_var->const_data_ptr()));
-  std::cout << "##### miopenBatchNormalizationBackward RETURN" 
+  std::cout << "##### miopenBatchNormalizationBackward RETURN"
             << " grad_input=" << grad_input_t.scalar_type()
             << " grad_weight=" << grad_weight_t.scalar_type()
             << " grad_bias=" << grad_bias_t.scalar_type()
-            << std::endl; 
+            << std::endl;
   return std::tuple<Tensor,Tensor,Tensor>{grad_input_t, grad_weight_t, grad_bias_t};
 }
 

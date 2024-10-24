@@ -8243,7 +8243,7 @@ class TestNNDeviceType(NNTestCase):
     def batchnorm2d_miopen(self, dtype, memory_format):
         def run_test(input, grad_output, enable_native = True, enable_cpu = False):
             c = input.size(1)
-            mod = nn.BatchNorm2d(c, device='cuda', dtype=input.dtype, memory_format=memory_format)
+            mod = nn.BatchNorm2d(c, device='cuda', dtype=input.dtype)
             mod.weight.data.uniform_()
             mod.bias.data.uniform_()
             if enable_native:
@@ -8301,8 +8301,8 @@ class TestNNDeviceType(NNTestCase):
                 self.assertEqual(out, ref_out)            
                 self.assertEqual(mod.weight.grad, ref_mod.weight.grad)
                 self.assertEqual(mod.bias.grad, ref_mod.bias.grad)
-                self.assertEqual(mod.running_mean, ref_mod.running_mean)
-                self.assertEqual(mod.running_var, ref_mod.running_var)
+                self.assertEqual(mod.running_mean, ref_mod.running_mean, atol=1e-2, rtol=3e-2, exact_dtype=False)
+                self.assertEqual(mod.running_var, ref_mod.running_var, atol=1e-2, rtol=3e-2, exact_dtype=False)
                 self.assertEqual(input.grad, ref_input.grad)
             print("---------------- end ----------------")
 
