@@ -8,6 +8,7 @@
             "name": "bf16",
             "type": "debugpy",
             "request": "launch",
+            "pythonArgs": ["-u"],
             "cwd": "${workspaceFolder}/test",
             "program": "test_nn.py",
             "console": "integratedTerminal",
@@ -17,7 +18,10 @@
                 "test_batchnorm_nhwc_miopen_cuda_bfloat16"
             ],
             "env": {
-                "MIOPEN_ENABLE_LOGGING_CMD": "1"
+                "MIOPEN_ENABLE_LOGGING_CMD": "1",
+                // "MIOLEN_LOG_LEVEL": "6",
+                // "MIOPEN_ENABLE_LOGGING": "1",
+                // "AMD_LOG_LEVEL": "6",
             }
         },
         {

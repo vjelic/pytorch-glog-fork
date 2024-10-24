@@ -45,7 +45,9 @@ class _NormBase(Module):
         track_running_stats: bool = True,
         device=None,
         dtype=None,
+        memory_format=None
     ) -> None:
+        # factory_kwargs = {"device": device, "dtype": dtype, "memory_format": memory_format}
         factory_kwargs = {"device": device, "dtype": dtype}
         super().__init__()
         self.num_features = num_features
@@ -151,8 +153,9 @@ class _BatchNorm(_NormBase):
         track_running_stats: bool = True,
         device=None,
         dtype=None,
+        memory_format=None
     ) -> None:
-        factory_kwargs = {"device": device, "dtype": dtype}
+        factory_kwargs = {"device": device, "dtype": dtype, "memory_format": memory_format}
         super().__init__(
             num_features, eps, momentum, affine, track_running_stats, **factory_kwargs
         )

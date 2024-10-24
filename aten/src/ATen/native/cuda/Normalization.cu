@@ -574,7 +574,7 @@ std::tuple<Tensor, Tensor, Tensor> _new_batch_norm_backward_cuda(
 
 std::tuple<Tensor, Tensor, Tensor> batch_norm_backward_cuda(const Tensor& grad_out, const Tensor& input, const std::optional<Tensor>& weight_opt, const std::optional<Tensor>& running_mean_opt, const std::optional<Tensor>& running_var_opt, const std::optional<Tensor>& save_mean_opt, const std::optional<Tensor>& save_invstd_opt, bool train, double epsilon, std::array<bool,3> grad_input_mask) {
   // See [Note: hacky wrapper removal for optional tensor]
-          std :: cout << "********************* _new_batch_norm_backward_cuda" << std::endl;
+          std :: cout << "********************* batch_norm_backward_cuda" << std::endl;
 
   c10::MaybeOwned<Tensor> weight = at::borrow_from_optional_tensor(weight_opt);
   c10::MaybeOwned<Tensor> save_mean = at::borrow_from_optional_tensor(save_mean_opt);

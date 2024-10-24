@@ -207,6 +207,7 @@ PyObject* THPEngine_run_backward(
                                              "allow_unreachable",
                                              "accumulate_grad",
                                              nullptr};
+  std::cout << "^^^^^^^^^^ THPEngine_run_backward" << std::endl;
   if (!PyArg_ParseTupleAndKeywords(
           args,
           kwargs,
@@ -234,6 +235,11 @@ PyObject* THPEngine_run_backward(
 
   Py_ssize_t num_tensors = PyTuple_GET_SIZE(tensors);
   Py_ssize_t num_gradients = PyTuple_GET_SIZE(grad_tensors);
+  std::cout << "^^^^^^^^^^ THPEngine_run_backward"
+            << "num_tensors=" << num_tensors 
+            << " num_gradients=" << num_gradients 
+            << " accumulate_grad=" << accumulate_grad
+            << std::endl;
   TORCH_CHECK(
       num_tensors == num_gradients,
       "got ",
@@ -257,10 +263,13 @@ PyObject* THPEngine_run_backward(
   grads.reserve(num_tensors);
   for (const auto i : c10::irange(num_tensors)) {
     PyObject* _tensor = PyTuple_GET_ITEM(tensors, i);
+    std::cout << "^^^^^^^^^^ THPEngine_run_backward _tensor[" << i << "]=" << _tensor << std::endl;
     Edge gradient_edge; // Temporary variable to hold the gradient edge
     std::optional<at::Tensor> mb_output;
     if (THPVariable_Check(_tensor)) {
+      std::cout << "^^^^^^^^^^ THPEngine_run_backward THPVariable_Check" << std::endl;
       mb_output = THPVariable_Unpack(_tensor);
+      std::cout << "^^^^^^^^^^ THPEngine_run_backward mb_output=" << mb_output.value().dtype() << std::endl;
       TORCH_CHECK(
           !isBatchedTensor(mb_output.value()),
           "torch.autograd.grad(outputs, inputs, grad_outputs) called inside ",
@@ -272,8 +281,10 @@ PyObject* THPEngine_run_backward(
           "with your use case.");
       gradient_edge = torch::autograd::impl::gradient_edge(mb_output.value());
     } else if (PyObject_IsInstance(_tensor, THPGradientEdgeClass)) {
+      std::cout << "^^^^^^^^^^ THPEngine_run_backward THPGradientEdgeClass" << std::endl;
       gradient_edge = parseGradientEdge(_tensor, i);
     } else {
+      std::cout << "^^^^^^^^^^ THPEngine_run_backward else" << std::endl;
       TORCH_CHECK(
           false,
           "element ",
@@ -285,11 +296,14 @@ PyObject* THPEngine_run_backward(
         "element ",
         i,
         " of tensors does not require grad and does not have a grad_fn");
+    std::cout << "^^^^^^^^^^ THPEngine_run_backward roots.push_back(std::move(gradient_edge))" << std::endl;
     roots.push_back(std::move(gradient_edge));
 
     PyObject* grad = PyTuple_GET_ITEM(grad_tensors, i);
+    std::cout << "^^^^^^^^^^ THPEngine_run_backward grad=" << grad << std::endl;  
     if (THPVariable_Check(grad)) {
       const Variable& grad_var = THPVariable_Unpack(grad);
+      std::cout << "^^^^^^^^^^ THPEngine_run_backward THPVariable_Check grad_var=" << grad_var.dtype() << std::endl;
       if (grad_var.has_names()) {
         TORCH_WARN(
             "Autograd was passed a named grad tensor with dims ",
@@ -320,13 +334,16 @@ PyObject* THPEngine_run_backward(
   }
 
   std::vector<Edge> output_edges;
+  std::cout << "^^^^^^^^^^ THPEngine_run_backward std::vector<Edge> output_edges" << std::endl;
   if (inputs != nullptr) {
     TORCH_CHECK(
         PyTuple_CheckExact(inputs), "inputs to run_backward must be a tuple");
     int num_inputs = PyTuple_GET_SIZE(inputs);
+    std::cout << "^^^^^^^^^^ THPEngine_run_backward num_inputs=" << num_inputs << std::endl;
     output_edges.reserve(num_inputs);
     for (const auto i : c10::irange(num_inputs)) {
       PyObject* input = PyTuple_GET_ITEM(inputs, i);
+      std::cout << "^^^^^^^^^^ THPEngine_run_backward input[" << i << "]=" << input << std::endl;
       if (THPVariable_Check(input)) {
         const auto& tensor = THPVariable_Unpack(input);
         TORCH_CHECK(
@@ -341,15 +358,18 @@ PyObject* THPEngine_run_backward(
         const auto output_nr = tensor.output_nr();
         auto grad_fn = tensor.grad_fn();
         if (!grad_fn) {
+          std::cout << "^^^^^^^^^^ THPEngine_run_backward !grad_fn" << std::endl;
           grad_fn = torch::autograd::impl::try_get_grad_accumulator(tensor);
         }
         if (accumulate_grad) {
+          std::cout << "^^^^^^^^^^ THPEngine_run_backward accumulate_grad" << std::endl;
           tensor.retain_grad();
         }
         TORCH_CHECK(
             tensor.requires_grad(),
             "One of the differentiated Tensors does not require grad");
         if (!grad_fn) {
+          std::cout << "^^^^^^^^^^ THPEngine_run_backward !grad_fn again" << std::endl;
           // NOTE [ Autograd Unreachable Input ]
           // Since input has no grad_accumulator, its guaranteed to be
           // unreachable. We initialize an edge pointing to a non-nullptr Node
@@ -358,9 +378,11 @@ PyObject* THPEngine_run_backward(
           // `needed = True` in exec_info.
           output_edges.emplace_back(std::make_shared<Identity>(), 0);
         } else {
+          std::cout << "^^^^^^^^^^ THPEngine_run_backward grad_fn again" << std::endl;
           output_edges.emplace_back(grad_fn, output_nr);
         }
       } else if (PyObject_IsInstance(input, THPGradientEdgeClass)) {
+        std::cout << "^^^^^^^^^^ THPEngine_run_backward PyObject_IsInstance" << std::endl;
         output_edges.emplace_back(parseGradientEdge(input, i));
       } else {
         TORCH_CHECK(
@@ -372,19 +394,23 @@ PyObject* THPEngine_run_backward(
   }
 
   variable_list outputs;
+  std::cout << "^^^^^^^^^^ THPEngine_run_backward variable_list outputs" << std::endl;
   {
     pybind11::gil_scoped_release no_gil;
     auto& engine = python::PythonEngine::get_python_engine();
+    std::cout << "^^^^^^^^^^ THPEngine_run_backward engine.execute" << std::endl;
     outputs = engine.execute(
         roots, grads, keep_graph, create_graph, accumulate_grad, output_edges);
   }
 
   if (!backward_api_called && inputs != nullptr) {
     int num_inputs = PyTuple_GET_SIZE(inputs);
+    std::cout << "^^^^^^^^^^ THPEngine_run_backward !backward_api_called && inputs != nullptr num_inputs=" << num_inputs << std::endl;
     THPObjectPtr py_outputs{PyTuple_New(num_inputs)};
     if (!py_outputs)
       return nullptr;
     for (const auto i : c10::irange(num_inputs)) {
+      std::cout << "^^^^^^^^^^ THPEngine_run_backward !backward_api_called && inputs != nullptr i=" << i << std::endl;
       TORCH_CHECK(
           allow_unreachable || outputs[i].defined(),
           "One of the "

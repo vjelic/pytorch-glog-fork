@@ -173,10 +173,10 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
 
   if (training) {
     int64_t num_features = input_t.size(1);
-    // save_mean = at::empty({ num_features }, weight_t.options());
-    // save_var = at::empty({ num_features }, weight_t.options());
-    save_mean = at::ones({ num_features }, weight_t.options());
-    save_var = at::ones({ num_features }, weight_t.options());
+    save_mean = at::empty({ num_features }, weight_t.options());
+    save_var = at::empty({ num_features }, weight_t.options());
+    // save_mean = at::ones({ num_features }, weight_t.options());
+    // save_var = at::ones({ num_features }, weight_t.options());
     if (input->scalar_type() == at::kBFloat16 && input->suggest_memory_format() == MemoryFormat::ChannelsLast)
     {
       save_mean = save_mean.to(at::kFloat);
@@ -214,10 +214,10 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
       save_var.mutable_data_ptr()));
   } else {    
 
-    // save_mean = at::empty({ num_features }, weight_t.options());
-    // save_var = at::empty({ num_features }, weight_t.options());
-    save_mean = at::ones({ num_features }, weight_t.options());
-    save_var = at::ones({ num_features }, weight_t.options());
+    save_mean = at::empty({ num_features }, weight_t.options());
+    save_var = at::empty({ num_features }, weight_t.options());
+    // save_mean = at::ones({ num_features }, weight_t.options());
+    // save_var = at::ones({ num_features }, weight_t.options());
     if (input->scalar_type() == at::kBFloat16 && input->suggest_memory_format() == MemoryFormat::ChannelsLast)
     {
       save_mean = save_mean.to(at::kFloat);
@@ -255,6 +255,12 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
   // save_mean and save_var can be undefined
   // If this causes problems, we can initialize them to empty tensors
   // of the correct type
+  std::cout << "##### miopenBatchNormalizationForward RETURN" 
+            << " training=" << training
+            << " output=" << output->scalar_type()
+            << " save_mean=" << save_mean.scalar_type()
+            << " save_var=" << save_var.scalar_type()
+            << std::endl;
   return std::tuple<Tensor, Tensor, Tensor>{output_t, save_mean, save_var};
 }
 
@@ -328,10 +334,10 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
   auto grad_input_t = at::empty(
       input->sizes(), input->options(), input->suggest_memory_format());
     
-  // auto grad_weight_t = at::empty(weight->sizes(), weight->options());
-  // auto grad_bias_t   = at::empty(weight->sizes(), weight->options());
-  auto grad_weight_t = at::ones(weight->sizes(), weight->options());
-  auto grad_bias_t   = at::ones(weight->sizes(), weight->options());
+  auto grad_weight_t = at::empty(weight->sizes(), weight->options());
+  auto grad_bias_t   = at::empty(weight->sizes(), weight->options());
+  // auto grad_weight_t = at::ones(weight->sizes(), weight->options());
+  // auto grad_bias_t   = at::ones(weight->sizes(), weight->options());
 
   if (input->scalar_type() == at::kBFloat16 && input->suggest_memory_format() == MemoryFormat::ChannelsLast)
   {
@@ -373,7 +379,11 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
     epsilon,
     save_mean->const_data_ptr(),
     save_var->const_data_ptr()));
-
+  std::cout << "##### miopenBatchNormalizationBackward RETURN" 
+            << " grad_input=" << grad_input_t.scalar_type()
+            << " grad_weight=" << grad_weight_t.scalar_type()
+            << " grad_bias=" << grad_bias_t.scalar_type()
+            << std::endl; 
   return std::tuple<Tensor,Tensor,Tensor>{grad_input_t, grad_weight_t, grad_bias_t};
 }
 
