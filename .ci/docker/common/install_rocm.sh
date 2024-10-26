@@ -51,6 +51,13 @@ install_ubuntu() {
         DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-unauthenticated rocm-llvm-dev
     fi
 
+    # update rocPRIM
+    git clone https://github.com/ROCm/rocPRIM.git -b mi300-segmented-radix-sort
+    cd rocPRIM; mkdir build; cd build
+    CXX=hipcc cmake -DGPU_TARGETS=gfx942 ../.
+    make -j4
+    make install
+
     # precompiled miopen kernels added in ROCm 3.5, renamed in ROCm 5.5
     # search for all unversioned packages
     # if search fails it will abort this script; use true to avoid case where search fails
