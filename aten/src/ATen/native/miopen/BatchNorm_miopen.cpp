@@ -89,6 +89,7 @@ miopenBatchNormMode_t getMiopenBatchNormMode(const Tensor& t)
 {
   return (t.dim() == 2) ? miopenBNPerActivation :  miopenBNSpatial;
 }
+
 std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_train_forward(
     const Tensor& input_t, const Tensor& weight_t, const std::optional<Tensor>& bias_t_opt, const std::optional<Tensor>& running_mean_t_opt, const std::optional<Tensor>& running_var_t_opt,
     bool training, double exponential_average_factor, double epsilon)
@@ -104,13 +105,15 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_train_forward(
     // << " exponential_average_factor=" << exponential_average_factor
     // << " epsilon=" << epsilon
     << std::endl;
+
+  const bool use_CK = (input_t.scalar_type() == at::kBFloat16 || input_t.scalar_type() == at::kHalf);
   // See [Note: hacky wrapper removal for optional tensor]
   c10::MaybeOwned<Tensor> bias_t_maybe_owned = at::borrow_from_optional_tensor(bias_t_opt);
   const Tensor& bias_t = *bias_t_maybe_owned;
   const Tensor& running_mean_t = c10::value_or_else(running_mean_t_opt, [] {return Tensor();});
   const Tensor& running_var_t = c10::value_or_else(running_var_t_opt, [] {return Tensor();});
 
-  if (input->scalar_type() != ScalarType::Half || input->scalar_type() != ScalarType::BFloat16)
+  // if (input_t.scalar_type() != ScalarType::Half || input_t.scalar_type() != ScalarType::BFloat16)
 
   TensorArg input{ input_t, "input", 1 },
             weight{ weight_t, "weight", 2 },
@@ -119,12 +122,12 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_train_forward(
             running_var{ running_var_t, "running_var", 5 };
   CheckedFrom c = "miopen_batch_norm";
   checkAllDefined(c, {input, weight, bias});
-  if (!training) {
-    checkAllDefined(c, {running_mean, running_var});
-  }
+  // if (!training) {
+  //   checkAllDefined(c, {running_mean, running_var});
+  // }
   checkAllSameGPU(c, {input, weight, bias, running_mean, running_var});
   // if (input->scalar_type() != ScalarType::Half || input->scalar_type() != ScalarType::BFloat16) {
-  //   checkAllSameType(c, {input, weight});
+  checkAllSameType(c, {input, weight});
   // }
   // checkAllSameType(c, {weight, bias, running_mean, running_var});
   checkAllContiguous(c, {weight, bias, running_mean, running_var});
@@ -137,105 +140,60 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_train_forward(
     }
   }
 
-  miopenBatchNormMode_t mode = (input->dim() == 2) ? miopenBNPerActivation :  miopenBNSpatial;
+  miopenBatchNormMode_t mode = getMiopenBatchNormMode(input_t);
 
   auto output_t = at::empty(input->sizes(), input->options(), input->suggest_memory_format());
   TensorArg output{ output_t, "output", 0 };
 
   auto handle = getMiopenHandle();
   auto dataType = getMiopenDataType(*input);
-  // auto weight_c = weight->to(at::kBFloat16);
-  // auto bias_c = bias->to(at::kBFloat16);
   TensorDescriptor idesc{ *input, 4 };  // input descriptor
-  // TensorDescriptor odesc{ *output, 4 };  // output descriptor
   TensorDescriptor wdesc{ expandScale(*weight, input->dim()), 4 };  // descriptor for weight, bias, running_mean, etc.
 
   Constant one(dataType, 1);
   Constant zero(dataType, 0);
   Tensor save_mean, save_var;
-
-  if (training) {
-    int64_t num_features = input_t.size(1);
-    save_mean = at::empty({ num_features }, weight_t.options());
-    save_var = at::empty({ num_features }, weight_t.options());
-    // save_mean = at::ones({ num_features }, weight_t.options());
-    // save_var = at::ones({ num_features }, weight_t.options());
-    if ((input->scalar_type() == at::kBFloat16 || input->scalar_type() == at::kHalf) /*&& input->suggest_memory_format() == MemoryFormat::ChannelsLast*/)
-    {
-      save_mean = save_mean.to(at::kFloat);
-      save_var = save_var.to(at::kFloat);
-    }
-    std::cout << "##### miopenBatchNormalizationForward Training "
-            << " training=" << training
-            << " mode=" << mode
-            << " input=" << input->scalar_type()   // in
-            << " output=" << output->scalar_type() // out
-            << " weight=" << weight->scalar_type() // in
-            << " bias=" << bias->scalar_type()     // in 
-            // << " eaf=" << exponential_average_factor
-            << " running_mean=" << running_mean->scalar_type() // out
-            << " running_var=" << running_var->scalar_type()   // out
-            // << " epsilon=" << epsilon
-            << " save_mean=" << save_mean.scalar_type()        // out
-            << " save_var=" << save_var.scalar_type()          // out
-            << std::endl;
-
-    
-    MIOPEN_CHECK(miopenBatchNormalizationForwardTraining(
-      handle, mode, &one, &zero,
-      idesc.desc(), input->const_data_ptr(),
-      idesc.desc(), output->data_ptr(),
-      wdesc.desc(),
-      // NOTE: MIOpen docs say that the bnScale and bnBias args are only inputs,
-      // not outputs. However, unfortunately the function signature only takes
-      // non-const pointers, presumably by accident
-      const_cast<void*>(weight->const_data_ptr()),
-      const_cast<void*>(bias->const_data_ptr()),
-      exponential_average_factor,
-      at::maybe_data_ptr(running_mean),
-      at::maybe_data_ptr(running_var),
-      epsilon,
-      save_mean.mutable_data_ptr(),
-      save_var.mutable_data_ptr()));
-  } else {
-
-    save_mean = at::empty({ num_features }, weight_t.options());
-    save_var = at::empty({ num_features }, weight_t.options());
-    // save_mean = at::ones({ num_features }, weight_t.options());
-    // save_var = at::ones({ num_features }, weight_t.options());
-    if ((input->scalar_type() == at::kBFloat16 || input->scalar_type() == at::kHalf) /* && input->suggest_memory_format() == MemoryFormat::ChannelsLast */)
-    {
-      save_mean = save_mean.to(at::kFloat);
-      save_var = save_var.to(at::kFloat);
-    }
-    std::cout << "##### miopenBatchNormalizationForward Inference "
-            << " training=" << training
-            << " mode=" << mode
-            << " input=" << input->scalar_type()
-            << " output=" << output->scalar_type()
-            << " weight=" << weight->scalar_type()
-            << " bias=" << bias->scalar_type()
-            // << " eaf=" << exponential_average_factor
-            << " running_mean=" << running_mean->scalar_type()
-            << " running_var=" << running_var->scalar_type()
-            // << " epsilon=" << epsilon
-            << " save_mean=" << save_mean.scalar_type()
-            << " save_var=" << save_var.scalar_type()
-            << std::endl;
-    MIOPEN_CHECK(miopenBatchNormalizationForwardInference(
-      handle, mode, &one, &zero,
-      idesc.desc(), input->const_data_ptr(),
-      idesc.desc(), output->data_ptr(),
-      wdesc.desc(),
-      // NOTE: MIOpen docs say that the bnScale and bnBias args are only inputs,
-      // not outputs. However, unfortunately the function signature only takes
-      // non-const pointers, presumably by accident
-      const_cast<void*>(weight->const_data_ptr()),
-      const_cast<void*>(bias->const_data_ptr()),
-      running_mean->data_ptr(),
-      running_var->data_ptr(),
-      epsilon));
+  
+  int64_t num_features = input_t.size(1);
+  save_mean = at::empty({ num_features }, weight_t.options());
+  save_var = at::empty({ num_features }, weight_t.options());
+  if (use_CK)
+  {
+    save_mean = save_mean.to(at::kFloat);
+    save_var = save_var.to(at::kFloat);
   }
+  std::cout << "##### miopenBatchNormalizationForward Training "
+          << " use_CK=" << use_CK
+          << " training=" << training
+          << " mode=" << mode
+          << " input=" << input->scalar_type()   // in
+          << " output=" << output->scalar_type() // out
+          << " weight=" << weight->scalar_type() // in
+          << " bias=" << bias->scalar_type()     // in 
+          // << " eaf=" << exponential_average_factor
+          << " running_mean=" << running_mean->scalar_type() // out
+          << " running_var=" << running_var->scalar_type()   // out
+          // << " epsilon=" << epsilon
+          << " save_mean=" << save_mean.scalar_type()        // out
+          << " save_var=" << save_var.scalar_type()          // out
+          << std::endl;
+  
+  MIOPEN_CHECK(miopenBatchNormalizationForwardTraining(
+    handle, mode, &one, &zero,
+    idesc.desc(), input->const_data_ptr(),
+    idesc.desc(), output->data_ptr(),
+    wdesc.desc(),
+    // NOTE: MIOpen docs say that the bnScale and bnBias args are only inputs,
+    // not outputs. However, unfortunately the function signature only takes
+    // non-const pointers, presumably by accident
+    const_cast<void*>(weight->const_data_ptr()),
+    const_cast<void*>(bias->const_data_ptr()),
+    exponential_average_factor,
+    at::maybe_data_ptr(running_mean),
+    at::maybe_data_ptr(running_var),
+    epsilon,
+    save_mean.mutable_data_ptr(),
+    save_var.mutable_data_ptr()));
 
   // save_mean and save_var can be undefined
   // If this causes problems, we can initialize them to empty tensors
@@ -246,7 +204,13 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_train_forward(
             << " save_mean=" << save_mean.scalar_type()
             << " save_var=" << save_var.scalar_type()
             << std::endl;
-  return std::tuple<Tensor, Tensor, Tensor>{output_t, save_mean, save_var};
+  if (use_CK)
+  {
+      std::cout << "##### miopenBatchNormalizationForward RETURN convert to " << input->scalar_type() << std::endl;
+    return std::tuple<Tensor, Tensor, Tensor>{output_t, save_mean.to(input->scalar_type()), save_var.to(input->scalar_type())};
+  }
+  else 
+    return std::tuple<Tensor, Tensor, Tensor>{output_t, save_mean, save_var};
 }
 
 std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_inference(
@@ -264,6 +228,8 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_inference(
     // << " exponential_average_factor=" << exponential_average_factor
     // << " epsilon=" << epsilon
     << std::endl;
+
+  const bool use_CK = (input_t.scalar_type() == at::kBFloat16 || input_t.scalar_type() == at::kHalf);
   // See [Note: hacky wrapper removal for optional tensor]
   c10::MaybeOwned<Tensor> bias_t_maybe_owned = at::borrow_from_optional_tensor(bias_t_opt);
   const Tensor& bias_t = *bias_t_maybe_owned;
@@ -301,31 +267,13 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_inference(
               << " dtype=" << running_var->scalar_type()
               << " sizes=" << running_var->sizes()
               << " strides=" << running_var->strides()
-            // << " ]\nweight.grad["
-            //   << " dtype=" << weight->grad().scalar_type()
-            //   << " sizes=" << weight->grad().sizes()
-            //   << " strides=" << weight->grad().strides()
-            // << " ]\nbias.grad["
-            //   << " dtype=" << bias->grad().scalar_type()
-            //   << " sizes=" << bias->grad().sizes()
-            //   << " strides=" << bias->grad().strides()
-            // << " ]\nrunning_mean.grad["
-            //   << " dtype=" << running_mean->grad().scalar_type()
-            //   << " sizes=" << running_mean->grad().sizes()
-            //   << " strides=" << running_mean->grad().strides()
-            // << " ]\nrunning_var.grad["
-            //   << " dtype=" << running_var->grad().scalar_type()
-            //   << " sizes=" << running_var->grad().sizes()
-            //   << " strides=" << running_var->grad().strides()
-            // << " ]"
+            
             << std::endl;
   checkAllDefined(c, {input, weight, bias});
-  if (!training) {
-    checkAllDefined(c, {running_mean, running_var});
-  }
+  checkAllDefined(c, {running_mean, running_var});
   checkAllSameGPU(c, {input, weight, bias, running_mean, running_var});
   // if (input->scalar_type() != ScalarType::Half || input->scalar_type() != ScalarType::BFloat16) {
-  //   checkAllSameType(c, {input, weight});
+  checkAllSameType(c, {input, weight});
   // }
   // checkAllSameType(c, {weight, bias, running_mean, running_var});
   checkAllContiguous(c, {weight, bias, running_mean, running_var});
@@ -338,108 +286,54 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_inference(
     }
   }
 
-  miopenBatchNormMode_t mode;
-  if (input->dim() == 2) {
-    mode = miopenBNPerActivation;
-  } else {
-    mode = miopenBNSpatial;
-  }
+  auto mode= getMiopenBatchNormMode(input_t);
 
   auto output_t = at::empty(input->sizes(), input->options(), input->suggest_memory_format());
   TensorArg output{ output_t, "output", 0 };
 
   auto handle = getMiopenHandle();
   auto dataType = getMiopenDataType(*input);
-  // auto weight_c = weight->to(at::kBFloat16);
-  // auto bias_c = bias->to(at::kBFloat16);
   TensorDescriptor idesc{ *input, 4 };  // input descriptor
-  // TensorDescriptor odesc{ *output, 4 };  // output descriptor
   TensorDescriptor wdesc{ expandScale(*weight, input->dim()), 4 };  // descriptor for weight, bias, running_mean, etc.
 
   Constant one(dataType, 1);
   Constant zero(dataType, 0);
   Tensor save_mean, save_var;
-
-  if (training) {
-    int64_t num_features = input_t.size(1);
-    save_mean = at::empty({ num_features }, weight_t.options());
-    save_var = at::empty({ num_features }, weight_t.options());
-    // save_mean = at::ones({ num_features }, weight_t.options());
-    // save_var = at::ones({ num_features }, weight_t.options());
-    if ((input->scalar_type() == at::kBFloat16 || input->scalar_type() == at::kHalf) /*&& input->suggest_memory_format() == MemoryFormat::ChannelsLast*/)
-    {
-      save_mean = save_mean.to(at::kFloat);
-      save_var = save_var.to(at::kFloat);
-    }
-    std::cout << "##### miopenBatchNormalizationForward Training "
-            << " training=" << training
-            << " mode=" << mode
-            << " input=" << input->scalar_type()
-            << " output=" << output->scalar_type()
-            << " weight=" << weight->scalar_type()
-            << " bias=" << bias->scalar_type()
-            // << " eaf=" << exponential_average_factor
-            << " running_mean=" << running_mean->scalar_type()
-            << " running_var=" << running_var->scalar_type()
-            // << " epsilon=" << epsilon
-            << " save_mean=" << save_mean.scalar_type()
-            << " save_var=" << save_var.scalar_type()
-            << std::endl;
-    MIOPEN_CHECK(miopenBatchNormalizationForwardTraining(
-      handle, mode, &one, &zero,
-      idesc.desc(), input->const_data_ptr(),
-      idesc.desc(), output->data_ptr(),
-      wdesc.desc(),
-      // NOTE: MIOpen docs say that the bnScale and bnBias args are only inputs,
-      // not outputs. However, unfortunately the function signature only takes
-      // non-const pointers, presumably by accident
-      const_cast<void*>(weight->const_data_ptr()),
-      const_cast<void*>(bias->const_data_ptr()),
-      exponential_average_factor,
-      at::maybe_data_ptr(running_mean),
-      at::maybe_data_ptr(running_var),
-      epsilon,
-      save_mean.mutable_data_ptr(),
-      save_var.mutable_data_ptr()));
-  } else {
-
-    save_mean = at::empty({ num_features }, weight_t.options());
-    save_var = at::empty({ num_features }, weight_t.options());
-    // save_mean = at::ones({ num_features }, weight_t.options());
-    // save_var = at::ones({ num_features }, weight_t.options());
-    if ((input->scalar_type() == at::kBFloat16 || input->scalar_type() == at::kHalf) /* && input->suggest_memory_format() == MemoryFormat::ChannelsLast */)
-    {
-      save_mean = save_mean.to(at::kFloat);
-      save_var = save_var.to(at::kFloat);
-    }
-    std::cout << "##### miopenBatchNormalizationForward Inference "
-            << " training=" << training
-            << " mode=" << mode
-            << " input=" << input->scalar_type()
-            << " output=" << output->scalar_type()
-            << " weight=" << weight->scalar_type()
-            << " bias=" << bias->scalar_type()
-            // << " eaf=" << exponential_average_factor
-            << " running_mean=" << running_mean->scalar_type()
-            << " running_var=" << running_var->scalar_type()
-            // << " epsilon=" << epsilon
-            << " save_mean=" << save_mean.scalar_type()
-            << " save_var=" << save_var.scalar_type()
-            << std::endl;
-    MIOPEN_CHECK(miopenBatchNormalizationForwardInference(
-      handle, mode, &one, &zero,
-      idesc.desc(), input->const_data_ptr(),
-      idesc.desc(), output->data_ptr(),
-      wdesc.desc(),
-      // NOTE: MIOpen docs say that the bnScale and bnBias args are only inputs,
-      // not outputs. However, unfortunately the function signature only takes
-      // non-const pointers, presumably by accident
-      const_cast<void*>(weight->const_data_ptr()),
-      const_cast<void*>(bias->const_data_ptr()),
-      running_mean->data_ptr(),
-      running_var->data_ptr(),
-      epsilon));
+  save_mean = at::empty({ num_features }, weight_t.options());
+  save_var = at::empty({ num_features }, weight_t.options());
+  if (use_CK) /* && input->suggest_memory_format() == MemoryFormat::ChannelsLast */)
+  {
+    save_mean = save_mean.to(at::kFloat);
+    save_var = save_var.to(at::kFloat);
   }
+  std::cout << "##### miopenBatchNormalizationForward Inference "
+          << " use_CK=" << use_CK
+          << " training=" << training
+          << " mode=" << mode
+          << " input=" << input->scalar_type()
+          << " output=" << output->scalar_type()
+          << " weight=" << weight->scalar_type()
+          << " bias=" << bias->scalar_type()
+          // << " eaf=" << exponential_average_factor
+          << " running_mean=" << running_mean->scalar_type()
+          << " running_var=" << running_var->scalar_type()
+          // << " epsilon=" << epsilon
+          << " save_mean=" << save_mean.scalar_type()
+          << " save_var=" << save_var.scalar_type()
+          << std::endl;
+  MIOPEN_CHECK(miopenBatchNormalizationForwardInference(
+    handle, mode, &one, &zero,
+    idesc.desc(), input->const_data_ptr(), // in
+    idesc.desc(), output->data_ptr(),      // out
+    wdesc.desc(),
+    // NOTE: MIOpen docs say that the bnScale and bnBias args are only inputs,
+    // not outputs. However, unfortunately the function signature only takes
+    // non-const pointers, presumably by accident
+    const_cast<void*>(weight->const_data_ptr()), // in
+    const_cast<void*>(bias->const_data_ptr()),   // in
+    running_mean->data_ptr(),                    // in
+    running_var->data_ptr(),                     // in
+    epsilon));
 
   // save_mean and save_var can be undefined
   // If this causes problems, we can initialize them to empty tensors
@@ -450,7 +344,14 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_inference(
             << " save_mean=" << save_mean.scalar_type()
             << " save_var=" << save_var.scalar_type()
             << std::endl;
-  return std::tuple<Tensor, Tensor, Tensor>{output_t, save_mean, save_var};
+  if (use_CK)
+  {
+    std::cout << "##### miopenBatchNormalizationForward Inference RETURN convert to " << input->scalar_type() << std::endl;
+    return std::tuple<Tensor, Tensor, Tensor>{output_t, save_mean.to(input->scalar_type()), save_var.to(input->scalar_type())};
+  }
+  else 
+    return std::tuple<Tensor, Tensor, Tensor>{output_t, save_mean, save_var};
+  
 }
 
 std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
@@ -464,8 +365,12 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
     const std::optional<Tensor>& save_mean_t_opt,
     const std::optional<Tensor>& save_var_t_opt,
     double epsilon) {
+
+    const bool use_CK = (input_t.scalar_type() == at::kBFloat16 || input_t.scalar_type() == at::kHalf);
+
   std::cout
     << "$$$$$ miopen_batch_norm_backward"
+    << " use_CK=" << use_CK
     << " input_t=" << input_t.scalar_type()
     << " grad_output_t=" << grad_output_t.scalar_type()
     << " weight_t=" << weight_t.scalar_type()
@@ -490,7 +395,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
 
   at::Tensor grad_input_t, grad_weight_t, grad_bias_t, grad_output_contig;
 
-  if ((input_t.scalar_type() == at::kBFloat16 || input_t.scalar_type() == at::kHalf) /* && input_t.suggest_memory_format() == MemoryFormat::ChannelsLast */)
+  if (use_CK /* && input_t.suggest_memory_format() == MemoryFormat::ChannelsLast */)
   {
     std::cout << "##### miopen_batch_norm_backward (BF16/FP16 NHWC)"
               << " input_t=" << input_t.scalar_type() << " : " // << (at::MemoryFormat) input_t.suggest_memory_format()
@@ -525,7 +430,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
   // // if (input->scalar_type() == ScalarType::Half) {
   // //   checkScalarType(c, weight, ScalarType::Float);
   // // } else {
-  //   checkAllSameType(c, {input, weight});
+  checkAllSameType(c, {input, weight});
   // // }
   // checkAllSameType(c, {input, grad_output});
   // checkAllSameType(c, {weight, save_mean, save_var});
@@ -585,7 +490,13 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
             << " grad_weight=" << grad_weight_t.scalar_type()
             << " grad_bias=" << grad_bias_t.scalar_type()
             << std::endl;
-  return std::tuple<Tensor,Tensor,Tensor>{grad_input_t, grad_weight_t, grad_bias_t};
+
+  if (use_CK)
+  {
+    return std::tuple<Tensor,Tensor,Tensor>{grad_input_t.to(input_t.scalar_type()), grad_weight_t.to(input_t.scalar_type()), grad_bias_t.to(input_t.scalar_type())};
+  }
+  else
+   return std::tuple<Tensor,Tensor,Tensor>{grad_input_t, grad_weight_t, grad_bias_t};
 }
 
 }}  // namespace native
