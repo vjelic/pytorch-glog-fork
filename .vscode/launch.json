@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "bf16",
+            "name": "bf16 nhwc",
             "type": "debugpy",
             "request": "launch",
             "pythonArgs": ["-u"],
@@ -25,7 +25,43 @@
             }
         },
         {
-            "name": "fp16",
+            "name": "bf16 nchw",
+            "type": "debugpy",
+            "request": "launch",
+            "pythonArgs": ["-u"],
+            "cwd": "${workspaceFolder}/test",
+            "program": "test_nn.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-v",
+                "-k",
+                "test_batchnorm_nchw_miopen_cuda_bfloat16"
+            ],
+            "env": {
+                "MIOPEN_ENABLE_LOGGING_CMD": "1",
+                // "MIOLEN_LOG_LEVEL": "6",
+                // "MIOPEN_ENABLE_LOGGING": "1",
+                // "AMD_LOG_LEVEL": "6",
+            }
+        },
+        {
+            "name": "fp16 nhwc",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/test",
+            "program": "test_nn.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-v",
+                "-k",
+                "test_batchnorm_nhwc_miopen_cuda_float16"
+            ],
+            "env": {
+                "MIOPEN_ENABLE_LOGGING_CMD": "1"
+            }
+        },
+        {
+            "name": "fp16 nchw",
             "type": "debugpy",
             "request": "launch",
             "cwd": "${workspaceFolder}/test",
