@@ -538,9 +538,9 @@ BatchNormBackend _select_batch_norm_backend(
         ||
         (input.scalar_type() == at::kFloat && input.suggest_memory_format() == MemoryFormat::ChannelsLast && PYTORCH_MIOPEN_SUGGEST_NHWC && weight.scalar_type() == at::kFloat)
         ||
-        (input.scalar_type() == at::kHalf && input.suggest_memory_format() == MemoryFormat::ChannelsLast /* && weight.scalar_type() == at::kFloat*/)
+        (input.scalar_type() == at::kHalf) // && input.suggest_memory_format() == MemoryFormat::ChannelsLast /* && weight.scalar_type() == at::kFloat*/)
         ||
-        (input.scalar_type() == at::kBFloat16 && input.suggest_memory_format() == MemoryFormat::ChannelsLast && PYTORCH_MIOPEN_SUGGEST_NHWC && weight.scalar_type() == at::kBFloat16)
+        (input.scalar_type() == at::kBFloat16) // && input.suggest_memory_format() == MemoryFormat::ChannelsLast && PYTORCH_MIOPEN_SUGGEST_NHWC && weight.scalar_type() == at::kBFloat16)
       )
       && weight.defined() && bias.defined()
       && ((running_mean.defined() && running_var.defined()) || (!running_mean.defined() && !running_var.defined() && training))

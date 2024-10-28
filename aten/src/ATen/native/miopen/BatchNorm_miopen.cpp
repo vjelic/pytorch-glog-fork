@@ -177,7 +177,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
     save_var = at::empty({ num_features }, weight_t.options());
     // save_mean = at::ones({ num_features }, weight_t.options());
     // save_var = at::ones({ num_features }, weight_t.options());
-    if ((input->scalar_type() == at::kBFloat16 || input->scalar_type() == at::kHalf) && input->suggest_memory_format() == MemoryFormat::ChannelsLast)
+    if ((input->scalar_type() == at::kBFloat16 || input->scalar_type() == at::kHalf) /*&& input->suggest_memory_format() == MemoryFormat::ChannelsLast*/)
     {
       save_mean = save_mean.to(at::kFloat);
       save_var = save_var.to(at::kFloat);
@@ -218,7 +218,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
     save_var = at::empty({ num_features }, weight_t.options());
     // save_mean = at::ones({ num_features }, weight_t.options());
     // save_var = at::ones({ num_features }, weight_t.options());
-    if ((input->scalar_type() == at::kBFloat16 || input->scalar_type() == at::kHalf) && input->suggest_memory_format() == MemoryFormat::ChannelsLast)
+    if ((input->scalar_type() == at::kBFloat16 || input->scalar_type() == at::kHalf) /* && input->suggest_memory_format() == MemoryFormat::ChannelsLast */)
     {
       save_mean = save_mean.to(at::kFloat);
       save_var = save_var.to(at::kFloat);
@@ -301,16 +301,16 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
 
   at::Tensor grad_input_t, grad_weight_t, grad_bias_t, grad_output_contig;
 
-  if ((input_t.scalar_type() == at::kBFloat16 || input_t.scalar_type() == at::kHalf) && input_t.suggest_memory_format() == MemoryFormat::ChannelsLast)
+  if ((input_t.scalar_type() == at::kBFloat16 || input_t.scalar_type() == at::kHalf) /* && input_t.suggest_memory_format() == MemoryFormat::ChannelsLast */)
   {
     std::cout << "##### miopen_batch_norm_backward (BF16/FP16 NHWC)"
               << " input_t=" << input_t.scalar_type() << " : " // << (at::MemoryFormat) input_t.suggest_memory_format()
               << " weight_t=" << weight_t.scalar_type() << " : "// << (at::MemoryFormat) weight_t.suggest_memory_format()
               << std::endl;
-    grad_input_t  = at::empty(input_t.sizes(), at::kFloat, input_t.layout(), input_t.device(), input_t.is_pinned(), MemoryFormat::ChannelsLast);
+    grad_input_t  = at::empty(input_t.sizes(), at::kFloat, input_t.layout(), input_t.device(), input_t.is_pinned(), input_t.suggest_memory_format());
     grad_weight_t = at::empty(weight_t.sizes(), at::kFloat, weight_t.layout(), weight_t.device(), weight_t.is_pinned(), MemoryFormat::Contiguous);
     grad_bias_t   = at::empty(weight_t.sizes(), at::kFloat, weight_t.layout(), weight_t.device(), weight_t.is_pinned(), MemoryFormat::Contiguous);
-    grad_output_contig = grad_output_t.to(at::kFloat).contiguous(MemoryFormat::ChannelsLast);
+    grad_output_contig = grad_output_t.to(at::kFloat).contiguous(input_t.suggest_memory_format());
   }
   else
   {

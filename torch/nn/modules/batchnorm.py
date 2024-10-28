@@ -188,8 +188,8 @@ class _BatchNorm(_NormBase):
         # ROCM only
         if torch.version.hip \
            and torch._C._get_cudnn_enabled() \
-           and input.device.type == "cuda" \
-           and input.is_contiguous(memory_format=torch.channels_last):
+           and input.device.type == "cuda" :
+        #    and input.is_contiguous(memory_format=torch.channels_last):
                 if input.dtype == torch.bfloat16 :
                     # NOTE: This is a workaround for a BF16 NHWC in ROCm batchnorm implementation
                     self.weight = self.weight.to(torch.bfloat16)
