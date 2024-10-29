@@ -8242,6 +8242,7 @@ class TestNNDeviceType(NNTestCase):
 
     def batchnorm2d_miopen(self, dtype, memory_format):
         def run_test(input, grad_output, enable_native = True, enable_cpu = False):
+            print(f"XXXXXXXXXXXXXX {torch.__file__}")
             c = input.size(1)
             mod = nn.BatchNorm2d(c, device='cuda', dtype=input.dtype)
             mod.weight.data.uniform_()
@@ -8306,7 +8307,8 @@ class TestNNDeviceType(NNTestCase):
                 self.assertEqual(input.grad, ref_input.grad)
             print("---------------- end ----------------")
 
-        size = (4, 8, 2, 2)
+        # size = (4, 8, 2, 2)
+        size = (8, 32, 470, 725)
         input = torch.randint(1, 10, size=size, dtype=dtype, device="cuda")
         input = input.contiguous(memory_format=memory_format).detach().requires_grad_()
         grad = torch.randint(1, 10, size=size, dtype=dtype, device="cuda")
