@@ -515,7 +515,9 @@ BatchNormBackend _select_batch_norm_backend(
   // See #64427
   // non static variable is used to be able to change environment variable in runtime for testing
   bool PYTORCH_MIOPEN_SUGGEST_NHWC = c10::utils::check_env("PYTORCH_MIOPEN_SUGGEST_NHWC").value_or(false);
-  std::cout << "**+** SUGGEST_NHWC=" << PYTORCH_MIOPEN_SUGGEST_NHWC 
+  bool PYTORCH_MIOPEN_EXTRA_LOGGING = c10::utils::check_env("PYTORCH_MIOPEN_EXTRA_LOGGING").value_or(false);
+  if (PYTORCH_MIOPEN_EXTRA_LOGGING)
+    std::cout << "**+** SUGGEST_NHWC=" << PYTORCH_MIOPEN_SUGGEST_NHWC 
             << " cudnn_enabled=" << cudnn_enabled
             << " dim=" << input.dim()
             << " memory_format=" << input.suggest_memory_format()
@@ -545,11 +547,12 @@ BatchNormBackend _select_batch_norm_backend(
       && weight.defined() && bias.defined()
       && ((running_mean.defined() && running_var.defined()) || (!running_mean.defined() && !running_var.defined() && training))
   ) {
-    std::cout << "***** BatchNormBackend::Miopen" << std::endl;
+    if (PYTORCH_MIOPEN_EXTRA_LOGGING)
+      std::cout << "***** BatchNormBackend::Miopen" << std::endl;
     return BatchNormBackend::Miopen;
   }
-
-  std::cout << "***** BatchNormBackend::Native" << std::endl;
+  if (PYTORCH_MIOPEN_EXTRA_LOGGING)
+    std::cout << "***** BatchNormBackend::Native" << std::endl;
   return BatchNormBackend::Native;
 }
 
