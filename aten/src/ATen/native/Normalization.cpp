@@ -154,7 +154,7 @@ std::tuple<Tensor,Tensor,Tensor> batch_norm_cpu_transform_input_template(
     }
     return std::make_tuple(output, save_mean, save_invstd);
   }
-
+  bool PYTORCH_MIOPEN_EXTRA_LOGGING = c10::utils::check_env("PYTORCH_MIOPEN_EXTRA_LOGGING").value_or(false);
   const int64_t ndim = input.dim();
   // Helper to convert 1d tensors to an nd tensor that broadcasts with input
   // All elements go into the channel dimension
@@ -515,7 +515,7 @@ BatchNormBackend _select_batch_norm_backend(
   // See #64427
   // non static variable is used to be able to change environment variable in runtime for testing
   bool PYTORCH_MIOPEN_SUGGEST_NHWC = c10::utils::check_env("PYTORCH_MIOPEN_SUGGEST_NHWC").value_or(false);
-  bool PYTORCH_MIOPEN_EXTRA_LOGGING = c10::utils::check_env("PYTORCH_MIOPEN_EXTRA_LOGGING").value_or(false);
+  
   if (PYTORCH_MIOPEN_EXTRA_LOGGING)
     std::cout << "**+** SUGGEST_NHWC=" << PYTORCH_MIOPEN_SUGGEST_NHWC 
             << " cudnn_enabled=" << cudnn_enabled
@@ -716,19 +716,19 @@ Tensor batch_norm(
     const Tensor& input, const std::optional<Tensor>& weight_opt, const std::optional<Tensor>& bias_opt,
     const std::optional<Tensor>& running_mean_opt, const std::optional<Tensor>& running_var_opt,
     bool training, double momentum, double eps, bool cudnn_enabled) {
-  
-  std :: cout 
-    << "********************* batch_norm" 
-    << " input=" << input.scalar_type()
-    << " weight=" << (weight_opt.has_value() ? weight_opt.value().scalar_type() : at::ScalarType::Undefined)
-    << " bias=" << (bias_opt.has_value() ? bias_opt.value().scalar_type() : at::ScalarType::Undefined)
-    << " running_mean=" << (running_mean_opt.has_value() ? running_mean_opt.value().scalar_type() : at::ScalarType::Undefined)
-    << " running_var=" << (running_var_opt.has_value() ? running_var_opt.value().scalar_type() : at::ScalarType::Undefined)
-    << " training=" << training
-    // << " momentum=" << momentum
-    // << " eps=" << eps
-    << " cudnn_enabled=" << cudnn_enabled
-    << std::endl;
+  if (PYTORCH_MIOPEN_EXTRA_LOGGING)
+    std :: cout 
+      << "********************* batch_norm" 
+      << " input=" << input.scalar_type()
+      << " weight=" << (weight_opt.has_value() ? weight_opt.value().scalar_type() : at::ScalarType::Undefined)
+      << " bias=" << (bias_opt.has_value() ? bias_opt.value().scalar_type() : at::ScalarType::Undefined)
+      << " running_mean=" << (running_mean_opt.has_value() ? running_mean_opt.value().scalar_type() : at::ScalarType::Undefined)
+      << " running_var=" << (running_var_opt.has_value() ? running_var_opt.value().scalar_type() : at::ScalarType::Undefined)
+      << " training=" << training
+      // << " momentum=" << momentum
+      // << " eps=" << eps
+      << " cudnn_enabled=" << cudnn_enabled
+      << std::endl;
 
   const Tensor& weight = c10::value_or_else(weight_opt, [] {return Tensor();});
   const Tensor& bias = c10::value_or_else(bias_opt, [] {return Tensor();});

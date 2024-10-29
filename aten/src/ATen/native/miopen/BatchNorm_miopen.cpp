@@ -145,7 +145,8 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_train_forward(
     save_mean = at::empty({ num_features }, weight_t.options());
     save_var = at::empty({ num_features }, weight_t.options());
   }
-  std::cout << "##### miopenBatchNormalizationForward Training "
+  if (PYTORCH_MIOPEN_EXTRA_LOGGING)
+   std::cout << "##### miopenBatchNormalizationForward Training "
           << " use_CK=" << use_CK
           << " training=" << training
           << " mode=" << mode

@@ -94,6 +94,8 @@ inline Impl batch_norm_choose_impl(const Tensor& in1, const Tensor& in2) {
   return imp1 == imp2 ? imp1 : Impl::General;
 }
 
+bool PYTORCH_MIOPEN_EXTRA_LOGGING = c10::utils::check_env("PYTORCH_MIOPEN_EXTRA_LOGGING").value_or(false);
+
 void batch_norm_elementwise(
     const Tensor& out, const Tensor& self, const std::optional<Tensor>& weight_opt,
     const std::optional<Tensor>& bias_opt, const Tensor& mean_, const Tensor& invstd_) {
@@ -485,6 +487,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor> _batch_norm_with_update_cuda(
     const Tensor& input, const std::optional<Tensor>& weight_opt, const std::optional<Tensor>& bias_opt,
     Tensor& running_mean, Tensor& running_var, double momentum, double eps) {
   // See [Note: hacky wrapper removal for optional tensor]
+  if (PYTORCH_MIOPEN_EXTRA_LOGGING)
       std :: cout << "********************* _batch_norm_with_update_cuda" << std::endl;
 
   c10::MaybeOwned<Tensor> weight_maybe_owned = at::borrow_from_optional_tensor(weight_opt);
@@ -513,7 +516,8 @@ std::tuple<Tensor&, Tensor&, Tensor&, Tensor&> _batch_norm_with_update_cuda_out(
     Tensor& running_mean, Tensor& running_var, double momentum, double eps,
     Tensor& out, Tensor& save_mean, Tensor& save_var, Tensor& reserve) {
   // See [Note: hacky wrapper removal for optional tensor]
-  std :: cout << "********************* _batch_norm_with_update_cuda_out" << std::endl;
+  if (PYTORCH_MIOPEN_EXTRA_LOGGING)
+    std :: cout << "********************* _batch_norm_with_update_cuda_out" << std::endl;
   c10::MaybeOwned<Tensor> weight_maybe_owned = at::borrow_from_optional_tensor(weight_opt);
   const Tensor& weight = *weight_maybe_owned;
   const Tensor& bias = c10::value_or_else(bias_opt, [] {return Tensor();});
@@ -553,6 +557,7 @@ std::tuple<Tensor, Tensor, Tensor> _new_batch_norm_backward_cuda(
     const std::optional<Tensor>& running_mean_opt, const std::optional<Tensor>& running_var_opt,
     const std::optional<Tensor>& save_mean_opt, const std::optional<Tensor>& save_var_opt,
     bool update, double eps, std::array<bool,3> grad_input_mask, const Tensor& reserve) {
+      if (PYTORCH_MIOPEN_EXTRA_LOGGING)
             std :: cout << "********************* _new_batch_norm_backward_cuda" << std::endl;
 
   const Tensor& dummy_bias = at::empty(1);
@@ -574,6 +579,7 @@ std::tuple<Tensor, Tensor, Tensor> _new_batch_norm_backward_cuda(
 
 std::tuple<Tensor, Tensor, Tensor> batch_norm_backward_cuda(const Tensor& grad_out, const Tensor& input, const std::optional<Tensor>& weight_opt, const std::optional<Tensor>& running_mean_opt, const std::optional<Tensor>& running_var_opt, const std::optional<Tensor>& save_mean_opt, const std::optional<Tensor>& save_invstd_opt, bool train, double epsilon, std::array<bool,3> grad_input_mask) {
   // See [Note: hacky wrapper removal for optional tensor]
+  if (PYTORCH_MIOPEN_EXTRA_LOGGING)
           std :: cout << "********************* batch_norm_backward_cuda" << std::endl;
 
   c10::MaybeOwned<Tensor> weight = at::borrow_from_optional_tensor(weight_opt);
