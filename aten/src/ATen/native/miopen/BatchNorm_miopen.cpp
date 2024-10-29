@@ -204,7 +204,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_inference(
 {
   if (PYTORCH_MIOPEN_EXTRA_LOGGING) 
     std::cout
-      << "$$$$$ miopen_batch_norm"
+      << "$$$$$ miopen_batch_norm_inference"
       << " input_t=" << input_t.scalar_type()
       << " weight_t=" << weight_t.scalar_type()
       << " bias_t_opt=" << (bias_t_opt.has_value() ? bias_t_opt.value().scalar_type() : at::ScalarType::Undefined)

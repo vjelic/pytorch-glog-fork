@@ -154,7 +154,6 @@ std::tuple<Tensor,Tensor,Tensor> batch_norm_cpu_transform_input_template(
     }
     return std::make_tuple(output, save_mean, save_invstd);
   }
-  bool PYTORCH_MIOPEN_EXTRA_LOGGING = c10::utils::check_env("PYTORCH_MIOPEN_EXTRA_LOGGING").value_or(false);
   const int64_t ndim = input.dim();
   // Helper to convert 1d tensors to an nd tensor that broadcasts with input
   // All elements go into the channel dimension
@@ -485,10 +484,13 @@ std::tuple<Tensor, Tensor, Tensor> batch_norm_backward_cpu_template(
   return std::make_tuple(grad_input, grad_weight, grad_bias);
 }
 
+bool PYTORCH_MIOPEN_EXTRA_LOGGING = c10::utils::check_env("PYTORCH_MIOPEN_EXTRA_LOGGING").value_or(false);
+
 BatchNormBackend _select_batch_norm_backend(
     const Tensor& input, const Tensor& weight, const Tensor& bias, const Tensor& running_mean,
     const Tensor& running_var, bool training, double eps) {
-  std :: cout << "********************* _select_batch_norm_backend" << std::endl;
+  if (at::native::PYTORCH_MIOPEN_EXTRA_LOGGING) 
+    std :: cout << "********************* _select_batch_norm_backend" << std::endl;
   auto& ctx = at::globalContext();
   bool cudnn_enabled = ctx.userEnabledCuDNN();
 
@@ -566,6 +568,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, int64_t> _batch_norm_impl_index(
     const Tensor& input, const std::optional<Tensor>& weight_opt /* optional */, const std::optional<Tensor>& bias_opt /* optional */, const std::optional<Tensor>& running_mean_opt /* optional */, const std::optional<Tensor>& running_var_opt /* optional */,
     bool training, double momentum, double eps, bool cudnn_enabled) {
   // See [Note: hacky wrapper removal for optional tensor]
+  if (PYTORCH_MIOPEN_EXTRA_LOGGING)
     std :: cout 
       << "********************* _batch_norm_impl_index" 
       << " input=" << input.scalar_type()
@@ -669,7 +672,8 @@ std::tuple<Tensor, Tensor, Tensor> _batch_norm_impl_index_backward(
     const std::optional<Tensor>& save_var_transform_opt /* optional */,
     bool train, double epsilon, std::array<bool, 3> output_mask, const Tensor &reservedSpace) {
   // See [Note: hacky wrapper removal for optional tensor]
-  std :: cout << "********************* _batch_norm_impl_index_backward" << std::endl;
+  if (PYTORCH_MIOPEN_EXTRA_LOGGING)
+    std :: cout << "********************* _batch_norm_impl_index_backward" << std::endl;
   c10::MaybeOwned<Tensor> weight_maybe_owned = at::borrow_from_optional_tensor(weight_opt);
   const Tensor& weight = *weight_maybe_owned;
   const Tensor& running_mean = c10::value_or_else(running_mean_opt, [] {return Tensor();});

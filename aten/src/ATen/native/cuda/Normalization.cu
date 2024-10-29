@@ -94,7 +94,7 @@ inline Impl batch_norm_choose_impl(const Tensor& in1, const Tensor& in2) {
   return imp1 == imp2 ? imp1 : Impl::General;
 }
 
-bool PYTORCH_MIOPEN_EXTRA_LOGGING = c10::utils::check_env("PYTORCH_MIOPEN_EXTRA_LOGGING").value_or(false);
+// bool PYTORCH_MIOPEN_EXTRA_LOGGING = c10::utils::check_env("PYTORCH_MIOPEN_EXTRA_LOGGING").value_or(false);
 
 void batch_norm_elementwise(
     const Tensor& out, const Tensor& self, const std::optional<Tensor>& weight_opt,
