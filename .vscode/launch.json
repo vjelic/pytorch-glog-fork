@@ -20,7 +20,8 @@
             "env": {
                 "MIOPEN_ENABLE_LOGGING_CMD": "1",
                 "PYTORCH_MIOPEN_EXTRA_LOGGING": "1",
-                // "MIOLEN_LOG_LEVEL": "6",
+                "PYTORCH_MIOPEN_USE_API_V2": "1",
+                // "MIOPEN_LOG_LEVEL": "6",
                 // "MIOPEN_ENABLE_LOGGING": "1",
                 // "AMD_LOG_LEVEL": "6",
             }
@@ -41,7 +42,8 @@
             "env": {
                 "MIOPEN_ENABLE_LOGGING_CMD": "1",
                 "PYTORCH_MIOPEN_EXTRA_LOGGING": "1",
-                // "MIOLEN_LOG_LEVEL": "6",
+                "PYTORCH_MIOPEN_USE_API_V2": "1",
+                // "MIOPEN_LOG_LEVEL": "6",
                 // "MIOPEN_ENABLE_LOGGING": "1",
                 // "AMD_LOG_LEVEL": "6",
             }
@@ -61,6 +63,7 @@
             "env": {
                 "MIOPEN_ENABLE_LOGGING_CMD": "1",
                 "PYTORCH_MIOPEN_EXTRA_LOGGING": "1",
+                "PYTORCH_MIOPEN_USE_API_V2": "1",
             }
         },
         {
@@ -78,6 +81,7 @@
             "env": {
                 "MIOPEN_ENABLE_LOGGING_CMD": "1",
                 "PYTORCH_MIOPEN_EXTRA_LOGGING": "1",
+                "PYTORCH_MIOPEN_USE_API_V2": "1",
             }
         },
         {
@@ -95,6 +99,7 @@
             "env": {
                 "MIOPEN_ENABLE_LOGGING_CMD": "1",
                 "PYTORCH_MIOPEN_EXTRA_LOGGING": "1",
+                "PYTORCH_MIOPEN_USE_API_V2": "1",
             }
         },
         {
@@ -112,6 +117,7 @@
             "env": {
                 "MIOPEN_ENABLE_LOGGING_CMD": "1",
                 "PYTORCH_MIOPEN_EXTRA_LOGGING": "1",
+                "PYTORCH_MIOPEN_USE_API_V2": "1",
             }
         },
         {
@@ -129,6 +135,7 @@
             "env": {
                 "MIOPEN_ENABLE_LOGGING_CMD": "1",
                 "PYTORCH_MIOPEN_EXTRA_LOGGING": "1",
+                "PYTORCH_MIOPEN_USE_API_V2": "1",
             }
         }
     ]

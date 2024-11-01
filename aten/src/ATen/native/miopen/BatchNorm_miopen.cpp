@@ -484,6 +484,163 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_inference(
   
 }
 
+std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_inference_v2(
+    const Tensor& input_t, const Tensor& weight_t, const std::optional<Tensor>& bias_t_opt, const std::optional<Tensor>& running_mean_t_opt, const std::optional<Tensor>& running_var_t_opt,
+    bool training, double exponential_average_factor, double epsilon)
+{
+  if (PYTORCH_MIOPEN_EXTRA_LOGGING) 
+    std::cout
+      << "$$$$$ miopen_batch_norm_inference V2"
+      << " input_t=" << input_t.scalar_type()
+      << " weight_t=" << weight_t.scalar_type()
+      << " bias_t_opt=" << (bias_t_opt.has_value() ? bias_t_opt.value().scalar_type() : at::ScalarType::Undefined)
+      << " running_mean_t_opt=" << (running_mean_t_opt.has_value() ? running_mean_t_opt.value().scalar_type() : at::ScalarType::Undefined)
+      << " running_var_t_opt=" << (running_var_t_opt.has_value() ? running_var_t_opt.value().scalar_type() : at::ScalarType::Undefined)
+      << " training=" << training
+      // << " exponential_average_factor=" << exponential_average_factor
+      // << " epsilon=" << epsilon
+      << std::endl;
+
+  const bool use_CK = (input_t.scalar_type() == at::kBFloat16 || input_t.scalar_type() == at::kHalf);
+  // See [Note: hacky wrapper removal for optional tensor]
+  c10::MaybeOwned<Tensor> bias_t_maybe_owned = at::borrow_from_optional_tensor(bias_t_opt);
+  const Tensor& bias_t = *bias_t_maybe_owned;
+  const Tensor& running_mean_t = c10::value_or_else(running_mean_t_opt, [] {return Tensor();});
+  const Tensor& running_var_t = c10::value_or_else(running_var_t_opt, [] {return Tensor();});
+
+  TensorArg input{ input_t, "input", 1 },
+            weight{ weight_t, "weight", 2 },
+            bias{ bias_t, "bias", 3 },
+            running_mean{ /*use_CK ? running_mean_t.to(at::kFloat):*/running_mean_t, "running_mean", 4 },
+            running_var{ /*use_CK ? running_var_t.to(at::kFloat):*/running_var_t, "running_var", 5 };
+  CheckedFrom c = "miopen_batch_norm";
+
+  if (PYTORCH_MIOPEN_EXTRA_LOGGING)
+    std::cout << "$$$$$XXXXX V2"
+            << " training=" << training
+            << " dim=" << input->dim()
+            << " memory_format=" << input->suggest_memory_format()
+            << "\ninput["
+              << " dtype=" << input->scalar_type()
+              << " sizes=" << input->sizes()
+              << " strides=" << input->strides()
+            << " ]\nweight["
+              << " dtype=" << weight->scalar_type()
+              << " sizes=" << weight->sizes()
+              << " strides=" << weight->strides()
+            << " ]\nbias["
+              << " dtype=" << bias->scalar_type()
+              << " sizes=" << bias->sizes()
+              << " strides=" << bias->strides()
+            << " ]\nrunning_mean["
+              << " dtype=" << running_mean->scalar_type()
+              << " sizes=" << running_mean->sizes()
+              << " strides=" << running_mean->strides()
+            << " ]\nrunning_var["
+              << " dtype=" << running_var->scalar_type()
+              << " sizes=" << running_var->sizes()
+              << " strides=" << running_var->strides()
+            
+            << std::endl;
+  checkAllDefined(c, {input, weight, bias});
+  checkAllDefined(c, {running_mean, running_var});
+  checkAllSameGPU(c, {input, weight, bias, running_mean, running_var});
+  // if (input->scalar_type() != ScalarType::Half || input->scalar_type() != ScalarType::BFloat16) {
+  checkAllSameType(c, {input, weight});
+  // }
+  // checkAllSameType(c, {weight, bias, running_mean, running_var});
+  checkAllContiguous(c, {weight, bias, running_mean, running_var});
+  TORCH_CHECK(input->is_contiguous(input->suggest_memory_format()));
+  checkDimRange(c, input, 2, 6 /* exclusive */);
+  auto num_features = input->size(1);
+  for (auto t : {weight, bias, running_mean, running_var}) {
+    if (t->defined()) {
+      checkNumel(c, t, num_features);
+    }
+  }
+
+  auto mode= getMiopenBatchNormMode(input_t);
+
+  auto output_t = at::empty(input->sizes(), input->options(), input->suggest_memory_format());
+  TensorArg output{ output_t, "output", 0 };
+
+  auto handle = getMiopenHandle();
+  auto dataType = getMiopenDataType(*input);
+  TensorDescriptor idesc{ *input, 4 };  // input descriptor
+  TensorDescriptor wdesc{ expandScale(*weight, input->dim()), 4 };  // descriptor for weight, bias, running_mean, etc.
+  TensorDescriptor rdesc{ expandScale(*running_mean, input->dim()), 4 };
+
+  Constant one(dataType, 1);
+  Constant zero(dataType, 0);
+  Tensor save_mean, save_var;
+  save_mean = at::empty({ num_features }, weight_t.options());
+  save_var = at::empty({ num_features }, weight_t.options());
+  if (use_CK) /* && input->suggest_memory_format() == MemoryFormat::ChannelsLast */
+  {
+    save_mean = save_mean.to(at::kFloat);
+    save_var = save_var.to(at::kFloat);
+  }
+
+  if (PYTORCH_MIOPEN_EXTRA_LOGGING)
+  {
+    std::cout << "##### INPUT miopenBatchNormalizationForward running_mean = " << (float*)running_mean->data_ptr() << std::endl;
+    std::cout << "##### miopenBatchNormalizationForward Inference "
+            << " use_CK=" << use_CK
+            << " training=" << training
+            << " mode=" << mode
+            << " input=" << input->scalar_type()
+            << " output=" << output->scalar_type()
+            << " weight=" << weight->scalar_type()
+            << " bias=" << bias->scalar_type()
+            // << " eaf=" << exponential_average_factor
+            << " running_mean=" << running_mean->scalar_type()
+            << " running_var=" << running_var->scalar_type()
+            // << " epsilon=" << epsilon
+            << " save_mean=" << save_mean.scalar_type()
+            << " save_var=" << save_var.scalar_type()
+            << std::endl;
+  }
+  MIOPEN_CHECK(miopenBatchNormalizationForwardInference_V2(
+    handle, mode, &one, &zero,
+    idesc.desc(), input->const_data_ptr(), // in
+    idesc.desc(), output->data_ptr(),      // out
+    wdesc.desc(), // weight
+    wdesc.desc(), // bias
+    rdesc.desc(), // running_mean
+    rdesc.desc(), // running_var
+    // NOTE: MIOpen docs say that the bnScale and bnBias args are only inputs,
+    // not outputs. However, unfortunately the function signature only takes
+    // non-const pointers, presumably by accident
+    const_cast<void*>(weight->const_data_ptr()), // in
+    const_cast<void*>(bias->const_data_ptr()),   // in
+    running_mean->data_ptr(),                    // in
+    running_var->data_ptr(),                     // in
+    epsilon));
+
+  // save_mean and save_var can be undefined
+  // If this causes problems, we can initialize them to empty tensors
+  // of the correct type
+  if (PYTORCH_MIOPEN_EXTRA_LOGGING)
+  {
+    std::cout << "#####*** OUTPUT miopenBatchNormalizationForward running_mean = " << "AAA" /*(float*)running_mean->data_ptr()*/ << std::endl;
+    std::cout << "#####XXXXX miopenBatchNormalizationForward RETURN"
+              << " training=" << training
+              << " output=" << output->scalar_type()
+              << " save_mean=" << save_mean.scalar_type()
+              << " save_var=" << save_var.scalar_type()
+              << std::endl;
+  }
+  if (use_CK)
+  {
+    if (PYTORCH_MIOPEN_EXTRA_LOGGING)
+      std::cout << "##### miopenBatchNormalizationForward Inference RETURN convert to " << input->scalar_type() << std::endl;
+    return std::tuple<Tensor, Tensor, Tensor>{output_t, save_mean.to(input->scalar_type()), save_var.to(input->scalar_type())};
+  }
+  else 
+    return std::tuple<Tensor, Tensor, Tensor>{output_t, save_mean, save_var};
+  
+}
+
 std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
     const Tensor& input_t, const Tensor& weight_t, const std::optional<Tensor>& bias_t_opt, const std::optional<Tensor>& running_mean_t_opt, const std::optional<Tensor>& running_var_t_opt,
     bool training, double exponential_average_factor, double epsilon)
@@ -508,7 +665,10 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm(
             : miopen_batch_norm_train_forward(input_t, weight_t, bias_t_opt, running_mean_t_opt, running_var_t_opt,
                                             training, exponential_average_factor, epsilon);
     else 
-      return miopen_batch_norm_inference(input_t, weight_t, bias_t_opt, running_mean_t_opt, running_var_t_opt,
+      return PYTORCH_MIOPEN_USE_API_V2?
+            miopen_batch_norm_inference_v2(input_t, weight_t, bias_t_opt, running_mean_t_opt, running_var_t_opt,
+                                            training, exponential_average_factor, epsilon)
+            : miopen_batch_norm_inference(input_t, weight_t, bias_t_opt, running_mean_t_opt, running_var_t_opt,
                                             training, exponential_average_factor, epsilon);
 
 }
@@ -635,6 +795,28 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
       << " save_mean=" << save_mean->scalar_type()
       << " save_var=" << save_var->scalar_type()
       << std::endl;
+  if (PYTORCH_MIOPEN_USE_API_V2)
+  { 
+    TensorDescriptor sdesc { expandScale(*save_mean, input->dim()), 4 };
+    TensorDescriptor gdesc { expandScale(grad_weight_t, input->dim()), 4 };
+    MIOPEN_CHECK(miopenBatchNormalizationBackward_V2(
+    handle, mode, &one, &zero, &one, &zero,
+    idesc.desc(), input->const_data_ptr(),
+    gdesc.desc(), grad_output->const_data_ptr(),
+    gdesc.desc(), grad_input_t.data_ptr(),
+    wdesc.desc(), // weight
+    gdesc.desc(), // grad bias
+    sdesc.desc(), // saved mean
+    sdesc.desc(), // saved var    
+    weight->const_data_ptr(),
+    grad_weight_t.data_ptr(),
+    grad_bias_t.data_ptr(),
+    epsilon,
+    save_mean->const_data_ptr(),
+    save_var->const_data_ptr()));
+
+  }
+  else{
   MIOPEN_CHECK(miopenBatchNormalizationBackward(
     handle, mode, &one, &zero, &one, &zero,
     idesc.desc(), input->const_data_ptr(),
@@ -646,6 +828,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
     epsilon,
     save_mean->const_data_ptr(),
     save_var->const_data_ptr()));
+  }
   if (PYTORCH_MIOPEN_EXTRA_LOGGING)
     std::cout << "##### miopenBatchNormalizationBackward RETURN"
               << " grad_input=" << grad_input_t.scalar_type()
