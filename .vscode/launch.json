@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "bf16 nhwc",
+            "name": "bf16 nhwc v2",
             "type": "debugpy",
             "request": "launch",
             "pythonArgs": ["-u"],
@@ -21,6 +21,28 @@
                 "MIOPEN_ENABLE_LOGGING_CMD": "1",
                 "PYTORCH_MIOPEN_EXTRA_LOGGING": "1",
                 "PYTORCH_MIOPEN_USE_API_V2": "1",
+                // "MIOPEN_LOG_LEVEL": "6",
+                // "MIOPEN_ENABLE_LOGGING": "1",
+                // "AMD_LOG_LEVEL": "6",
+            }
+        },
+        {
+            "name": "bf16 nhwc v1",
+            "type": "debugpy",
+            "request": "launch",
+            "pythonArgs": ["-u"],
+            "cwd": "${workspaceFolder}/test",
+            "program": "test_nn.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-v",
+                "-k",
+                "test_batchnorm_nhwc_miopen_cuda_bfloat16"
+            ],
+            "env": {
+                "MIOPEN_ENABLE_LOGGING_CMD": "1",
+                "PYTORCH_MIOPEN_EXTRA_LOGGING": "1",
+                // "PYTORCH_MIOPEN_USE_API_V2": "1",
                 // "MIOPEN_LOG_LEVEL": "6",
                 // "MIOPEN_ENABLE_LOGGING": "1",
                 // "AMD_LOG_LEVEL": "6",

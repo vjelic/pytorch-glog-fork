@@ -718,8 +718,8 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
   {
     if (PYTORCH_MIOPEN_EXTRA_LOGGING)
       std::cout << "##### miopen_batch_norm_backward (BF16/FP16 NHWC)"
-                << " input_t=" << input_t.scalar_type() << " : " // << (at::MemoryFormat) input_t.suggest_memory_format()
-                << " weight_t=" << weight_t.scalar_type() << " : "// << (at::MemoryFormat) weight_t.suggest_memory_format()
+                << " input_t=" << input_t.scalar_type() << " : "  // << (c10::MemoryFormat) input_t.suggest_memory_format()
+                << " weight_t=" << weight_t.scalar_type() << " : " // << (c10::MemoryFormat) weight_t.suggest_memory_format()
                 << std::endl;
     grad_input_t  = at::empty(input_t.sizes(), at::kFloat, input_t.layout(), input_t.device(), input_t.is_pinned(), input_t.suggest_memory_format());
     grad_weight_t = at::empty(weight_t.sizes(), at::kFloat, weight_t.layout(), weight_t.device(), weight_t.is_pinned(), MemoryFormat::Contiguous);
@@ -730,8 +730,8 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
   {
     if (PYTORCH_MIOPEN_EXTRA_LOGGING)
       std::cout << "##### miopen_batch_norm_backward non (BF16/FP16 NHWC)"
-              << " input_t=" << input_t.scalar_type() << " : " << (at::MemoryFormat) input_t.suggest_memory_format()
-              << " weight_t=" << weight_t.scalar_type() << " : " << weight_t.suggest_memory_format()
+              << " input_t=" << input_t.scalar_type() << " : " // << (c10::MemoryFormat) input_t.suggest_memory_format()
+              << " weight_t=" << weight_t.scalar_type() << " : " // << (c10::MemoryFormat) weight_t.suggest_memory_format()
               << std::endl;
     grad_input_t = at::empty(input_t.sizes(), input_t.scalar_type(), input_t.layout(), input_t.device(), input_t.is_pinned(), input_t.suggest_memory_format());
     grad_weight_t = at::empty(weight_t.sizes(), weight_t.options());
@@ -775,10 +775,7 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
   auto handle = getMiopenHandle();
   auto dataType = getMiopenDataType(*input);
 
-  TensorDescriptor idesc{ *input, 4 };  // input, output, grad_output descriptor
-  TensorDescriptor gdesc{ *grad_output, 4 };  // grad_input descriptor
-  TensorDescriptor wdesc{ expandScale(*weight, input->dim()), 4 };  // descriptor for weight, bias, save_mean, etc.
-
+  
   Constant one(dataType, 1);
   Constant zero(dataType, 0);
   if (PYTORCH_MIOPEN_EXTRA_LOGGING)
@@ -797,15 +794,20 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
       << std::endl;
   if (PYTORCH_MIOPEN_USE_API_V2)
   { 
+    TensorDescriptor inputdesc{ *input, 4 };  // input, output, grad_output descriptor
+    TensorDescriptor gradoutdesc{ *grad_output, 4 };  // grad_input descriptor
+    TensorDescriptor gradinputdesc{ grad_input_t, 4 };  // grad_input descriptor
+    TensorDescriptor weightdesc{ expandScale(*weight, input->dim()), 4 };  // descriptor for weight, bias, save_mean, etc.
+    TensorDescriptor biasgraddesc { expandScale(grad_bias_t, input->dim()), 4 };
     TensorDescriptor sdesc { expandScale(*save_mean, input->dim()), 4 };
-    TensorDescriptor gdesc { expandScale(grad_weight_t, input->dim()), 4 };
+
     MIOPEN_CHECK(miopenBatchNormalizationBackward_V2(
     handle, mode, &one, &zero, &one, &zero,
-    idesc.desc(), input->const_data_ptr(),
-    gdesc.desc(), grad_output->const_data_ptr(),
-    gdesc.desc(), grad_input_t.data_ptr(),
-    wdesc.desc(), // weight
-    gdesc.desc(), // grad bias
+    inputdesc.desc(), input->const_data_ptr(),
+    gradoutdesc.desc(), grad_output->const_data_ptr(),
+    gradinputdesc.desc(), grad_input_t.data_ptr(),
+    weightdesc.desc(), // weight
+    biasgraddesc.desc(), // grad bias
     sdesc.desc(), // saved mean
     sdesc.desc(), // saved var    
     weight->const_data_ptr(),
@@ -817,12 +819,19 @@ std::tuple<Tensor, Tensor, Tensor> miopen_batch_norm_backward(
 
   }
   else{
+  TensorDescriptor inputdesc{ *input, 4 };  // input, output, grad_output descriptor
+  TensorDescriptor gradoutdesc{ *grad_output, 4 };  // grad_input descriptor
+  TensorDescriptor gradinputdesc{ grad_input_t, 4 };  // grad_input descriptor
+  TensorDescriptor weightdesc{ expandScale(*weight, input->dim()), 4 };  // descriptor for weight, bias, save_mean, etc.
+  // TensorDescriptor biasgraddesc { expandScale(grad_bias_t, input->dim()), 4 };
+  // TensorDescriptor sdesc { expandScale(*save_mean, input->dim()), 4 };
+  
   MIOPEN_CHECK(miopenBatchNormalizationBackward(
     handle, mode, &one, &zero, &one, &zero,
-    idesc.desc(), input->const_data_ptr(),
-    gdesc.desc(), grad_output->const_data_ptr(),
-    gdesc.desc(), grad_input_t.data_ptr(),
-    wdesc.desc(), weight->const_data_ptr(),
+    inputdesc.desc(), input->const_data_ptr(),
+    gradoutdesc.desc(), grad_output->const_data_ptr(),
+    gradinputdesc.desc(), grad_input_t.data_ptr(),
+    weightdesc.desc(), weight->const_data_ptr(),
     grad_weight_t.data_ptr(),
     grad_bias_t.data_ptr(),
     epsilon,
