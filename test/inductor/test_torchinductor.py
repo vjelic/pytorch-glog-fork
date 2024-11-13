@@ -90,6 +90,7 @@ from torch.testing._internal.common_utils import (
     subtest,
     TEST_WITH_ASAN,
     TEST_WITH_ROCM,
+    HAS_HIPCC,
 )
 from torch.utils import _pytree as pytree
 from torch.utils._python_dispatch import TorchDispatchMode
@@ -928,6 +929,7 @@ class CommonTemplate:
                 self.assertEqual(ref_value, res_value)
 
     @skipCUDAIf(not SM80OrLater, "Requires sm80")
+    @skipCUDAIf(TEST_WITH_ROCM and not HAS_HIPCC, "ROCm requires hipcc compiler")
     @skip_if_halide  # aoti
     @skipIfWindows
     def test_aoti_eager_cache_hit(self):
@@ -971,6 +973,7 @@ class CommonTemplate:
                 self.assertEqual(ref_value, res_value)
 
     @skipCUDAIf(not SM80OrLater, "Requires sm80")
+    @skipCUDAIf(TEST_WITH_ROCM and not HAS_HIPCC, "ROCm requires hipcc compiler")
     @skip_if_halide  # aoti
     @skipIfWindows
     def test_aoti_eager_with_persistent_cache(self):
