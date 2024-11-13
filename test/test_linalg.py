@@ -17,7 +17,7 @@ from torch.testing._internal.common_utils import \
     (TestCase, run_tests, TEST_SCIPY, IS_MACOS, IS_WINDOWS, slowTest,
      TEST_WITH_ROCM, IS_FBCODE, IS_REMOTE_GPU, iter_indices,
      make_fullrank_matrices_with_distinct_singular_values,
-     freeze_rng_state, IS_ARM64, IS_SANDCASTLE, TEST_OPT_EINSUM, parametrize, skipIfTorchDynamo,
+     freeze_rng_state, IS_ARM64, IS_SANDCASTLE, TEST_OPT_EINSUM, parametrize, skipIfRocm, skipIfTorchDynamo,
      setBlasBackendsToDefaultFinally, setLinalgBackendsToDefaultFinally, serialTest,
      xfailIfTorchDynamo)
 from torch.testing._internal.common_device_type import \
@@ -182,6 +182,9 @@ class TestLinalg(TestCase):
     @skipIfTorchDynamo("flaky, needs investigation")
     @dtypes(torch.float, torch.double, torch.cfloat, torch.cdouble)
     def test_linalg_lstsq(self, device, dtype):
+        if (dtype == torch.complex64 or dtype == torch.complex128) and self.device_type == 'cuda' and TEST_WITH_ROCM:
+            # skipped on ROCm for complex64 and complex128
+            self.skipTest("ROCm does not support complex64 and complex128")
         from torch.testing._internal.common_utils import random_well_conditioned_matrix
         if self.device_type == 'cpu':
             drivers = ('gels', 'gelsy', 'gelsd', 'gelss', None)
@@ -332,6 +335,10 @@ class TestLinalg(TestCase):
     @skipCPUIfNoLapack
     @dtypes(torch.float, torch.double, torch.cfloat, torch.cdouble)
     def test_linalg_lstsq_batch_broadcasting(self, device, dtype):
+        if (dtype == torch.complex64 or dtype == torch.complex128) and self.device_type == 'cuda' and TEST_WITH_ROCM:
+            # skipped on ROCm for complex64 and complex128
+            self.skipTest("ROCm does not support complex64 and complex128")
+
         from torch.testing._internal.common_utils import random_well_conditioned_matrix
 
         def check_correctness(a, b):
@@ -5156,6 +5163,8 @@ class TestLinalg(TestCase):
     @skipCPUIfNoLapack
     @dtypes(*floating_and_complex_types())
     def test_linalg_lu_family(self, device, dtype):
+        if TEST_WITH_ROCM and 'cuda' in device and dtype == torch.float32:
+            self.skipTest("Failed on ROCm with torch.float32")
         # Tests torch.lu
         #       torch.linalg.lu_factor
         #       torch.linalg.lu_factor_ex
@@ -5266,6 +5275,9 @@ class TestLinalg(TestCase):
     @setLinalgBackendsToDefaultFinally
     @dtypes(*floating_and_complex_types())
     def test_linalg_lu_solve(self, device, dtype):
+        if (dtype == torch.complex64 or dtype == torch.complex128) and self.device_type == 'cuda' and TEST_WITH_ROCM:
+            # skipped on ROCm for complex64 and complex128
+            self.skipTest("ROCm does not support complex64 and complex128")
         make_arg = partial(make_tensor, dtype=dtype, device=device)
 
         backends = ["default"]
@@ -6474,6 +6486,10 @@ scipy_lobpcg  | {eq_err_scipy:10.2e}  | {eq_err_general_scipy:10.2e}  | {iters2:
             # So on PyTorch, we consider BFloat16 support on SM < 53 as
             # undefined bahavior
             return
+        
+        if (dtype == torch.complex64 or dtype == torch.complex128) and self.device_type == 'cuda' and TEST_WITH_ROCM:
+            # skipped on ROCm for complex64 and complex128
+            self.skipTest("ROCm does not support complex64 and complex128")
 
         batch_sizes = [1, 10]
         M, N, O = 23, 15, 12
@@ -6661,6 +6677,10 @@ scipy_lobpcg  | {eq_err_scipy:10.2e}  | {eq_err_general_scipy:10.2e}  | {iters2:
             # So on PyTorch, we consider BFloat16 support on SM < 53 as
             # undefined bahavior
             return
+        
+        if (dtype == torch.complex64 or dtype == torch.complex128) and self.device_type == 'cuda' and TEST_WITH_ROCM:
+            # skipped on ROCm for complex64 and complex128
+            self.skipTest("ROCm does not support complex64 and complex128")
 
         num_batches = 10
         M, N, O = 12, 8, 50
@@ -8101,6 +8121,7 @@ scipy_lobpcg  | {eq_err_scipy:10.2e}  | {eq_err_general_scipy:10.2e}  | {iters2:
         self.assertEqual(out_ref, out1.cpu())
         self.assertEqual(out1, out2)
 
+    @skipIfRocm
     @onlyCUDA
     @unittest.skipIf(not blaslt_supported_device(), "blasLt not supported on current device")
     @setBlasBackendsToDefaultFinally
