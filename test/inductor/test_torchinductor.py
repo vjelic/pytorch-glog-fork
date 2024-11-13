@@ -121,8 +121,6 @@ from torch.testing._internal.inductor_utils import (
 
 HAS_AVX2 = "fbgemm" in torch.backends.quantized.supported_engines
 
-ROCM_WHEELS_ENV = TEST_WITH_ROCM and not HAS_HIPCC
-
 aten = torch.ops.aten
 
 requires_multigpu = functools.partial(
@@ -930,7 +928,7 @@ class CommonTemplate:
                 self.assertEqual(ref_value, res_value)
 
     @skipCUDAIf(not SM80OrLater, "Requires sm80")
-    @skipCUDAIf(ROCM_WHEELS_ENV, "ROCm requires hipcc compiler")
+    @skipCUDAIf(TEST_WITH_ROCM and not HAS_HIPCC, "ROCm requires hipcc compiler")
     @skip_if_halide  # aoti
     @skipIfWindows(msg="aoti not support on Windows")
     def test_aoti_eager_cache_hit(self):
@@ -974,7 +972,7 @@ class CommonTemplate:
                 self.assertEqual(ref_value, res_value)
 
     @skipCUDAIf(not SM80OrLater, "Requires sm80")
-    @skipCUDAIf(ROCM_WHEELS_ENV, "ROCm requires hipcc compiler")
+    @skipCUDAIf(TEST_WITH_ROCM and not HAS_HIPCC, "ROCm requires hipcc compiler")
     @skip_if_halide  # aoti
     @skipIfWindows(msg="aoti not support on Windows")
     def test_aoti_eager_with_persistent_cache(self):
