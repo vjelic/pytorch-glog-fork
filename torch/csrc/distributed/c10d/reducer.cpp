@@ -3,6 +3,9 @@
 #include <torch/csrc/distributed/c10d/Utils.hpp>
 #include <torch/csrc/distributed/c10d/default_comm_hooks.hpp>
 
+#include <iostream>
+#include <chrono>
+
 #include <functional>
 
 #include <c10/core/DeviceGuard.h>
@@ -1526,7 +1529,11 @@ void Reducer::finalize_bucket_dense(Bucket& bucket) {
         local_used_work_->wait();
         // D2H from local_used_map_dev_ to local_used_map_
         // Blocking copy, if local_used_map_dev_ is cuda
+        std::cout << "Reducer copy size: " << local_used_map_.size(0) << " ,tensor dev: " << local_used_map_.device() << " ,curr dev: " << int(at::detail::getCUDAHooks().getCurrentDevice()) << std::endl;
+	auto start = std::chrono::steady_clock::now();
         local_used_map_.copy_(local_used_map_dev_);
+        auto end = std::chrono::steady_clock::now();
+        std::cout << "Reducer copy time: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " ms" << std::endl;
 
         global_unused = local_used_map_[variable_index].item<int>() == 0;
         local_used_map_reduced_ = true;
