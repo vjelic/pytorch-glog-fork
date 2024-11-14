@@ -22,6 +22,7 @@ from torch.testing._internal.common_utils import (
     IS_SANDCASTLE,
     run_tests,
     TestCase,
+    TEST_WITH_ROCM,
     unMarkDynamoStrictTest,
 )
 from torch.testing._internal.jit_metaprogramming_utils import (
@@ -56,6 +57,8 @@ class TestJit(JitCommonTestCase):
     # TODO WARNING: inplace x {traced, scripted} not currently tested
     @_variant_ops(op_db)
     def test_variant_consistency_jit(self, device, dtype, op):
+        if 'cuda' in device and TEST_WITH_ROCM and dtype==torch.complex64 and op.name == 'matrix_exp':
+            self.skipTest(f"Failing on ROCm with {dtype} for '{op.name}'")
         _requires_grad = dtype in op.supported_backward_dtypes(
             torch.device(device).type
         )
