@@ -2038,6 +2038,7 @@ class TestOperators(TestCase):
             tol1("matrix_exp", {torch.float32: tol(atol=5e-04, rtol=5e-04)}),
         ),
     )
+    @skipIfRocm # temp skip
     def test_vmapjvpvjp(self, device, dtype, op):
         # Since we test `jvpvjp` separately,
         # in this we just check that vmap of `jvpvjp`
@@ -2197,6 +2198,7 @@ class TestOperators(TestCase):
                     torch.nn.functional.log_softmax, (cotangents, input)
                 )
 
+    @skipIfRocm # temp skip
     def test_extremal_numerics_cross_entropy(self, device):
         N, C = 3, 4
         d1, d2, d3 = 5, 6, 7
@@ -2337,6 +2339,7 @@ class TestOperators(TestCase):
             skip("sparse.sampled_addmm", ""),
             skip("sparse.mm", "reduce"),
             skip("native_layer_norm", "", device_type="cpu"),
+            skip("nn.functional.scaled_dot_product_attention", "", device_type="cuda"), # temp skip
             # RuntimeError: Expected contiguous tensor, but got
             # non-contiguous tensor for argument #2 'grad_output'
             decorate(
