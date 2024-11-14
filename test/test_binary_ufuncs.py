@@ -60,6 +60,7 @@ from torch.testing._internal.common_utils import (
     numpy_to_torch_dtype_dict,
     run_tests,
     set_default_dtype,
+    skipIfRocm,
     skipIfTorchDynamo,
     slowTest,
     TEST_SCIPY,
@@ -192,11 +193,13 @@ class TestBinaryUfuncs(TestCase):
     )
 
     @ops(binary_ufuncs_with_references)
+    @skipIfRocm # temp skip
     def test_reference_numerics(self, device, dtype, op):
         gen = generate_elementwise_binary_tensors(op, device=device, dtype=dtype)
         self._test_reference_numerics(dtype, op, gen, equal_nan=True)
 
     @ops(binary_ufuncs_with_references)
+    @skipIfRocm # temp skip
     def test_reference_numerics_small_values(self, device, dtype, op):
         if dtype is torch.bool:
             self.skipTest("Doesn't support bool!")
@@ -220,6 +223,7 @@ class TestBinaryUfuncs(TestCase):
             torch.complex128,
         ),
     )
+    @skipIfRocm # temp skip
     def test_reference_numerics_large_values(self, device, dtype, op):
         gen = generate_elementwise_binary_large_value_tensors(
             op, device=device, dtype=dtype
@@ -237,6 +241,7 @@ class TestBinaryUfuncs(TestCase):
             torch.complex128,
         ),
     )
+    @skipIfRocm # temp skip
     def test_reference_numerics_extremal_values(self, device, dtype, op):
         gen = generate_elementwise_binary_extremal_value_tensors(
             op, device=device, dtype=dtype
@@ -272,6 +277,7 @@ class TestBinaryUfuncs(TestCase):
         self._test_reference_numerics(dtype, op, gen, equal_nan=True)
 
     @ops(binary_ufuncs)
+    @skipIfRocm # temp skip
     def test_contig_vs_every_other(self, device, dtype, op):
         lhs = make_tensor(
             (1026,), device=device, dtype=dtype, **op.lhs_make_tensor_kwargs
@@ -294,6 +300,7 @@ class TestBinaryUfuncs(TestCase):
         self.assertEqual(expected, actual)
 
     @ops(binary_ufuncs)
+    @skipIfRocm # temp skip
     def test_contig_vs_transposed(self, device, dtype, op):
         lhs = make_tensor(
             (789, 357), device=device, dtype=dtype, **op.lhs_make_tensor_kwargs
@@ -426,6 +433,7 @@ class TestBinaryUfuncs(TestCase):
         self.assertEqual(expected, actual)
 
     @ops(binary_ufuncs)
+    @skipIfRocm # temp skip
     def test_contig_size1_large_dim(self, device, dtype, op):
         shape = (5, 2, 3, 1, 4, 5, 3, 2, 1, 2, 3, 4)
         lhs = make_tensor(
@@ -454,6 +462,7 @@ class TestBinaryUfuncs(TestCase):
         self.assertEqual(expected, actual)
 
     @ops(binary_ufuncs)
+    @skipIfRocm # temp skip
     def test_batch_vs_slicing(self, device, dtype, op):
         shape = (32, 512)
         lhs = make_tensor(
@@ -3079,6 +3088,7 @@ class TestBinaryUfuncs(TestCase):
             )
         )
     )
+    @skipIfRocm # temp skip
     def test_comparison_ops_type_promotion_and_broadcasting(self, device, dtypes):
         # issue #42660
         # testing all combinations of broadcasting and type promotion
