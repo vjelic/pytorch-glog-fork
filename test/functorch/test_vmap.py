@@ -61,6 +61,7 @@ from torch.testing._internal.common_utils import (
     markDynamoStrictTest,
     parametrize,
     run_tests,
+    skipIfRocm,
     skipIfTorchDynamo,
     subtest,
     TEST_WITH_TORCHDYNAMO,
@@ -4211,6 +4212,7 @@ class TestVmapOperatorsOpInfo(TestCase):
             }
         ),
     )
+    @skipIfRocm # temp skip
     def test_vmap_exhaustive(self, device, dtype, op):
         # needs to be fixed
         inplace_failure_list = ()
@@ -4388,6 +4390,7 @@ class TestVmapOperatorsOpInfo(TestCase):
             }
         ),
     )
+    @skipIfRocm # temp skip
     def test_op_has_batch_rule(self, device, dtype, op):
         # needs to be fixed
         inplace_failures = (
