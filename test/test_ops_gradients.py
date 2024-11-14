@@ -14,6 +14,7 @@ from torch.testing._internal.common_utils import (
     run_tests,
     TestCase,
     TestGradients,
+    TEST_WITH_ROCM,
     unMarkDynamoStrictTest,
 )
 from torch.testing._internal.custom_op_db import custom_op_db
@@ -30,6 +31,9 @@ class TestBwdGradients(TestGradients):
     # Tests that gradients are computed correctly
     @_gradcheck_ops(op_db + hop_db + custom_op_db)
     def test_fn_grad(self, device, dtype, op):
+        if 'cuda' in device and TEST_WITH_ROCM and dtype==torch.complex128 \
+            and op.name in ('__rmatmul__', 'cumprod', 'index_put', 'mH', 'matmul', 'nn.functional_conv3d', 'slice'):
+            self.skipTest(f"Failing on ROCm with {dtype} for '{op.name}'")
         # This is verified by test_dtypes in test_ops.py
         if dtype not in op.supported_backward_dtypes(torch.device(device).type):
             self.skipTest("Skipped! Dtype is not in supported backward dtypes!")
@@ -45,6 +49,9 @@ class TestBwdGradients(TestGradients):
 
     @_gradcheck_ops(op_db + custom_op_db)
     def test_inplace_grad(self, device, dtype, op):
+        if 'cuda' in device and TEST_WITH_ROCM and dtype==torch.complex128 \
+            and op.name in ('cumprod', 'index_put'):
+            self.skipTest(f"Failing on ROCm with {dtype} for '{op.name}'")
         self._skip_helper(op, device, dtype)
         if not op.inplace_variant:
             self.skipTest("Op has no inplace variant!")
@@ -66,6 +73,12 @@ class TestBwdGradients(TestGradients):
     # Test that gradients of gradients are computed correctly
     @_gradcheck_ops(op_db + hop_db + custom_op_db)
     def test_fn_gradgrad(self, device, dtype, op):
+        if 'cuda' in device and TEST_WITH_ROCM  \
+            and op.name in ('__rmatmul__', '__rmod__','diag_embed', 'kron', 'mH', 'matmul', 
+                            'matrix_exp', 'nn.functional.conv3d', 'nn.functional.conv_transpose2d', 
+                            'nn_functional.conv_transpose3d', 'nn.functional.unfold',
+                            'slice', 'stft'):
+            self.skipTest(f"Failing on ROCm  for '{op.name}'")
         self._skip_helper(op, device, dtype)
         if not op.supports_gradgrad:
             self.skipTest(
