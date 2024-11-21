@@ -346,7 +346,7 @@ void bgemm<at::BFloat16>(CUDABLAS_BGEMM_ARGTYPES(at::BFloat16)) {
   const float fbeta = beta;
   _cublasAdjustLdLevel3(transa, transb, m, n, k, &lda, &ldb, &ldc);
 
-#if defined(USE_ROCM) && ROCM_VERSION >= 60000
+#if defined(USE_ROCM) && ROCM_VERSION >= 60000 && !defined(_WIN32)
   auto compute_type = CUBLAS_COMPUTE_32F;
 #else
   auto compute_type = CUDA_R_32F;
@@ -529,7 +529,7 @@ void gemm<at::BFloat16>(CUDABLAS_GEMM_ARGTYPES(at::BFloat16)) {
     cublas_flags = static_cast<cublasMath_t>(cublas_flags | CUBLAS_MATH_DISALLOW_REDUCED_PRECISION_REDUCTION);
   }
 #endif
-#if defined(USE_ROCM) && ROCM_VERSION >= 60000
+#if defined(USE_ROCM) && !defined(_WIN32) && ROCM_VERSION >= 60000
   auto compute_type = CUBLAS_COMPUTE_32F;
 #else
   auto compute_type = CUDA_R_32F;
@@ -558,7 +558,7 @@ void gemm<at::BFloat16>(CUDABLAS_GEMM_ARGTYPES(at::BFloat16)) {
   TORCH_CUDABLAS_CHECK(cublasSetMathMode(handle, CUBLAS_DEFAULT_MATH));
 }
 
-#if (!defined(USE_ROCM) && !defined(_MSC_VER)) || (defined(USE_ROCM) && ROCM_VERSION >= 50700)
+#if (!defined(USE_ROCM) && !defined(_MSC_VER)) || (defined(USE_ROCM) && !defined(_WIN32) && ROCM_VERSION >= 50700)
 
 #if defined(USE_ROCM) && ROCM_VERSION >= 50700 && ROCM_VERSION < 60000
 // only for rocm 5.7 where we first supported hipblaslt, it was difficult
@@ -1102,7 +1102,7 @@ void int8_gemm(
   TORCH_CHECK(false, "int8_gemm is only supported for ROCm 6.0 and above");
 #endif // !defined(USE_ROCM) || (defined(USE_ROCM) && ROCM_VERSION >= 60000)
 }
-#endif // (!defined(USE_ROCM) && !defined(_MSC_VER)) || (defined(USE_ROCM) && ROCM_VERSION >= 50700)
+#endif // (!defined(USE_ROCM) && !defined(_MSC_VER)) || (defined(USE_ROCM) && !defined(_WIN32) && ROCM_VERSION >= 50700)
 
 // ROCm 5.6 hipblas matches the const Dtype *A API, but prior hipblas does not.
 #if defined(USE_ROCM) && ROCM_VERSION < 50600

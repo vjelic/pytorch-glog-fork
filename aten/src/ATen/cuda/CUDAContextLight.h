@@ -9,7 +9,7 @@
 
 // cublasLT was introduced in CUDA 10.1 but we enable only for 11.1 that also
 // added bf16 support
-#if (!defined(_MSC_VER) && (!defined(USE_ROCM) || ROCM_VERSION >= 50700))
+#if (!defined(_MSC_VER) && (!defined(USE_ROCM) && !defined(_WIN32) || ROCM_VERSION >= 50700))
 #include <cublasLt.h>
 #endif
 
