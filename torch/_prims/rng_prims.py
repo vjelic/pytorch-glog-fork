@@ -66,7 +66,10 @@ def philox_rand_offset(
 
     block_size = 256
     unroll = 4
-    curand4_engine_calls = 4
+    if torch.version.hip:
+        curand4_engine_calls = 16
+    else:
+        curand4_engine_calls = 4
     device_property = torch.cuda.get_device_properties(torch.cuda.current_device())
     blocks_per_sm = device_property.max_threads_per_multi_processor // block_size
     grid_size = (numel + block_size - 1) // block_size
