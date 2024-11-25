@@ -1,3 +1,15 @@
+macro(get_target_gpus_from_pytorch target_gpus)
+   set(gfx90a_key MI200)
+   set(gfx942_key MI300X)
+
+   foreach(X IN LISTS PYTORCH_ROCM_ARCH)
+       set(key ${X})
+       string(APPEND key "_key")
+       string(APPEND target_gpus ${${key}})
+       string(APPEND target_gpus "|")
+   endforeach()
+endmacro()
+
 if(NOT __AOTRITON_INCLUDED)
   set(__AOTRITON_INCLUDED TRUE)
 
