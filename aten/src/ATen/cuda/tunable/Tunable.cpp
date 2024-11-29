@@ -384,6 +384,19 @@ bool TuningContext::IsNumericsCheckEnabled() const {
   return numerics_check_enable_;
 }
 
+void TuningContext::SetMaxTuningAlgorithms(int max_algorithms) {
+  max_algorithms_ = max_algorithms < 0 ? 128 : max_algorithms;
+}
+
+int TuningContext::GetMaxTuningAlgorithms() const {
+  static const char *env = std::getenv("PYTORCH_TUNABLEOP_MAX_TUNING_ALGORITHMS");
+  if (env != nullptr) {
+    int val = atoi(env);
+    return val < 0 ? 128 : val;
+  }
+  return max_algorithms_;
+}
+
 void TuningContext::SetMaxTuningDurationMs(int max_duration_ms) {
   max_tuning_duration_ms_ = max_duration_ms < 0 ? 0 : max_duration_ms;
 }

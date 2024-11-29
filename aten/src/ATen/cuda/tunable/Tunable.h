@@ -176,6 +176,9 @@ class TORCH_CUDA_CPP_API TuningContext {
     void EnableNumericsCheck(bool value);
     bool IsNumericsCheckEnabled() const;
 
+    void SetMaxTuningAlgorithms(int max_algorithms);
+    int GetMaxTuningAlgorithms() const;
+
     void SetMaxTuningDurationMs(int max_duration_ms);
     int GetMaxTuningDurationMs() const;
 
@@ -220,6 +223,7 @@ class TORCH_CUDA_CPP_API TuningContext {
     int max_tuning_iterations_;
     int max_warmup_duration_ms_;
     int max_warmup_iterations_;
+    int max_algorithms_;
     bool icache_flush_;
     int rotating_buffer_size_;
     mutable TuningResultsManager manager_;

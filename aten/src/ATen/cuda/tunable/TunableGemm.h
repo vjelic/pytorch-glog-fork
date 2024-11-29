@@ -244,42 +244,49 @@ class GemmTunableOp : public TunableOp<GemmParams<T>, StreamTimer> {
  public:
   GemmTunableOp() {
     this->RegisterOp(std::string("Default"), std::make_unique<DefaultGemmOp<T>>());
+  }
 
+  TuningStatus operator()(const GemmParams<T>* params) {
 #ifdef USE_ROCM
-    bool rocm_validators = false;
+    c10::call_once(opts_init_once_, [&]() {
+      bool rocm_validators = false;
 
-    static const char *env_rocblas = std::getenv("PYTORCH_TUNABLEOP_ROCBLAS_ENABLED");
-    if (env_rocblas == nullptr || strcmp(env_rocblas, "1") == 0) {
-      rocm_validators = true;
-      for (auto&& [name, op] : GetRocBlasGemmTypeStringAndOps<T>()) {
-        this->RegisterOp(std::move(name), std::move(op));
-      }
-      AddRocblasValidator();
-    }
-
-    static const char *env_hipblaslt = std::getenv("PYTORCH_TUNABLEOP_HIPBLASLT_ENABLED");
-    if (env_hipblaslt == nullptr || strcmp(env_hipblaslt, "1") == 0) {
-      rocm_validators = true;
-      // disallow tuning of hipblaslt with c10::complex
-      if constexpr (
-          !std::is_same_v<T, c10::complex<float>> &&
-          !std::is_same_v<T, c10::complex<double>>) {
-        for (auto&& [name, op] : GetHipBlasLtGemmTypeStringAndOps<T, ALayout, BLayout>()) {
+      static const char *env_rocblas = std::getenv("PYTORCH_TUNABLEOP_ROCBLAS_ENABLED");
+      if (env_rocblas == nullptr || strcmp(env_rocblas, "1") == 0) {
+        rocm_validators = true;
+        for (auto&& [name, op] : GetRocBlasGemmTypeStringAndOps<T>()) {
           this->RegisterOp(std::move(name), std::move(op));
         }
+        AddRocblasValidator();
       }
-      AddHipblasltValidator();
-    }
 
-    if (rocm_validators) {
-      AddRocmValidator();
-    }
+      static const char *env_hipblaslt = std::getenv("PYTORCH_TUNABLEOP_HIPBLASLT_ENABLED");
+      if (env_hipblaslt == nullptr || strcmp(env_hipblaslt, "1") == 0) {
+        rocm_validators = true;
+        // disallow tuning of hipblaslt with c10::complex
+        if constexpr (
+            !std::is_same_v<T, c10::complex<float>> &&
+            !std::is_same_v<T, c10::complex<double>>) {
+          for (auto&& [name, op] : GetHipBlasLtGemmTypeStringAndOps<T, ALayout, BLayout>(params)) {
+            this->RegisterOp(std::move(name), std::move(op));
+          }
+        }
+        AddHipblasltValidator();
+      }
+
+      if (rocm_validators) {
+        AddRocmValidator();
+      }
+    });
 #endif
+    return TunableOp<GemmParams<T>, StreamTimer>::operator()(params);
   }
 
   std::string Signature() override {
     return c10::str("GemmTunableOp_", TypeName<T>(T{}), "_", BlasOpToString(ALayout), BlasOpToString(BLayout));
   }
+ private:
+  mutable c10::once_flag opts_init_once_;
 };
 
 template <typename T, BlasOp ALayout, BlasOp BLayout>
@@ -287,42 +294,50 @@ class GemmStridedBatchedTunableOp : public TunableOp<GemmStridedBatchedParams<T>
  public:
   GemmStridedBatchedTunableOp() {
     this->RegisterOp(std::string("Default"), std::make_unique<DefaultGemmStridedBatchedOp<T>>());
+  }
 
+  TuningStatus operator()(const GemmStridedBatchedParams<T>* params) {
 #ifdef USE_ROCM
-    bool rocm_validators = false;
+    c10::call_once(opts_init_once_, [&]() {
+      bool rocm_validators = false;
 
-    static const char *env_rocblas = std::getenv("PYTORCH_TUNABLEOP_ROCBLAS_ENABLED");
-    if (env_rocblas == nullptr || strcmp(env_rocblas, "1") == 0) {
-      rocm_validators = true;
-      for (auto&& [name, op] : GetRocBlasGemmStridedBatchedTypeStringAndOps<T>()) {
-        this->RegisterOp(std::move(name), std::move(op));
-      }
-      AddRocblasValidator();
-    }
-
-    static const char *env_hipblaslt = std::getenv("PYTORCH_TUNABLEOP_HIPBLASLT_ENABLED");
-    if (env_hipblaslt == nullptr || strcmp(env_hipblaslt, "1") == 0) {
-      rocm_validators = true;
-      // disallow tuning of hipblaslt with c10::complex
-      if constexpr (
-          !std::is_same_v<T, c10::complex<float>> &&
-          !std::is_same_v<T, c10::complex<double>>) {
-        for (auto&& [name, op] : GetHipBlasLtGemmStridedBatchedTypeStringAndOps<T, ALayout, BLayout>()) {
+      static const char *env_rocblas = std::getenv("PYTORCH_TUNABLEOP_ROCBLAS_ENABLED");
+      if (env_rocblas == nullptr || strcmp(env_rocblas, "1") == 0) {
+        rocm_validators = true;
+        for (auto&& [name, op] : GetRocBlasGemmStridedBatchedTypeStringAndOps<T>()) {
           this->RegisterOp(std::move(name), std::move(op));
         }
+        AddRocblasValidator();
       }
-      AddHipblasltValidator();
-    }
 
-    if (rocm_validators) {
-      AddRocmValidator();
-    }
+      static const char *env_hipblaslt = std::getenv("PYTORCH_TUNABLEOP_HIPBLASLT_ENABLED");
+      if (env_hipblaslt == nullptr || strcmp(env_hipblaslt, "1") == 0) {
+        rocm_validators = true;
+        // disallow tuning of hipblaslt with c10::complex
+        if constexpr (
+            !std::is_same_v<T, c10::complex<float>> &&
+            !std::is_same_v<T, c10::complex<double>>) {
+          for (auto&& [name, op] : GetHipBlasLtGemmStridedBatchedTypeStringAndOps<T, ALayout, BLayout>(params)) {
+            this->RegisterOp(std::move(name), std::move(op));
+          }
+        }
+        AddHipblasltValidator();
+      }
+
+      if (rocm_validators) {
+        AddRocmValidator();
+      }
+    });
 #endif
+    return TunableOp<GemmStridedBatchedParams<T>, StreamTimer>::operator()(params);
   }
+
 
   std::string Signature() override {
     return c10::str("GemmStridedBatchedTunableOp_", TypeName<T>(T{}), "_", BlasOpToString(ALayout), BlasOpToString(BLayout));
   }
+ private:
+  mutable c10::once_flag opts_init_once_;
 };
 
 template <typename AT, typename BT, typename CT, BlasOp ALayout, BlasOp BLayout>
@@ -330,14 +345,6 @@ class ScaledGemmTunableOp : public TunableOp<ScaledGemmParams<CT>, StreamTimer> 
  public:
   ScaledGemmTunableOp() {
     this->RegisterOp(std::string("Default"), std::make_unique<DefaultScaledGemmOp<CT>>());
-
-#if defined(USE_ROCM)
-    for (auto&& [name, op] : GetHipBlasLtScaledGemmTypeStringAndOps<AT, BT, CT, ALayout, BLayout>()) {
-      this->RegisterOp(std::move(name), std::move(op));
-    }
-    AddHipblasltValidator();
-    AddRocmValidator();
-#endif
   }
 
   std::string Signature() override {
@@ -347,6 +354,21 @@ class ScaledGemmTunableOp : public TunableOp<ScaledGemmParams<CT>, StreamTimer> 
             "_", TypeName<CT>(CT{}),
             "_", BlasOpToString(ALayout), BlasOpToString(BLayout));
   }
+  
+  TuningStatus operator()(const ScaledGemmParams<CT>* params) {
+#ifdef USE_ROCM
+    c10::call_once(opts_init_once_, [&]() {
+      for (auto&& [name, op] : GetHipBlasLtScaledGemmTypeStringAndOps<AT, BT, CT, ALayout, BLayout>(params)) {
+        this->RegisterOp(std::move(name), std::move(op));
+      }
+      AddHipblasltValidator();
+      AddRocmValidator();
+    });
+#endif
+    return TunableOp<ScaledGemmParams<CT>, StreamTimer>::operator()(params);
+  }
+ private:
+  mutable c10::once_flag opts_init_once_;
 };
 
 #undef XSTRINGIFY

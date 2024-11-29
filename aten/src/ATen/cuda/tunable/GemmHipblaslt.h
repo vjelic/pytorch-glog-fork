@@ -467,27 +467,98 @@ class HipblasltGemmOp : public Callable<ParamsT> {
 };
 
 template <typename AT, typename BT, typename CT, BlasOp ALayout, BlasOp BLayout, typename ParamsT>
-auto GetHipBlasLtTypeStringAndOps() {
+auto GetHipBlasLtTypeStringAndOps(const ParamsT* params) {
   hipblasOperation_t transa_outer = MapLayoutToHipBlasLt(ALayout);
   hipblasOperation_t transb_outer = MapLayoutToHipBlasLt(BLayout);
   auto a_datatype = HipBlasDataTypeFor<AT>();
   auto b_datatype = HipBlasDataTypeFor<BT>();
   auto in_out_datatype = HipBlasDataTypeFor<CT>();
-  std::vector<hipblasLtMatmulHeuristicResult_t> heuristic_result;
+  auto opa = _hipblasOpFromChar(params->transa);
+  auto opb = _hipblasOpFromChar(params->transb);
 
-  hipblasLtHandle_t handle;
-  TORCH_HIPBLASLT_CHECK(hipblasLtCreate(&handle));
-  TORCH_HIPBLASLT_CHECK(hipblaslt_ext::getAllAlgos(handle,
-        hipblaslt_ext::GemmType::HIPBLASLT_GEMM,
-        transa_outer,
-        transb_outer,
-        a_datatype,
-        b_datatype,
-        in_out_datatype,
-        in_out_datatype,
-        HIPBLAS_COMPUTE_32F,
-        heuristic_result));
-  TORCH_HIPBLASLT_CHECK(hipblasLtDestroy(handle));
+  TORCH_CHECK(transa_outer == opa && transb_outer == opb, "trans mismatch, shouldn't happen");
+  hipblasLtMatrixLayout_t mat_a, mat_b, mat_c;
+  if (opa == HIPBLAS_OP_N) {
+    TORCH_HIPBLASLT_CHECK(hipblasLtMatrixLayoutCreate(&mat_a, a_datatype, params->m, params->k, params->lda));
+  }
+  else {
+    TORCH_HIPBLASLT_CHECK(hipblasLtMatrixLayoutCreate(&mat_a, a_datatype, params->k, params->m, params->lda));
+  }
+  if (opb == HIPBLAS_OP_N) {
+    TORCH_HIPBLASLT_CHECK(hipblasLtMatrixLayoutCreate(&mat_b, b_datatype, params->k, params->n, params->ldb));
+  }
+  else {
+    TORCH_HIPBLASLT_CHECK(hipblasLtMatrixLayoutCreate(&mat_b, b_datatype, params->n, params->k, params->ldb));
+  }
+  TORCH_HIPBLASLT_CHECK(hipblasLtMatrixLayoutCreate(&mat_c, in_out_datatype, params->m, params->n, params->ldc));
+
+  int batch = GetBatchFromParams<CT>(params);
+  if (batch > 1) {
+    int64_t stride_a = GetStrideAFromParams<CT>(params);
+    int64_t stride_b = GetStrideBFromParams<CT>(params);
+    int64_t stride_c = GetStrideCFromParams<CT>(params);
+    TORCH_HIPBLASLT_CHECK(hipblasLtMatrixLayoutSetAttribute(
+        mat_a, HIPBLASLT_MATRIX_LAYOUT_BATCH_COUNT, &batch, sizeof(batch)));
+    TORCH_HIPBLASLT_CHECK(hipblasLtMatrixLayoutSetAttribute(
+        mat_a, HIPBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &stride_a, sizeof(stride_a)));
+    TORCH_HIPBLASLT_CHECK(hipblasLtMatrixLayoutSetAttribute(
+        mat_b, HIPBLASLT_MATRIX_LAYOUT_BATCH_COUNT, &batch, sizeof(batch)));
+    TORCH_HIPBLASLT_CHECK(hipblasLtMatrixLayoutSetAttribute(
+        mat_b, HIPBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &stride_b, sizeof(stride_b)));
+    TORCH_HIPBLASLT_CHECK(hipblasLtMatrixLayoutSetAttribute(
+        mat_c, HIPBLASLT_MATRIX_LAYOUT_BATCH_COUNT, &batch, sizeof(batch)));
+    TORCH_HIPBLASLT_CHECK(hipblasLtMatrixLayoutSetAttribute(
+        mat_c, HIPBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &stride_c, sizeof(stride_c)));
+  }
+  HipBlasLtMatmulDescriptor matmul(HIPBLAS_COMPUTE_32F, HIP_R_32F);
+  matmul.setAttribute(HIPBLASLT_MATMUL_DESC_TRANSA, opa);
+  matmul.setAttribute(HIPBLASLT_MATMUL_DESC_TRANSB, opb);
+
+  const void* mat1_scale_ptr = GetAScalePointerFromParams<CT>(params);
+  const void* mat2_scale_ptr = GetBScalePointerFromParams<CT>(params);
+  const void* result_scale_ptr = GetDScalePointerFromParams<CT>(params);
+  if (mat1_scale_ptr && mat2_scale_ptr && result_scale_ptr) {
+    matmul.setAttribute(HIPBLASLT_MATMUL_DESC_A_SCALE_POINTER, mat1_scale_ptr);
+    matmul.setAttribute(HIPBLASLT_MATMUL_DESC_B_SCALE_POINTER, mat2_scale_ptr);
+    matmul.setAttribute(HIPBLASLT_MATMUL_DESC_D_SCALE_POINTER, result_scale_ptr);
+
+    const void* bias_ptr = GetBiasPointerFromParams<CT>(params);
+    auto bias_datatype = GetBiasTypeFromParams<CT>(params);
+    if (bias_ptr) {
+      matmul.setAttribute(HIPBLASLT_MATMUL_DESC_BIAS_POINTER, bias_ptr);
+      matmul.setAttribute(HIPBLASLT_MATMUL_DESC_EPILOGUE, HIPBLASLT_EPILOGUE_BIAS);
+      matmul.setAttribute(HIPBLASLT_MATMUL_DESC_BIAS_DATA_TYPE, bias_datatype);
+    }
+  }
+
+  size_t workspace_size = GetHipblasltWorkspaceSize();
+  // Set User Preference attributes
+  hipblasLtMatmulPreference_t pref;
+  TORCH_HIPBLASLT_CHECK(hipblasLtMatmulPreferenceCreate(&pref));
+  TORCH_HIPBLASLT_CHECK(
+      hipblasLtMatmulPreferenceSetAttribute(pref,
+                                            HIPBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
+                                            &workspace_size,
+                                            sizeof(workspace_size)));
+
+  const int                        request_solutions = getTuningContext()->GetMaxTuningAlgorithms();
+  std::vector<hipblasLtMatmulHeuristicResult_t> heuristic_result(request_solutions);
+  int                              returned_algo_count = 0;
+  auto op_handle = at::cuda::getCurrentCUDABlasLtHandle();
+  TORCH_HIPBLASLT_CHECK(hipblasLtMatmulAlgoGetHeuristic(op_handle,
+                                                        matmul.descriptor(),
+                                                        mat_a,
+                                                        mat_b,
+                                                        mat_c,
+                                                        mat_c,
+                                                        pref,
+                                                        request_solutions,
+                                                        heuristic_result.data(),
+                                                        &returned_algo_count));
+
+  TORCH_HIPBLASLT_CHECK(hipblasLtMatrixLayoutDestroy(mat_a));
+  TORCH_HIPBLASLT_CHECK(hipblasLtMatrixLayoutDestroy(mat_b));
+  TORCH_HIPBLASLT_CHECK(hipblasLtMatrixLayoutDestroy(mat_c));
 
   // Sort heuristic_result by algo index to make sure the order of returned algos is deterministic.
   std::sort(heuristic_result.begin(),
@@ -496,7 +567,6 @@ auto GetHipBlasLtTypeStringAndOps() {
       return hipblaslt_ext::getIndexFromAlgo(a.algo) < hipblaslt_ext::getIndexFromAlgo(b.algo);
       });
 
-  int returned_algo_count = heuristic_result.size();
   std::vector<std::pair<std::string, std::unique_ptr<Callable<ParamsT>>>> ret;
   for (int i = 0; i < returned_algo_count; i++) {
     auto algo = heuristic_result[i].algo;
@@ -511,18 +581,18 @@ auto GetHipBlasLtTypeStringAndOps() {
 }
 
 template <typename T, BlasOp ALayout, BlasOp BLayout>
-auto GetHipBlasLtGemmTypeStringAndOps() {
-  return GetHipBlasLtTypeStringAndOps<T, T, T, ALayout, BLayout, GemmParams<T>>();
+auto GetHipBlasLtGemmTypeStringAndOps(const GemmParams<T>* params) {
+  return GetHipBlasLtTypeStringAndOps<T, T, T, ALayout, BLayout, GemmParams<T>>(params);
 }
 
 template <typename T, BlasOp ALayout, BlasOp BLayout>
-auto GetHipBlasLtGemmStridedBatchedTypeStringAndOps() {
-  return GetHipBlasLtTypeStringAndOps<T, T, T, ALayout, BLayout, GemmStridedBatchedParams<T>>();
+auto GetHipBlasLtGemmStridedBatchedTypeStringAndOps(const GemmStridedBatchedParams<T>* params) {
+  return GetHipBlasLtTypeStringAndOps<T, T, T, ALayout, BLayout, GemmStridedBatchedParams<T>>(params);
 }
 
 template <typename AT, typename BT, typename CT, BlasOp ALayout, BlasOp BLayout>
-auto GetHipBlasLtScaledGemmTypeStringAndOps() {
-  return GetHipBlasLtTypeStringAndOps<AT, BT, CT, ALayout, BLayout, ScaledGemmParams<CT>>();
+auto GetHipBlasLtScaledGemmTypeStringAndOps(const ScaledGemmParams<CT>* params) {
+  return GetHipBlasLtTypeStringAndOps<AT, BT, CT, ALayout, BLayout, ScaledGemmParams<CT>>(params);
 }
 
 #undef TORCH_HIPBLASLT_CHECK
