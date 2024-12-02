@@ -1317,7 +1317,7 @@ if(USE_ROCM)
     endif()
 
     list(APPEND Caffe2_PUBLIC_HIP_DEPENDENCY_LIBS
-      roc::hipblas hip::hipfft hip::hiprand roc::hipsparse roc::hipsolver)
+      roc::hipblas roc::rocblas hip::hipfft hip::hiprand roc::hipsparse roc::hipsolver)
 
     # ---[ Kernel asserts
     # Kernel asserts is disabled for ROCm by default.
