@@ -324,7 +324,7 @@ elseif(WIN32)
     ### Remove setting of Flags when FindHIP.CMake PR #558 is accepted.###
 
     set(hip_DIR ${ROCM_PATH}/lib/cmake/hip)
-    set(amd_comgr_DIR C:/develop/ROCm-CompilerSupport/lib/comgr/build/lib/cmake/amd_comgr) # TODO
+    set(amd_comgr_DIR ${ROCM_PATH}/lib/cmake/amd_comgr) # TODO
     set(rocrand_DIR ${ROCM_PATH}/lib/cmake/rocrand)
     set(hiprand_DIR ${ROCM_PATH}/lib/cmake/hiprand)
     set(rocblas_DIR ${ROCM_PATH}/lib/cmake/rocblas)
