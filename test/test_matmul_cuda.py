@@ -346,7 +346,11 @@ class TestFP8MatmulCuda(TestCase):
             self.assertEqual(out_dtype, out_fp8.dtype)
         self.assertEqual(out_fp32, out_fp8.to(torch.float))
 
+<<<<<<< HEAD
     @unittest.skipIf(not PLATFORM_SUPPORTS_FP8, f8_msg)
+=======
+    @unittest.skipIf(not scaled_mm_supported_device(), f8_msg)
+>>>>>>> b4b81bd458 ([Release/2.4] Remove amax_ptr from scaled_gemm for UT test_scaled_mm_vs_emulated_*float*_cuda and Updating unit test case based on removing amax from _scaled_mm  (#1762))
     def test_float8_basics(self, device) -> None:
         self._test_tautological_mm(device, e4m3_type, e4m3_type, size=16)
         if torch.version.hip is None:
@@ -382,7 +386,11 @@ class TestFP8MatmulCuda(TestCase):
         out_fp8_s = torch._scaled_mm(x, y, scale_a=scale_a, scale_b=scale_b)
         self.assertEqual(out_fp8, out_fp8_s)
 
+<<<<<<< HEAD
     @unittest.skipIf(not PLATFORM_SUPPORTS_FP8, f8_msg)
+=======
+    @unittest.skipIf(not scaled_mm_supported_device(), f8_msg)
+>>>>>>> b4b81bd458 ([Release/2.4] Remove amax_ptr from scaled_gemm for UT test_scaled_mm_vs_emulated_*float*_cuda and Updating unit test case based on removing amax from _scaled_mm  (#1762))
     @parametrize("base_dtype", [torch.float16, torch.bfloat16, torch.float32])
     def test_scaled_mm_vs_emulated(self, base_dtype):
         torch.manual_seed(42)
