@@ -485,6 +485,17 @@ std::tuple<Tensor, Tensor, Tensor> batch_norm_backward_cpu_template(
   return std::make_tuple(grad_input, grad_weight, grad_bias);
 }
 
+template<class... Args>
+bool checkAllTypeEq(const c10::ScalarType dtype, const Args&... args)
+{
+  return ((dtype == ((Tensor)args).scalar_type()) || ...);
+}
+template<class... Args>
+bool checkAnyTypeEq(const Tensor& t, const Args&... args)
+{
+  return ((t.scalar_type() == ((c10::ScalarType)args)) || ...);
+}
+
 BatchNormBackend _select_batch_norm_backend(
     const Tensor& input, const Tensor& weight, const Tensor& bias, const Tensor& running_mean,
     const Tensor& running_var, bool training, double eps) {
@@ -512,19 +523,27 @@ BatchNormBackend _select_batch_norm_backend(
   }
 
   if (
-      input.is_cuda()
-      && input.dim() <= MIOPEN_DIM_MAX
-      && input.scalar_type() != at::kDouble
-      && (weight.scalar_type() != at::kHalf)
-      && (weight.scalar_type() != at::kBFloat16)
-      && weight.defined() && bias.defined()
-      && ((running_mean.defined() && running_var.defined())
-        || (!running_mean.defined() && !running_var.defined() && training))
-      && (input.dim() >= 3)
+         cudnn_enabled
       && detail::getCUDAHooks().compiledWithMIOpen()
-      && cudnn_enabled
-      && input.suggest_memory_format() != MemoryFormat::ChannelsLast
-      && input.suggest_memory_format() != MemoryFormat::ChannelsLast3d
+      && input.is_cuda()
+      && (input.dim() >= 3)
+      && input.dim() <= MIOPEN_DIM_MAX
+      && weight.defined() && bias.defined()
+      && (
+           (running_mean.defined() && running_var.defined())
+        || (!running_mean.defined() && !running_var.defined() && training)
+      )
+      && (
+           checkAllTypeEq(at::kFloat, input, weight, bias) && input.suggest_memory_format() == MemoryFormat::Contiguous // fp32 ocl
+        || checkAllTypeEq(at::kHalf, input, weight, bias) && input.suggest_memory_format() == MemoryFormat::Contiguous // fp16 ocl
+        || checkAllTypeEq(at::kBFloat16, input, weight, bias) && input.suggest_memory_format() == MemoryFormat::Contiguous// bf16 ocl
+        || checkAnyTypeEq(input, at::kHalf, at::kBFloat16) && checkAllTypeEq(at::kFloat, weight, bias) && input.suggest_memory_format() == MemoryFormat::Contiguous // mixed
+      )
+      // && input.scalar_type() != at::kDouble
+      // && (weight.scalar_type() != at::kHalf)
+      // && (weight.scalar_type() != at::kBFloat16)
+      // && input.suggest_memory_format() != MemoryFormat::ChannelsLast
+      // && input.suggest_memory_format() != MemoryFormat::ChannelsLast3d
   ) {
     return BatchNormBackend::Miopen;
   }
