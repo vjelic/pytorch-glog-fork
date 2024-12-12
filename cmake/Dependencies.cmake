@@ -1093,6 +1093,9 @@ if(USE_ROCM)
       list(APPEND HIP_CLANG_FLAGS --offload-arch=${pytorch_rocm_arch})
     endforeach()
 
+    # Trying compress option
+    list(APPEND HIP_CLANG_FLAGS --offload-compress)
+
     set(Caffe2_HIP_INCLUDE
        $<INSTALL_INTERFACE:include> ${Caffe2_HIP_INCLUDE})
     # This is needed for library added by hip_add_library (same for hip_add_executable)
