@@ -1408,7 +1408,8 @@ void scaled_gemm(
     const void *result_scale_ptr,
     int64_t result_ld,
     ScalarType result_dtype,
-    bool use_fast_accum) {
+    bool use_fast_accum,
+    GEMMAndBiasActivationEpilogue activation) {
 #if CUDA_VERSION >= 11080 || defined(USE_ROCM)
   const auto computeType = CUBLAS_COMPUTE_32F;
   const auto scaleType = CUDA_R_32F;
@@ -1437,8 +1438,18 @@ void scaled_gemm(
   CuBlasLtMatrixLayout Ddesc(ScalarTypeToCudaDataType(result_dtype), m, n, result_ld);
   if (bias_ptr) {
     computeDesc.setAttribute(CUBLASLT_MATMUL_DESC_BIAS_POINTER, bias_ptr);
-    computeDesc.setAttribute(CUBLASLT_MATMUL_DESC_EPILOGUE, CUBLASLT_EPILOGUE_BIAS);
+    if(activation == GEMMAndBiasActivationEpilogue::RELU)
+      computeDesc.setAttribute(CUBLASLT_MATMUL_DESC_EPILOGUE, CUBLASLT_EPILOGUE_RELU_BIAS);
+    else if(activation == GEMMAndBiasActivationEpilogue::GELU)
+      computeDesc.setAttribute(CUBLASLT_MATMUL_DESC_EPILOGUE, CUBLASLT_EPILOGUE_GELU_BIAS);
+    else
+      computeDesc.setAttribute(CUBLASLT_MATMUL_DESC_EPILOGUE, CUBLASLT_EPILOGUE_BIAS);
     computeDesc.setAttribute(CUBLASLT_MATMUL_DESC_BIAS_DATA_TYPE, ScalarTypeToCudaDataType(bias_dtype));
+  }else{
+    if(activation == GEMMAndBiasActivationEpilogue::RELU)
+      computeDesc.setAttribute(CUBLASLT_MATMUL_DESC_EPILOGUE, CUBLASLT_EPILOGUE_RELU);
+    else if(activation == GEMMAndBiasActivationEpilogue::GELU)
+      computeDesc.setAttribute(CUBLASLT_MATMUL_DESC_EPILOGUE, CUBLASLT_EPILOGUE_GELU);
   }
   size_t workspaceSize = _getWorkspaceSize();
   auto& allocator = *::c10::cuda::CUDACachingAllocator::get();

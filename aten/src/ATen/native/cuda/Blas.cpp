@@ -939,6 +939,7 @@ _scaled_mm_out_cuda(const Tensor& mat1, const Tensor& mat2,
           const std::optional<at::Tensor>& scale_result,
           std::optional<c10::ScalarType> out_dtype,
           bool use_fast_accum,
+          c10::string_view activation_type,
           Tensor& out) {
   // Check sizes
   bool allowed_device = _scaled_mm_allowed_device();
@@ -1015,7 +1016,11 @@ _scaled_mm_out_cuda(const Tensor& mat1, const Tensor& mat2,
   cublasCommonArgs args(mat1, mat2, out);
   const auto out_dtype_ = args.result->scalar_type();
   TORCH_CHECK(args.transa == 't' && args.transb == 'n', "Only multiplication of row-major and column-major matrices is supported by cuBLASLt");
-
+  auto activation = cuda::blas::GEMMAndBiasActivationEpilogue::None;
+  if (activation_type=="relu")
+    activation = cuda::blas::GEMMAndBiasActivationEpilogue::RELU;
+  if (activation_type=="gelu")
+    activation = cuda::blas::GEMMAndBiasActivationEpilogue::GELU;
 #ifdef USE_ROCM
   auto tuning_ctx = at::cuda::tunable::getTuningContext();
   if (tuning_ctx->IsTunableOpEnabled()) {
@@ -1142,7 +1147,8 @@ _scaled_mm_out_cuda(const Tensor& mat1, const Tensor& mat2,
         scale_result ? scale_result->data_ptr() : nullptr,
         args.result_ld,
         out_dtype_,
-        use_fast_accum);
+        use_fast_accum,
+        activation);
   }
 
   return out;
@@ -1155,10 +1161,11 @@ _scaled_mm_cuda(const Tensor& mat_a, const Tensor& mat_b,
           const std::optional<at::Tensor>& bias,
           const std::optional<at::Tensor>& scale_result,
           std::optional<c10::ScalarType> out_dtype,
-          bool use_fast_accum) {
+          bool use_fast_accum,
+          c10::string_view activation_type="none") {
   const auto out_dtype_ = out_dtype.value_or(mat_a.scalar_type());
   Tensor out = at::empty({0}, mat_a.options().dtype(out_dtype_));
-  return _scaled_mm_out_cuda(mat_a, mat_b, scale_a, scale_b, bias, scale_result, out_dtype, use_fast_accum, out);
+  return _scaled_mm_out_cuda(mat_a, mat_b, scale_a, scale_b, bias, scale_result, out_dtype, use_fast_accum, activation_type, out);
 }
 
 } // namespace at::native
