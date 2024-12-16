@@ -15,6 +15,9 @@ networkx
 jinja2
 fsspec
 # setuptools was removed from default python install
-setuptools ; python_version >= "3.12"
+# Setuptools>=74.0.0 stopped support for directly using private funcs(_msvccompiler)
+# and consolidated all compiler logic in distutils used in Pytorch build, so older
+# is required until pytorch build not refactored to work for latest setuptools.
+setuptools<=72.1.0
 packaging
 optree>=0.9.1
