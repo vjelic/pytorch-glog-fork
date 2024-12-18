@@ -15,6 +15,7 @@ from itertools import product
 from functools import partial
 from collections import OrderedDict
 from unittest import SkipTest
+import traceback
 
 import torch
 from torch import inf, nan
@@ -8199,17 +8200,32 @@ class TestNNDeviceType(NNTestCase):
 
             self.assertEqual(scipy_ary, gridsample_ary.reshape_as(scipy_ary))
 
-    def batchnorm2d_miopen(self, dtype, memory_format, mixed=False):
-        def run_test(input, grad_output, mixed):
+    def wrap_assert(self, fn):
+        try:
+            fn()
+        except Exception as e:
+            print(">>>>>>>>> Failed with exception: ")
+            traceback.print_exception(e)
+            return False
+        return True
+
+    def batchnorm2d_miopen(self, dtype, memory_format, mixed=False, use_cpu=False):
+        def run_test(input, grad_output, mixed, use_cpu=False, range_min=0.0, range_max=1.0):
             c = input.size(1)
             mod = nn.BatchNorm2d(c).cuda()
             if not mixed:
                 mod = mod.to(dtype=input.dtype)
-            mod.weight.data.uniform_()
-            mod.bias.data.uniform_()
-            ref_input = input.detach().clone(memory_format=torch.preserve_format).requires_grad_(True)
-            ref_grad = grad.detach().clone(memory_format=torch.preserve_format)
-            ref_mod = nn.BatchNorm2d(c).cuda()
+            mod.weight.data.uniform_(range_min, range_max)
+            mod.bias.data.uniform_(range_min, range_max)
+            if use_cpu:
+                ref_mod = nn.BatchNorm2d(c)
+                ref_input = input.cpu().detach().clone(memory_format=torch.preserve_format).requires_grad_(True)
+                ref_grad = grad_output.cpu().detach().clone(memory_format=torch.preserve_format)
+            else:
+                ref_mod = nn.BatchNorm2d(c).cuda()
+                ref_input = input.detach().clone(memory_format=torch.preserve_format).requires_grad_(True)
+                ref_grad = grad_output.detach().clone(memory_format=torch.preserve_format)
+
             if not mixed:
                 ref_mod = ref_mod.to(dtype=input.dtype)
             ref_mod.load_state_dict(mod.state_dict())
@@ -8218,28 +8234,33 @@ class TestNNDeviceType(NNTestCase):
             with torch.backends.cudnn.flags(enabled=False): # force to use native nhwc batchnorm
                 ref_out = ref_mod(ref_input)
                 ref_out.backward(ref_grad)
-            self.assertTrue(out.is_contiguous(memory_format=memory_format))
-            self.assertTrue(ref_out.is_contiguous(memory_format=memory_format))
-            self.assertEqual(out, ref_out)
-            self.assertEqual(mod.weight.grad, ref_mod.weight.grad)
-            self.assertEqual(mod.bias.grad, ref_mod.bias.grad)
-            self.assertEqual(mod.running_mean, ref_mod.running_mean)
-            self.assertEqual(mod.running_var, ref_mod.running_var)
-            self.assertEqual(input.grad, ref_input.grad)
 
+            success = self.wrap_assert(lambda: self.assertTrue(out.is_contiguous(memory_format=memory_format)))
+            success = success and self.wrap_assert(lambda: self.assertTrue(ref_out.is_contiguous(memory_format=memory_format)))
+            success = success and self.wrap_assert(lambda: self.assertEqual(out, ref_out))
+            success = success and self.wrap_assert(lambda: self.assertEqual(mod.weight.grad, ref_mod.weight.grad))
+            success = success and self.wrap_assert(lambda: self.assertEqual(mod.bias.grad, ref_mod.bias.grad))
+            success = success and self.wrap_assert(lambda: self.assertEqual(mod.running_mean, ref_mod.running_mean))
+            success = success and self.wrap_assert(lambda: self.assertEqual(mod.running_var, ref_mod.running_var))
+            success = success and self.wrap_assert(lambda: self.assertEqual(input.grad, ref_input.grad))
+            self.assertTrue(success)
+
+        range_min = -2.0
+        range_max = 2.0
         size = (4, 8, 2, 2)
-        input = torch.randint(1, 10, size=size, dtype=dtype, device="cuda")
-        input = input.contiguous(memory_format=memory_format).detach().requires_grad_()
-        grad = torch.randint(1, 10, size=size, dtype=dtype, device="cuda")
-        grad = grad.contiguous(memory_format=memory_format)
-        run_test(input, grad, mixed=mixed)
+        # input = torch.randint(1, 10, size=size, dtype=dtype, device="cuda")
+        input = torch.FloatTensor(size=size).uniform_(range_min, range_max).to(dtype=dtype, device="cuda").contiguous(memory_format=memory_format).detach().requires_grad_()
+        # input = input.contiguous(memory_format=memory_format).detach().requires_grad_()
+        # grad = torch.randint(1, 10, size=size, dtype=dtype, device="cuda")
+        grad = torch.FloatTensor(size=size).uniform_(range_min, range_max).to(dtype=dtype, device="cuda").contiguous(memory_format=memory_format).detach()
+        run_test(input, grad, mixed=mixed, use_cpu=use_cpu)
         # see #42588, grad is channels_last contiguous, but grad.suggest_memory_format (rightly) return "contiguous"
         # not channels_last
         input = torch.randint(1, 10, (2, 8, 8, 1), dtype=dtype, device="cuda")
         input = input.contiguous(memory_format=memory_format).detach().requires_grad_()
         grad = torch.randint(1, 10, (2, 8, 8, 1), dtype=dtype, device="cuda")
         grad = grad.permute(0, 2, 1, 3)
-        run_test(input, grad, mixed=mixed)
+        run_test(input, grad, mixed=mixed, use_cpu=use_cpu, range_min=range_min, range_max=range_max)
 
 
     @onlyCUDA
@@ -8256,7 +8277,7 @@ class TestNNDeviceType(NNTestCase):
                 del os.environ[PYTORCH_MIOPEN_SUGGEST_NHWC]
             else:
                 os.environ[PYTORCH_MIOPEN_SUGGEST_NHWC] = prev_val
-    
+
     @onlyCUDA
     @dtypes(torch.half, torch.bfloat16)
     def test_batchnorm_nhwc_miopen_mixed(self, dtype):
@@ -8281,6 +8302,11 @@ class TestNNDeviceType(NNTestCase):
     @dtypes(torch.half, torch.bfloat16)
     def test_batchnorm_nchw_miopen_mixed(self, dtype):
         self.batchnorm2d_miopen(dtype, torch.contiguous_format, mixed=True)
+
+    @onlyCUDA
+    @dtypes(torch.half, torch.bfloat16)
+    def test_batchnorm_nchw_miopen_mixed_vs_cpu(self, dtype):
+        self.batchnorm2d_miopen(dtype, torch.contiguous_format, mixed=True, use_cpu=True)
 
     @onlyCUDA
     @dtypes(torch.float, torch.half)
