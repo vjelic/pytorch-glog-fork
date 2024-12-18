@@ -46,29 +46,71 @@ class TunableOp {
     virtual ~TunableOp() = default;
 
     TuningStatus operator()(const ParamsT* params) {
-      ResultEntry result = ResultEntry::Null();
       TuningContext* ctx = getTuningContext();
-      if (ctx->IsTunableOpEnabled()) {
-        auto& mgr = ctx->GetTuningResultsManager();
-        auto op_sig = Signature();
-        auto params_sig = params->Signature();
-        result = mgr.Lookup(op_sig, params_sig);
-        // If there is not previous tuning result been found, we do the tuning iff tuning is enabled
-        if (result == ResultEntry::Null() && ctx->IsTuningEnabled()) {
-          result = FindFastest(params);
-          mgr.Add(op_sig, params_sig, result);
-        }
-      }
-      else {
-        result = ResultEntry::Default();
-      }
+      auto& mgr = ctx->GetTuningResultsManager();
+      auto op_sig = Signature();
+      auto params_sig = params->Signature();
+      auto result = mgr.Lookup(op_sig, params_sig);
       if (result == ResultEntry::Null()) {
-        TUNABLE_LOG2("no result, using default");
-        result = ResultEntry::Default();
+        size_t offset = 0;
+        int warmup_iter = ctx->GetMaxWarmupIterations();
+        int tuning_iter = ctx->GetMaxTuningIterations();
+        auto duration_ms = std::numeric_limits<double>::max();
+        std::string fastest_op_name;
+        std::unique_ptr<Callable<ParamsT>> fastest_op=nullptr;
+
+        size_t rotating_size = ctx->GetRotatingBufferSize();
+        bool use_buffer_rotation = (rotating_size > 0);
+        size_t param_size = params->GetSize(use_buffer_rotation);
+        size_t param_count = (rotating_size / param_size) + 1;
+        constexpr size_t MB = 1024*1024;
+        if (use_buffer_rotation) {
+          TUNABLE_LOG2("Rotating buffer ", rotating_size/MB, " MiB. ",
+              "Needed Size: ", param_size/MB, " MiB. ",
+              "Needed number of param copies: ", param_count);
+        }
+        TORCH_CHECK(param_count > 0);
+
+        std::vector<ParamsT*> reusable_params(param_count);
+        for (size_t i = 0; i < param_count; i++) {
+          reusable_params[i] = params->DeepCopy(use_buffer_rotation);
+        }
+    
+        auto name_and_ops = GetNameAndOps(params);
+        if(ctx->IsTuningEnabled()){
+          for (auto&& [name, op] : name_and_ops) {
+            WarmUp(op.get(), reusable_params, warmup_iter, offset);
+            auto curr_duration_ms = Profile(op.get(), reusable_params, tuning_iter, offset);
+            if (curr_duration_ms < duration_ms) {
+              duration_ms = curr_duration_ms;
+              fastest_op_name = name;
+              fastest_op = std::move(op);
+            }
+          }
+        } else {
+          duration_ms = 0.0;
+          fastest_op_name = name_and_ops[0].first;
+          fastest_op = std::move(name_and_ops[0].second);
+        }
+        result = ResultEntry(fastest_op_name, duration_ms);
+        mgr.Add(op_sig, params_sig, result);
+        TORCH_CHECK(fastest_op != nullptr, "fastest_op is nullptr");
+        this->RegisterOp(std::move(fastest_op_name), std::move(fastest_op));
+      }else{
+        auto key = result.GetKey();
+        auto found = key.rfind('_');
+        TORCH_CHECK(found != std::string::npos, "key should contain '_'");
+        auto index = std::stoi(key.substr(found+1));
+        auto op = GetOpFromIndex(index);
+        TORCH_CHECK(op != nullptr, "op is nullptr");
+        this->RegisterOp(std::move(key), std::move(op));
       }
-      auto iter = ops_.find(result);
-      TORCH_CHECK(iter != ops_.end());
-      return iter->second->Call(params);
+
+      return this->RunOp(result, params);
+    }
+
+    virtual std::vector<std::pair<std::string, std::unique_ptr<Callable<ParamsT>>>> GetNameAndOps(const ParamsT* params) {
+      return std::vector<std::pair<std::string, std::unique_ptr<Callable<ParamsT>>>>{};
     }
 
     virtual std::string Signature() {
@@ -82,9 +124,19 @@ class TunableOp {
     }
 
   protected:
+    virtual std::unique_ptr<Callable<ParamsT>> GetOpFromIndex(int algo_index) {
+      return nullptr;
+    }
+
     void RegisterOp(const std::string& name, std::unique_ptr<Callable<ParamsT>> op) {
-      this->op_names_.emplace_back(name);
-      this->ops_.emplace(name, std::move(op));
+      op_names_.emplace_back(name);
+      ops_.emplace(name, std::move(op));
+    }
+
+    TuningStatus RunOp(ResultEntry& result, const ParamsT* params) {
+      auto iter = ops_.find(result);
+      TORCH_CHECK(iter != ops_.end());
+      return iter->second->Call(params);
     }
 
   private:
@@ -130,7 +182,7 @@ class TunableOp {
       // calcaulte a reference answer for numerical check
       if (do_numerics_check) {
         reference_params = params->DeepCopy(false);
-        TORCH_CHECK(ops_[ResultEntry::Default()]->Call(reference_params) == OK);
+        TORCH_CHECK(ops_[op_names_[0]]->Call(reference_params) == OK);
       }
 
       // need copies of params to reuse
@@ -256,6 +308,9 @@ class TunableOp {
       return ResultEntry(id_name, min_duration_ms);
     }
 
+    std::unordered_map<std::string, std::unique_ptr<Callable<ParamsT>>> ops_;
+    std::vector<std::string> op_names_;
+
   private:
     std::string CreateSignature() {
 #ifndef _WIN32
@@ -273,8 +328,6 @@ class TunableOp {
     mutable c10::once_flag signature_init_once_;
     std::string signature_;
 
-    std::unordered_map<std::string, std::unique_ptr<Callable<ParamsT>>> ops_;
-    std::vector<std::string> op_names_;
 };
 
 struct OpParams {

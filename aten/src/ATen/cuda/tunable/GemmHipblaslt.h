@@ -334,6 +334,15 @@ class HipblasltGemmOp : public Callable<ParamsT> {
   public:
     HipblasltGemmOp(hipblasLtMatmulAlgo_t algo) : algo_{algo} {}
 
+    HipblasltGemmOp(int algo_index) {
+      auto op_handle = at::cuda::getCurrentCUDABlasLtHandle();
+      std::vector<int> algo_indexes = {algo_index};
+      
+      std::vector<hipblasLtMatmulHeuristicResult_t> algos(1);
+      TORCH_HIPBLASLT_CHECK(hipblaslt_ext::getAlgosFromIndex(op_handle, algo_indexes, algos));
+      algo_ = algos[0].algo;
+    }
+
     TuningStatus Call(const ParamsT* params) override {
       hipblasOperation_t transa_outer = MapLayoutToHipBlasLt(ALayout);
       hipblasOperation_t transb_outer = MapLayoutToHipBlasLt(BLayout);
@@ -382,8 +391,9 @@ class HipblasltGemmOp : public Callable<ParamsT> {
         TORCH_HIPBLASLT_CHECK(hipblasLtMatrixLayoutSetAttribute(
             mat_c, HIPBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &stride_c, sizeof(stride_c)));
       }
-
-      HipBlasLtMatmulDescriptor matmul(HIPBLAS_COMPUTE_32F, HIP_R_32F);
+      
+      auto compute_type = in_out_datatype == HIPBLAS_R_32F ? HIPBLAS_COMPUTE_32F_FAST_TF32 : HIPBLAS_COMPUTE_32F;
+      HipBlasLtMatmulDescriptor matmul(compute_type, HIP_R_32F);
       matmul.setAttribute(HIPBLASLT_MATMUL_DESC_TRANSA, opa);
       matmul.setAttribute(HIPBLASLT_MATMUL_DESC_TRANSB, opb);
 
@@ -510,7 +520,9 @@ auto GetHipBlasLtTypeStringAndOps(const ParamsT* params) {
     TORCH_HIPBLASLT_CHECK(hipblasLtMatrixLayoutSetAttribute(
         mat_c, HIPBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &stride_c, sizeof(stride_c)));
   }
-  HipBlasLtMatmulDescriptor matmul(HIPBLAS_COMPUTE_32F, HIP_R_32F);
+
+  auto compute_type = in_out_datatype == HIPBLAS_R_32F ? HIPBLAS_COMPUTE_32F_FAST_TF32 : HIPBLAS_COMPUTE_32F;
+  HipBlasLtMatmulDescriptor matmul(compute_type, HIP_R_32F);
   matmul.setAttribute(HIPBLASLT_MATMUL_DESC_TRANSA, opa);
   matmul.setAttribute(HIPBLASLT_MATMUL_DESC_TRANSB, opb);
 
@@ -541,9 +553,9 @@ auto GetHipBlasLtTypeStringAndOps(const ParamsT* params) {
                                             &workspace_size,
                                             sizeof(workspace_size)));
 
-  const int                        request_solutions = getTuningContext()->GetMaxTuningAlgorithms();
+  const int request_solutions = getTuningContext()->GetMaxTuningAlgorithms();
   std::vector<hipblasLtMatmulHeuristicResult_t> heuristic_result(request_solutions);
-  int                              returned_algo_count = 0;
+  int returned_algo_count = 0;
   auto op_handle = at::cuda::getCurrentCUDABlasLtHandle();
   TORCH_HIPBLASLT_CHECK(hipblasLtMatmulAlgoGetHeuristic(op_handle,
                                                         matmul.descriptor(),
@@ -559,13 +571,8 @@ auto GetHipBlasLtTypeStringAndOps(const ParamsT* params) {
   TORCH_HIPBLASLT_CHECK(hipblasLtMatrixLayoutDestroy(mat_a));
   TORCH_HIPBLASLT_CHECK(hipblasLtMatrixLayoutDestroy(mat_b));
   TORCH_HIPBLASLT_CHECK(hipblasLtMatrixLayoutDestroy(mat_c));
+  TORCH_HIPBLASLT_CHECK(hipblasLtMatmulPreferenceDestroy(pref));
 
-  // Sort heuristic_result by algo index to make sure the order of returned algos is deterministic.
-  std::sort(heuristic_result.begin(),
-      heuristic_result.end(),
-      [](hipblasLtMatmulHeuristicResult_t& a, hipblasLtMatmulHeuristicResult_t& b) {
-      return hipblaslt_ext::getIndexFromAlgo(a.algo) < hipblaslt_ext::getIndexFromAlgo(b.algo);
-      });
 
   std::vector<std::pair<std::string, std::unique_ptr<Callable<ParamsT>>>> ret;
   for (int i = 0; i < returned_algo_count; i++) {
