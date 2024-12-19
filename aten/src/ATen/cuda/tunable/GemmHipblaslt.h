@@ -400,19 +400,17 @@ class HipblasltGemmOp : public Callable<ParamsT> {
       // specific to scaled gemm
       const void* mat1_scale_ptr = GetAScalePointerFromParams<CT>(params);
       const void* mat2_scale_ptr = GetBScalePointerFromParams<CT>(params);
-      const void* result_scale_ptr = GetDScalePointerFromParams<CT>(params);
-      if (mat1_scale_ptr && mat2_scale_ptr && result_scale_ptr) {
+      if (mat1_scale_ptr && mat2_scale_ptr) {
         matmul.setAttribute(HIPBLASLT_MATMUL_DESC_A_SCALE_POINTER, mat1_scale_ptr);
         matmul.setAttribute(HIPBLASLT_MATMUL_DESC_B_SCALE_POINTER, mat2_scale_ptr);
-        matmul.setAttribute(HIPBLASLT_MATMUL_DESC_D_SCALE_POINTER, result_scale_ptr);
+      }
 
-        const void* bias_ptr = GetBiasPointerFromParams<CT>(params);
-        auto bias_datatype = GetBiasTypeFromParams<CT>(params);
-        if (bias_ptr) {
-          matmul.setAttribute(HIPBLASLT_MATMUL_DESC_BIAS_POINTER, bias_ptr);
-          matmul.setAttribute(HIPBLASLT_MATMUL_DESC_EPILOGUE, HIPBLASLT_EPILOGUE_BIAS);
-          matmul.setAttribute(HIPBLASLT_MATMUL_DESC_BIAS_DATA_TYPE, bias_datatype);
-        }
+      const void* bias_ptr = GetBiasPointerFromParams<CT>(params);
+      auto bias_datatype = GetBiasTypeFromParams<CT>(params);
+      if (bias_ptr) {
+        matmul.setAttribute(HIPBLASLT_MATMUL_DESC_BIAS_POINTER, bias_ptr);
+        matmul.setAttribute(HIPBLASLT_MATMUL_DESC_EPILOGUE, HIPBLASLT_EPILOGUE_BIAS);
+        matmul.setAttribute(HIPBLASLT_MATMUL_DESC_BIAS_DATA_TYPE, bias_datatype);
       }
 
       size_t workspace_size = GetHipblasltWorkspaceSize();
@@ -528,20 +526,19 @@ auto GetHipBlasLtTypeStringAndOps(const ParamsT* params) {
 
   const void* mat1_scale_ptr = GetAScalePointerFromParams<CT>(params);
   const void* mat2_scale_ptr = GetBScalePointerFromParams<CT>(params);
-  const void* result_scale_ptr = GetDScalePointerFromParams<CT>(params);
-  if (mat1_scale_ptr && mat2_scale_ptr && result_scale_ptr) {
+  if (mat1_scale_ptr && mat2_scale_ptr) {
     matmul.setAttribute(HIPBLASLT_MATMUL_DESC_A_SCALE_POINTER, mat1_scale_ptr);
     matmul.setAttribute(HIPBLASLT_MATMUL_DESC_B_SCALE_POINTER, mat2_scale_ptr);
-    matmul.setAttribute(HIPBLASLT_MATMUL_DESC_D_SCALE_POINTER, result_scale_ptr);
-
-    const void* bias_ptr = GetBiasPointerFromParams<CT>(params);
-    auto bias_datatype = GetBiasTypeFromParams<CT>(params);
-    if (bias_ptr) {
-      matmul.setAttribute(HIPBLASLT_MATMUL_DESC_BIAS_POINTER, bias_ptr);
-      matmul.setAttribute(HIPBLASLT_MATMUL_DESC_EPILOGUE, HIPBLASLT_EPILOGUE_BIAS);
-      matmul.setAttribute(HIPBLASLT_MATMUL_DESC_BIAS_DATA_TYPE, bias_datatype);
-    }
   }
+
+  const void* bias_ptr = GetBiasPointerFromParams<CT>(params);
+  auto bias_datatype = GetBiasTypeFromParams<CT>(params);
+  if (bias_ptr) {
+    matmul.setAttribute(HIPBLASLT_MATMUL_DESC_BIAS_POINTER, bias_ptr);
+    matmul.setAttribute(HIPBLASLT_MATMUL_DESC_EPILOGUE, HIPBLASLT_EPILOGUE_BIAS);
+    matmul.setAttribute(HIPBLASLT_MATMUL_DESC_BIAS_DATA_TYPE, bias_datatype);
+  }
+  
 
   size_t workspace_size = GetHipblasltWorkspaceSize();
   // Set User Preference attributes

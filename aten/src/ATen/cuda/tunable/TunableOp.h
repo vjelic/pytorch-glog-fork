@@ -129,8 +129,8 @@ class TunableOp {
     }
 
     void RegisterOp(const std::string& name, std::unique_ptr<Callable<ParamsT>> op) {
-      op_names_.emplace_back(name);
-      ops_.emplace(name, std::move(op));
+      this->op_names_.emplace_back(name);
+      this->ops_.emplace(name, std::move(op));
     }
 
     TuningStatus RunOp(ResultEntry& result, const ParamsT* params) {
@@ -308,9 +308,6 @@ class TunableOp {
       return ResultEntry(id_name, min_duration_ms);
     }
 
-    std::unordered_map<std::string, std::unique_ptr<Callable<ParamsT>>> ops_;
-    std::vector<std::string> op_names_;
-
   private:
     std::string CreateSignature() {
 #ifndef _WIN32
@@ -328,6 +325,8 @@ class TunableOp {
     mutable c10::once_flag signature_init_once_;
     std::string signature_;
 
+    std::unordered_map<std::string, std::unique_ptr<Callable<ParamsT>>> ops_;
+    std::vector<std::string> op_names_;
 };
 
 struct OpParams {
