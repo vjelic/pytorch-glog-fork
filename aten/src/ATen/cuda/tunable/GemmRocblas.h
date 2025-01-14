@@ -192,8 +192,10 @@ auto GetRocBlasGemmTypeStringAndOps() {
                                                             rocblas_gemm_flags_none,
                                                             solutions.data(),
                                                             &solution_size));
+#if 0
   // Sort the solutions in ascending order to make the solution vector deterministic across runs
   std::sort(solutions.begin(), solutions.end());
+#endif
 
   std::vector<std::pair<std::string, std::unique_ptr<Callable<GemmParams<T>>>>> ret;
   for (size_t i = 0; i < solutions.size(); ++i) {

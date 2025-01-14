@@ -10,6 +10,7 @@
 #pragma once
 
 #include <ATen/cuda/tunable/Tunable.h>
+#include <ATen/cuda/tunable/StreamTimer.h>
 #include <ATen/cuda/Sleep.h>
 #include <c10/cuda/CUDACachingAllocator.h>
 
@@ -34,6 +35,58 @@ class Callable {
       return Call(params);
     }
 };
+
+namespace {
+
+/** http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance */
+
+typedef struct stats {
+    unsigned long _n;
+    double _mean;
+    double _M2;
+    double _sum;
+    double _min;
+    double _max;
+} stats_t;
+
+static inline void stats_clear(stats_t *stats) {
+    stats->_n = 0UL;
+    stats->_mean = 0.0;
+    stats->_M2 = 0.0;
+    stats->_sum = 0.0;
+    stats->_min = 0.0;
+    stats->_max = 0.0;
+}
+
+static inline void stats_sample_value(stats_t *stats, const double x) {
+    double delta = 0;
+
+    /* extra stats */
+    stats->_sum = stats->_sum + x;
+    if (0UL == stats->_n) {
+        stats->_min = x;
+        stats->_max = x;
+    }
+    else {
+        stats->_min = stats->_min < x ? stats->_min : x;
+        stats->_max = stats->_max > x ? stats->_max : x;
+    }
+
+    stats->_n = stats->_n + 1UL;
+    delta = x - stats->_mean;
+    stats->_mean = stats->_mean + delta/stats->_n;
+    stats->_M2 = stats->_M2 + delta * (x - stats->_mean);
+}
+
+static inline double stats_variance(const stats_t * const stats) {
+    return stats->_M2/(stats->_n-1);
+}
+
+static inline double stats_stddev(const stats_t * const stats) {
+    return std::sqrt(stats_variance(stats));
+}
+
+} // anonymous namespace
 
 template <typename ParamsT, typename TimerT>
 class TunableOp {
@@ -100,7 +153,7 @@ class TunableOp {
       }
     }
 
-    static double Profile(Callable<ParamsT> *op, const std::vector<ParamsT*> &param, size_t num_iter, size_t &offset) {
+    static double ProfileSimple(Callable<ParamsT> *op, const std::vector<ParamsT*> &param, size_t num_iter, size_t &offset) {
       TuningContext* ctx = getTuningContext();
       bool do_flush = ctx->IsICacheFlushEnabled();
       TimerT timer{};
@@ -113,6 +166,37 @@ class TunableOp {
       }
       timer.End();
       return timer.Duration() / num_iter;
+    }
+
+    static double ProfileStats(Callable<ParamsT> *op, const std::vector<ParamsT*> &param, size_t num_iter, size_t &offset) {
+      TuningContext* ctx = getTuningContext();
+      bool do_flush = ctx->IsICacheFlushEnabled();
+      std::vector<StreamTimerNoSync> timer(num_iter);
+      for (size_t i = 0; i < num_iter; i++) {
+        if (do_flush) {
+          at::cuda::flush_icache();
+        }
+        timer[i].Start();
+        TORCH_CHECK(op->Call(param[(i+offset++)%param.size()]) == OK);
+        timer[i].End();
+      }
+      stats_t s;
+      stats_clear(&s);
+      for (size_t i = 0; i < num_iter; i++) {
+        stats_sample_value(&s, timer[i].Duration());
+      }
+      return s._min;
+    }
+
+    static double Profile(Callable<ParamsT> *op, const std::vector<ParamsT*> &param, size_t num_iter, size_t &offset) {
+      static const char *env = getenv("PYTORCH_TUNABLEOP_STATS_MIN");
+      static bool use_min = (env != nullptr && strcmp(env, "1") == 0);
+      if (use_min) {
+        return ProfileStats(op, param, num_iter, offset);
+      }
+      else {
+        return ProfileSimple(op, param, num_iter, offset);
+      }
     }
 
   protected:
