@@ -243,6 +243,9 @@ class TORCH_API Context {
   at::ROCmFABackend getROCmFAPreferredBackend() const;
   void setROCmFAPreferredBackend(at::ROCmFABackend);
 
+  void setWeightPreshuffle(bool);
+  bool getWeightPreshuffle() const;
+
   // Note [Enabling Deterministic Operations]
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Operations in PyTorch that normally act nondeterministically, but have an
@@ -400,6 +403,7 @@ class TORCH_API Context {
       at::SDPBackend::math,
       at::SDPBackend::cudnn_attention};
   bool enabled_flashSDP = true;
+  bool enabled_weight_preshuffle = false;
   bool enabled_mem_efficientSDP = true;
   bool enabled_mathSDP = true;
   bool enabled_cudnnSDP = true;

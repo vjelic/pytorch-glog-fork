@@ -718,6 +718,25 @@ static PyObject* THPModule_sDPPriorityOrder(
   }
   return order.release();
 }
+static PyObject* THPModule_setWeightPreshuffle(PyObject* _unused, PyObject* arg) {
+  HANDLE_TH_ERRORS
+  TORCH_CHECK(
+      PyBool_Check(arg),
+      "set_weight_preshuffle expects a bool, "
+      "but got ",
+      THPUtils_typename(arg));
+  at::globalContext().setWeightPreshuffle(arg == Py_True);
+  Py_RETURN_NONE;
+  END_HANDLE_TH_ERRORS
+}
+static PyObject* THPModule_getWeightPreshuffle(
+    PyObject* _unused,
+    PyObject* noargs) {
+  if (at::globalContext().getWeightPreshuffle())
+    Py_RETURN_TRUE;
+  else
+    Py_RETURN_FALSE;
+}
 static PyObject* THPModule_setSDPUseFlash(PyObject* _unused, PyObject* arg) {
   HANDLE_TH_ERRORS
   TORCH_CHECK(
@@ -1464,6 +1483,8 @@ static std::initializer_list<PyMethodDef> TorchMethods = {
      METH_NOARGS,
      nullptr},
     {"_set_sdp_use_flash", THPModule_setSDPUseFlash, METH_O, nullptr},
+    {"_set_weight_preshuffle", THPModule_setWeightPreshuffle, METH_O, nullptr},
+    {"_get_weight_preshuffle_enabled", THPModule_getWeightPreshuffle, METH_NOARGS, nullptr},
     {"_get_mem_efficient_sdp_enabled",
      userEnabledMemEfficientSDP,
      METH_NOARGS,

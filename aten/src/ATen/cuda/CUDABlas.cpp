@@ -367,6 +367,12 @@ inline void bgemm_internal_cublaslt(CUDABLAS_BGEMM_ARGTYPES(Dtype)) {
   CuBlasLtMatrixLayout Adesc(abcType, m, k, lda, opa == CUBLAS_OP_T);
   CuBlasLtMatrixLayout Bdesc(abcType, k, n, ldb, opb == CUBLAS_OP_T);
   CuBlasLtMatrixLayout Cdesc(abcType, m, n, ldc);
+#ifdef USE_ROCM
+  if (globalContext().getWeightPreshuffle()) {
+    hipblasLtOrder_t order = static_cast<hipblasLtOrder_t>(2);  // hard-code to HIPBLASLT_ORDER_ROW16_32C_8
+    Adesc.setAttribute(HIPBLASLT_MATRIX_LAYOUT_ORDER, order);
+  }
+#endif
 
   if (num_batches > 1) {
     int num_batches_as_int = static_cast<int>(num_batches);
@@ -1265,6 +1271,12 @@ void gemm_and_bias(
   CuBlasLtMatrixLayout Adesc(abcType, m, k, mat1_ld, transpose_mat1);
   CuBlasLtMatrixLayout Bdesc(abcType, k, n, mat2_ld, transpose_mat2);
   CuBlasLtMatrixLayout Cdesc(abcType, m, n, result_ld);
+#ifdef USE_ROCM
+  if (globalContext().getWeightPreshuffle()) {
+    hipblasLtOrder_t order = static_cast<hipblasLtOrder_t>(2);  // hard-code to HIPBLASLT_ORDER_ROW16_32C_8
+    Adesc.setAttribute(HIPBLASLT_MATRIX_LAYOUT_ORDER, order);
+  }
+#endif
 
   CuBlasLtMatmulPreference preference;
   // See https://github.com/pytorch/pytorch/issues/73328 for reasoning behind
@@ -1473,6 +1485,12 @@ void scaled_gemm(
   CuBlasLtMatrixLayout Cdesc(ScalarTypeToCudaDataType(bias_dtype), m, n, result_ld);
 #endif
   CuBlasLtMatrixLayout Ddesc(ScalarTypeToCudaDataType(result_dtype), m, n, result_ld);
+#ifdef USE_ROCM
+  if (globalContext().getWeightPreshuffle()) {
+    hipblasLtOrder_t order = static_cast<hipblasLtOrder_t>(2);  // hard-code to HIPBLASLT_ORDER_ROW16_32C_8
+    Adesc.setAttribute(HIPBLASLT_MATRIX_LAYOUT_ORDER, order);
+  }
+#endif
   if (bias_ptr) {
     computeDesc.setAttribute(CUBLASLT_MATMUL_DESC_BIAS_POINTER, bias_ptr);
     computeDesc.setAttribute(CUBLASLT_MATMUL_DESC_EPILOGUE, CUBLASLT_EPILOGUE_BIAS);

@@ -316,6 +316,24 @@ def preferred_rocm_fa_library(
     return torch._C._get_rocm_fa_preferred_backend()
 
 
+def weight_preshuffle_enabled():
+    r"""
+    .. warning:: This flag is beta and subject to change.
+
+    Returns whether weight preshuffle is enabled or not.
+    """
+    return torch._C._get_weight_preshuffle_enabled()
+
+
+def enable_weight_preshuffle(enabled: bool):
+    r"""
+    .. warning:: This flag is beta and subject to change.
+
+    Enables or disables weight preshuffle.
+    """
+    torch._C._set_weight_preshuffle(enabled)
+
+
 # Set the __module__ attribute
 SDPAParams.__module__ = "torch.backends.cuda"
 SDPAParams.__name__ = "SDPAParams"

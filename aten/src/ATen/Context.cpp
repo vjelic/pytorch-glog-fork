@@ -145,6 +145,15 @@ void Context::setSDPUseFlash(bool e) {
   enabled_flashSDP = e;
 }
 
+bool Context::getWeightPreshuffle() const {
+  const static auto env = c10::utils::check_env("TORCH_WEIGHT_PRESHUFFLE");
+  return (env == true) || enabled_weight_preshuffle;
+}
+
+void Context::setWeightPreshuffle(bool e) {
+  enabled_weight_preshuffle = e;
+}
+
 bool Context::userEnabledMemEfficientSDP() const {
   return enabled_mem_efficientSDP;
 }
