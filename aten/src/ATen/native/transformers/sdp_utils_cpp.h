@@ -540,6 +540,19 @@ inline bool check_runtime_disabled_flash(sdp_params const& params, bool debug) {
     }
     return false;
   }
+  static const bool env_disable_flash = []() -> bool {
+    const char* env = std::getenv("PYTORCH_SDPA_DISABLE_FLASH");
+    if (env && std::string_view(env) != "0") {
+      return true;
+    }
+    return false;
+  }();
+  if (env_disable_flash) {
+    if (debug) {
+      TORCH_WARN("Flash attention has been runtime disabled with env var PYTORCH_SDPA_DISABLE_FLASH.");
+    }
+    return false;
+  }
   return true;
 }
 
@@ -549,6 +562,19 @@ inline bool check_runtime_disabled_mem_efficient(sdp_params const& params, bool 
   if (!at::globalContext().userEnabledMemEfficientSDP()) {
     if (debug) {
       TORCH_WARN("Memory Efficient attention has been runtime disabled.");
+    }
+    return false;
+  }
+  static const bool env_disable_meff = []() -> bool {
+    const char* env = std::getenv("PYTORCH_SDPA_DISABLE_EFFICIENT");
+    if (env && std::string_view(env) != "0") {
+      return true;
+    }
+    return false;
+  }();
+  if (env_disable_meff) {
+    if (debug) {
+      TORCH_WARN("Memory Efficient attention has been runtime disabled with env var PYTORCH_SDPA_DISABLE_EFFICIENT.");
     }
     return false;
   }
