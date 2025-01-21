@@ -47,6 +47,9 @@
 #include <ATen/native/transformers/hip/aotriton_adapter.h>
 #include <aotriton/flash.h>
 #include <aotriton/runtime.h>
+#include <iostream>
+#include <fstream>
+#include <unistd.h>
 #endif
 #endif
 
@@ -272,6 +275,10 @@ _efficient_attention_backward(
     std::optional <int64_t> num_splits_key,
     const std::optional<int64_t> window_size,
     const bool shared_storage_dqdkdv) {
+  // std::fstream nanlog("NaN.log", std::fstream::in | std::fstream::out | std::fstream::app);
+  // TORCH_WARN_ONCE("Calling MEFF Backward");
+  // nanlog << "Calling MEFF Backward" << std::endl;
+  // nanlog.flush();
   #if defined(USE_MEM_EFF_ATTENTION)
   if (!grad_out_.defined()) {
     return std::make_tuple(Tensor{}, Tensor{}, Tensor{}, Tensor{});
@@ -492,6 +499,51 @@ _efficient_attention_backward(
                    is_causal,
                    stream);
   }
+  std::fstream nanlog("NaN.log", std::fstream::in | std::fstream::out | std::fstream::app);
+  auto is_nan = [](const at::Tensor& t) -> bool {
+    return t.isnan().any().item().toBool();
+  };
+#define ISNAN(name) #name << " is nan? " << is_nan(name) << " "
+#define PRINTSIZE(name) #name << name.sizes() << " dtype " << name.dtype() << " "
+#define HAS_VALUE(name) #name << " has value " << bool(name.has_value()) << " "
+#define PRINTVALUE(name) #name << " = " << name << " "
+  if (is_nan(dout_t)
+      || is_nan(delta)
+      || is_nan(dq_t)
+      || is_nan(dk_t)
+      || is_nan(dv_t)) {
+    nanlog << "[" << getpid() << "] "
+           << ISNAN(softmax_lse)
+           << ISNAN(dout_t)
+           << ISNAN(delta)
+           << ISNAN(dq_t)
+           << ISNAN(dk_t)
+           << ISNAN(dv_t)
+           << PRINTVALUE(err)
+           << "Sizes: "
+           << PRINTSIZE(q_t)
+           << PRINTSIZE(k_t)
+           << PRINTSIZE(v_t)
+           << PRINTSIZE(softmax_lse)
+           << PRINTSIZE(delta)
+           << PRINTSIZE(dout_t)
+           << PRINTSIZE(dq_t)
+           << PRINTSIZE(dk_t)
+           << PRINTSIZE(dv_t)
+           << HAS_VALUE(bias)
+           << HAS_VALUE(cu_seqlens_q_dummy)
+           << HAS_VALUE(cu_seqlens_k_dummy)
+           << HAS_VALUE(num_splits_key)
+           << HAS_VALUE(window_size)
+           << PRINTVALUE(softmax_scale)
+           << PRINTVALUE(dropout_p)
+           << std::endl;
+    exit(-1);
+  }
+#undef ISNAN
+#undef HAS_VALUE
+#undef PRINTVALUE
+#undef PRINTSIZE
 #else
   at::Tensor workspace;
   cudaDeviceProp* p = at::cuda::getDeviceProperties(query.device().index());

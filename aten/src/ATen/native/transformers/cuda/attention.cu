@@ -82,6 +82,9 @@
 #include <ATen/native/transformers/hip/aotriton_adapter.h>
 #include <aotriton/flash.h>
 #include <aotriton/runtime.h>
+#include <iostream>
+#include <fstream>
+#include <unistd.h>
 #endif
 #endif
 
@@ -1022,6 +1025,10 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, c10::SymInt, c10::SymInt> _efficient_
     std::optional<double> scale,
     const std::optional<at::Tensor>& seqlen_k,
     const std::optional<int64_t> window_size) {
+  // std::fstream nanlog("NaN.log", std::fstream::in | std::fstream::out | std::fstream::app);
+  // TORCH_WARN_ONCE("Calling MEFF Backward");
+  // nanlog << "Calling MEFF Backward" << std::endl;
+  // nanlog.flush();
 #if defined(USE_MEM_EFF_ATTENTION)
 // TODO In theory it is possible to compile with _CUDA_ARCH < 5.0 and run on a
 // machine that is >= 5.0. In practice, this is not a problem but since
@@ -1218,6 +1225,71 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, c10::SymInt, c10::SymInt> _efficient_
     logsumexp = at::empty(
         { B * num_heads, max_seqlen_q, 0 },
         query.options().dtype(at::ScalarType::Float));
+  }
+  std::fstream nanlog("NaN.log", std::fstream::in | std::fstream::out | std::fstream::app);
+  // nanlog << __FILE__ << ":" << __LINE__ << std::endl;
+  auto is_nan = [](const at::Tensor& t) -> bool {
+    return t.isnan().any().item().toBool();
+  };
+  if (is_nan(softmax_lse)) {
+    nanlog << __FILE__ << ":" << __LINE__ << std::endl;
+#define ISNAN(name) #name << " is nan? " << is_nan(name) << " "
+#define PRINTSIZE(name) #name << name.sizes() << " dtype " << name.dtype() << " "
+#define HAS_VALUE(name) #name << " has value " << bool(name.has_value()) << " "
+#define PRINTVALUE(name) #name << " = " << name << " "
+    if (bias.has_value()) {
+      nanlog << "[" << getpid() << "] "
+             << ISNAN(q_t)
+             << ISNAN(k_t)
+             << ISNAN(v_t)
+             << PRINTVALUE(err)
+             << "Sizes: "
+             << PRINTSIZE(q_t)
+             << PRINTSIZE(k_t)
+             << PRINTSIZE(v_t)
+             << PRINTSIZE(bias.value())
+             << HAS_VALUE(seqstart_q)
+             << HAS_VALUE(seqstart_k)
+             << PRINTVALUE(softmax_scale)
+             << HAS_VALUE(seqlen_k)
+             << PRINTVALUE(dropout_p)
+             << PRINTVALUE(custom_mask_type)
+             << std::endl;
+    } else {
+      nanlog << "[" << getpid() << "]" << std::endl
+             << ISNAN(q_t)
+             << ISNAN(k_t)
+             << ISNAN(v_t)
+             << PRINTVALUE(err)
+             << "Sizes: "
+             << PRINTSIZE(q_t)
+             << PRINTSIZE(k_t)
+             << PRINTSIZE(v_t)
+             << HAS_VALUE(bias)
+             << HAS_VALUE(seqstart_q)
+             << HAS_VALUE(seqstart_k)
+             << PRINTVALUE(softmax_scale)
+             << HAS_VALUE(seqlen_k)
+             << PRINTVALUE(dropout_p)
+             << PRINTVALUE(custom_mask_type)
+             << std::endl;
+    }
+#undef ISNAN
+#undef HAS_VALUE
+#undef PRINTVALUE
+#undef PRINTSIZE
+    if (is_nan(q_t)) nanlog << "q_t:\n" << q_t << std::endl;
+    if (is_nan(k_t)) nanlog << "k_t:\n" << k_t << std::endl;
+    if (is_nan(v_t)) nanlog << "v_t:\n" << v_t << std::endl;
+    nanlog << "softmax_lse:\n" << softmax_lse << std::endl;
+    // static bool save = [&]() {
+    //   torch::save(softmax_lse, "softmax_lse.pt");
+    //   return true;
+    // }();
+    exit(-1);
+  }
+  if (is_nan(output_t)) {
+    nanlog << __FILE__ << ":" << __LINE__ << std::endl;
   }
 #else
   // CUDA Implementation
