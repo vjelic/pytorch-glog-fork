@@ -88,6 +88,83 @@
 #endif
 #endif
 
+namespace {
+
+const char* cast_dtype(caffe2::TypeMeta t_dtype)
+{
+#define CAST_TYPE(aname, dtname) if (t_dtype == at::aname) return #dtname;
+  CAST_TYPE(kByte, uint8);
+  CAST_TYPE(kUInt16, uint16);
+  CAST_TYPE(kUInt32, uint32);
+  CAST_TYPE(kUInt64, uint64);
+  CAST_TYPE(kChar, int8);
+  CAST_TYPE(kShort, int16);
+  CAST_TYPE(kInt, int32);
+  CAST_TYPE(kLong, int64);
+  CAST_TYPE(kHalf, float16);
+  CAST_TYPE(kFloat, float32);
+  CAST_TYPE(kBFloat16, bfloat16);
+  return "unknown";
+#undef CAST_TYPE
+}
+
+template<typename Tensor>
+void metadump(const Tensor& t, std::fstream& fout)
+{
+  fout << R"zzz({ "sizes":[)zzz";
+  const char* spacer = "";
+  for (int s : t.sizes()) {
+    fout << spacer << s;
+    spacer = ", ";
+  }
+  fout << R"zzz(], "strides": [)zzz";
+  spacer = "";
+  for (int s : t.strides()) {
+    fout << spacer << s;
+    spacer = ", ";
+  }
+  fout << R"zzz(], "dtype": ")zzz";
+  fout << cast_dtype(t.dtype());
+  fout << R"zzz(", "offset": )zzz";
+  fout << reinterpret_cast<const char*>(t.data_ptr()) - reinterpret_cast<const char*>(t.storage().data_ptr().get());
+  fout << R"zzz(, "nbytes": )zzz";
+  fout << t.nbytes();
+  fout << R"zzz(})zzz";
+}
+
+template<typename Tensor>
+void datadump(const Tensor& t, std::fstream& fout)
+{
+  fout.write(reinterpret_cast<char*>(t.storage().data_ptr().get()),
+             t.storage().nbytes());
+}
+
+template<typename Tensor>
+void tensordump(const Tensor& t, std::string basename, int index)
+{
+  basename += ".";
+  basename += std::to_string(index);
+  {
+    std::fstream fout(basename + ".json", std::ios::out | std::ios::trunc);
+    metadump(t, fout);
+  }
+  {
+    std::fstream fout(basename + ".tdata", std::ios::out | std::ios::binary | std::ios::trunc);
+    datadump(t, fout);
+  }
+}
+template<typename Scalar>
+void scalardump(Scalar scalar, std::string basename, int index)
+{
+  basename += ".";
+  basename += std::to_string(index);
+  std::fstream fout(basename + ".scalar", std::ios::out | std::ios::trunc);
+  fout.precision(19);
+  fout << scalar;
+}
+
+} // anonymouse namespace for tensordump
+
 namespace at {
 
 namespace native {
@@ -1231,17 +1308,25 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, c10::SymInt, c10::SymInt> _efficient_
   auto is_nan = [](const at::Tensor& t) -> bool {
     return t.isnan().any().item().toBool();
   };
-  if (is_nan(softmax_lse)) {
+  auto is_posinf = [](const at::Tensor& t) -> bool {
+    return t.isposinf().any().item().toBool();
+  };
+  if (is_nan(softmax_lse) || is_nan(output_t) || is_posinf(softmax_lse) || is_posinf(output_t)) {
     nanlog << __FILE__ << ":" << __LINE__ << std::endl;
 #define ISNAN(name) #name << " is nan? " << is_nan(name) << " "
+#define ISPINF(name) #name << " is +inf? " << is_posinf(name) << " "
 #define PRINTSIZE(name) #name << name.sizes() << " dtype " << name.dtype() << " "
 #define HAS_VALUE(name) #name << " has value " << bool(name.has_value()) << " "
 #define PRINTVALUE(name) #name << " = " << name << " "
     if (bias.has_value()) {
-      nanlog << "[" << getpid() << "] "
+      nanlog << "[" << getpid() << "] forward "
              << ISNAN(q_t)
              << ISNAN(k_t)
              << ISNAN(v_t)
+             << ISNAN(output_t)
+             << ISNAN(softmax_lse)
+             << ISPINF(output_t)
+             << ISPINF(softmax_lse)
              << PRINTVALUE(err)
              << "Sizes: "
              << PRINTSIZE(q_t)
@@ -1256,10 +1341,14 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, c10::SymInt, c10::SymInt> _efficient_
              << PRINTVALUE(custom_mask_type)
              << std::endl;
     } else {
-      nanlog << "[" << getpid() << "]" << std::endl
+      nanlog << "[" << getpid() << "] forward "
              << ISNAN(q_t)
              << ISNAN(k_t)
              << ISNAN(v_t)
+             << ISNAN(output_t)
+             << ISNAN(softmax_lse)
+             << ISPINF(output_t)
+             << ISPINF(softmax_lse)
              << PRINTVALUE(err)
              << "Sizes: "
              << PRINTSIZE(q_t)
@@ -1274,6 +1363,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, c10::SymInt, c10::SymInt> _efficient_
              << PRINTVALUE(custom_mask_type)
              << std::endl;
     }
+#undef ISPINF
 #undef ISNAN
 #undef HAS_VALUE
 #undef PRINTVALUE
@@ -1288,9 +1378,32 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, c10::SymInt, c10::SymInt> _efficient_
     // }();
     exit(-1);
   }
-  if (is_nan(output_t)) {
-    nanlog << __FILE__ << ":" << __LINE__ << std::endl;
+#if 1
+  static int call_index = 0;
+  if (in_capture_stream) {
+    nanlog << "ME's dumping code was not designed for hipGraph" << std::endl;
+    exit(-1);
   }
+
+  tensordump(q_t, "q", call_index);
+  tensordump(k_t, "k", call_index);
+  tensordump(v_t, "v", call_index);
+  if (bias.has_value()) {
+    tensordump(bias.value(), "b", call_index);
+  }
+  tensordump(softmax_lse, "M", call_index);
+  tensordump(output_t, "Out", call_index);
+  scalardump(softmax_scale, "softmax_scale", call_index);
+  scalardump(dropout_p, "dropout_p", call_index);
+  if (dropout_p > 0.0) {
+    tensordump(seed_t, "seed", call_index);
+    tensordump(offset_t, "offset1", call_index);
+    scalardump(offset2, "offset2", call_index);
+  }
+  scalardump(is_causal, "is_causal", call_index);
+
+  call_index += 1;
+#endif
 #else
   // CUDA Implementation
   cudaDeviceProp* p = at::cuda::getDeviceProperties(query.device().index());
