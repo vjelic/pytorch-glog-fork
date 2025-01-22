@@ -134,6 +134,29 @@ WelfordDataLN cuWelfordOnlineSum(
   return {new_mean, curr_sum.sigma2 + delta * (val - new_mean), new_count};
 }
 
+template<typename U> __device__
+WelfordDataLN cuWelfordOnlineSum4(
+  const U val0, const U val1, const U val2, const U val3)
+{
+  U delta = val0;
+  U new_mean = delta;
+  U new_sigma2 = delta * (val0 - new_mean);
+
+  delta = val1 - new_mean;
+  new_mean = new_mean + delta * 0.5;
+  new_sigma2 = new_sigma2 + delta * (val1 - new_mean);
+
+  delta = val2 - new_mean;
+  new_mean = new_mean + delta * 0.333333333333333333333333333;
+  new_sigma2 = new_sigma2 + delta * (val2 - new_mean);
+
+  delta = val3 - new_mean;
+  new_mean = new_mean + delta * 0.25;
+  new_sigma2 = new_sigma2 + delta * (val3 - new_mean);
+
+  return {new_mean, new_sigma2, 4.f};
+}
+
 __device__
 WelfordDataLN cuWelfordCombine(
   const WelfordDataLN dataB,
@@ -144,11 +167,15 @@ WelfordDataLN cuWelfordCombine(
   U count = dataA.count + dataB.count;
   U mean, sigma2;
   if (count > decltype(dataB.count){0}) {
+    // When vec_size is 4 the coefficient is 1/8.
+    U coef = 0.125;
+    if (vec_size != 4) {
 #if defined(USE_ROCM) && defined(PYTORCH_LAYERNORM_FAST_RECIPROCAL)
-    auto coef = __builtin_amdgcn_rcpf(count);
+      coef = __builtin_amdgcn_rcpf(count);
 #else
-    auto coef = 1.f/count; //NB we don't use --use_fast_math, but this is emulation, 1./count goes to intrinsic, `* coef` is multiplication, instead of slow fp division
+      coef = 1.f/count; //NB we don't use --use_fast_math, but this is emulation, 1./count goes to intrinsic, `* coef` is multiplication, instead of slow fp division
 #endif
+    }
     auto nA = dataA.count * coef;
     auto nB = dataB.count * coef;
     mean = nA*dataA.mean + nB*dataB.mean;
@@ -177,9 +204,17 @@ __device__ WelfordDataLN compute_stats(
     //no tail, we check that N is multiple of vec_size
     for (int i = thrx; i < n_vec_to_read; i += numx) {
       vec_t data = X_vec[i];
-      #pragma unroll
-      for (int ii=0; ii < vec_size; ii++){
-        wd = cuWelfordOnlineSum(static_cast<acc_t>(data.val[ii]), wd);
+
+      if (vec_size == 4) {
+        wd = cuWelfordOnlineSum4(static_cast<acc_t>(data.val[0]),
+                                 static_cast<acc_t>(data.val[1]),
+                                 static_cast<acc_t>(data.val[2]),
+                                 static_cast<acc_t>(data.val[3]));
+      } else {
+        #pragma unroll
+        for (int ii=0; ii < vec_size; ii++){
+          wd = cuWelfordOnlineSum(static_cast<acc_t>(data.val[ii]), wd);
+        }
       }
     }
     // intra-warp reduction
@@ -217,7 +252,6 @@ __device__ WelfordDataLN compute_stats(
       }
       __syncthreads();
       return WelfordDataLN{meansigmabuf[0], meansigmabuf[1],0.f};
-
     } else {
       return WelfordDataLN{WARP_SHFL(wd.mean,0), WARP_SHFL(wd.sigma2,0)/float(N), 0.f};
     }
