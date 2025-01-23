@@ -167,15 +167,11 @@ WelfordDataLN cuWelfordCombine(
   U count = dataA.count + dataB.count;
   U mean, sigma2;
   if (count > decltype(dataB.count){0}) {
-    // When vec_size is 4 the coefficient is 1/8.
-    U coef = 0.125;
-    if (vec_size != 4) {
 #if defined(USE_ROCM) && defined(PYTORCH_LAYERNORM_FAST_RECIPROCAL)
-      coef = __builtin_amdgcn_rcpf(count);
+    auto coef = __builtin_amdgcn_rcpf(count);
 #else
-      coef = 1.f/count; //NB we don't use --use_fast_math, but this is emulation, 1./count goes to intrinsic, `* coef` is multiplication, instead of slow fp division
+    auto coef = 1.f/count; //NB we don't use --use_fast_math, but this is emulation, 1./count goes to intrinsic, `* coef` is multiplication, instead of slow fp division
 #endif
-    }
     auto nA = dataA.count * coef;
     auto nB = dataB.count * coef;
     mean = nA*dataA.mean + nB*dataB.mean;
