@@ -14,6 +14,7 @@
 #include <ATen/cuda/detail/OffsetCalculator.cuh>
 #include <ATen/cuda/Atomic.cuh>
 #include <ATen/cuda/CUDAContext.h>
+#include <ATen/ops/zeros_like.h>
 
 namespace at::native {
 
@@ -131,28 +132,55 @@ struct _cuda_scatter_gather_internal_kernel {
       }
       return;
     }
+    bool jeff = getenv("JEFF") != nullptr;
 
-    char* self_ptr = (char*)iter.data_ptr(0);
-    char* src_ptr = (char*)iter.data_ptr(1);
-    char* index_ptr = (char*)iter.data_ptr(2);
+    if (jeff) {
+      char* self_ptr = (char*)iter.data_ptr(0);
+      char* self2_ptr = (char*)iter.data_ptr(1);
+      char* src_ptr = (char*)iter.data_ptr(2);
+      char* index_ptr = (char*)iter.data_ptr(3);
 
-    auto offset_calc = make_offset_calculator<3>(iter);
-    auto loop = [=]C10_DEVICE(int i) {
-      auto offsets = offset_calc.get(i);
+      auto offset_calc = make_offset_calculator<4>(iter);
+      auto loop = [=]C10_DEVICE(int i) {
+        auto offsets = offset_calc.get(i);
 
-      int64_t idx_dim = *(int64_t*)(index_ptr + offsets[2]);
-      CUDA_KERNEL_ASSERT(idx_dim >= 0 && idx_dim < index_size
-        && "index out of bounds");
+        int64_t idx_dim = *(int64_t*)(index_ptr + offsets[3]);
+        CUDA_KERNEL_ASSERT(idx_dim >= 0 && idx_dim < index_size
+            && "index out of bounds");
 
-      f(
-        (scalar_t*)(self_ptr + offsets[0]),
-        is_scatter_like ? idx_dim * index_stride : 0,
-        numel,
-        (scalar_t*)(src_ptr + offsets[1]) + (is_scatter_like ? 0 : idx_dim * index_stride)
-      );
-    };
+        f(
+            (idx_dim % 2) ? (scalar_t*)(self_ptr + offsets[0]) : (scalar_t*)(self2_ptr + offsets[1]),
+            is_scatter_like ? idx_dim * index_stride : 0,
+            numel,
+            (scalar_t*)(src_ptr + offsets[2]) + (is_scatter_like ? 0 : idx_dim * index_stride)
+         );
+      };
 
-    _launch_scatter_gather_kernel<num_threads(), thread_work_size()>(iter.numel(), loop);
+      _launch_scatter_gather_kernel<num_threads(), thread_work_size()>(iter.numel(), loop);
+    }
+    else {
+      char* self_ptr = (char*)iter.data_ptr(0);
+      char* src_ptr = (char*)iter.data_ptr(1);
+      char* index_ptr = (char*)iter.data_ptr(2);
+
+      auto offset_calc = make_offset_calculator<3>(iter);
+      auto loop = [=]C10_DEVICE(int i) {
+        auto offsets = offset_calc.get(i);
+
+        int64_t idx_dim = *(int64_t*)(index_ptr + offsets[2]);
+        CUDA_KERNEL_ASSERT(idx_dim >= 0 && idx_dim < index_size
+            && "index out of bounds");
+
+        f(
+            (scalar_t*)(self_ptr + offsets[0]),
+            is_scatter_like ? idx_dim * index_stride : 0,
+            numel,
+            (scalar_t*)(src_ptr + offsets[1]) + (is_scatter_like ? 0 : idx_dim * index_stride)
+         );
+      };
+
+      _launch_scatter_gather_kernel<num_threads(), thread_work_size()>(iter.numel(), loop);
+    }
   }
 }; // struct _cuda_scatter_fill_internal_kernel
 
@@ -183,14 +211,34 @@ struct cuda_scatter_gather_base_kernel {
         src.as_strided(index_sizes, src_strides)
       : restride_dim(src, dim, index_sizes);
 
-    auto iter = TensorIteratorConfig()
-      .set_check_mem_overlap(false)
+    bool jeff = getenv("JEFF") != nullptr;
+
+    Tensor self2;
+    Tensor self2_restrided;
+    auto config = TensorIteratorConfig();
+    if (jeff) {
+      self2 = at::zeros_like(self);
+      auto self2_strides = ensure_nonempty_vec(self2.strides().vec());
+      self2_restrided = is_scatter_like ?
+          restride_dim(self2, dim, index_sizes)
+        : self2.as_strided(index_sizes, self2_strides);
+      config.set_check_mem_overlap(false)
+      .check_all_same_dtype(false)
+      .resize_outputs(false)
+      .add_output(self_restrided)
+      .add_output(self2_restrided)
+      .add_const_input(src_restrided)
+      .add_const_input(index);
+    }
+    else {
+      config.set_check_mem_overlap(false)
       .check_all_same_dtype(false)
       .resize_outputs(false)
       .add_output(self_restrided)
       .add_const_input(src_restrided)
-      .add_const_input(index)
-      .build();
+      .add_const_input(index);
+    }
+    auto iter = config.build();
 
     auto self_dim_stride = ensure_nonempty_stride(self, dim);
     auto self_dim_size = ensure_nonempty_size(self, dim);
@@ -214,6 +262,10 @@ struct cuda_scatter_gather_base_kernel {
         );
       }
     );
+
+    if (jeff) {
+      self.add_(self2);
+    }
   }
 
   void operator()(
