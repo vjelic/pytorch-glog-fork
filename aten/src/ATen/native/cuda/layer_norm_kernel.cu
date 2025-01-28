@@ -160,6 +160,28 @@ WelfordDataLN cuWelfordCombine(
   return {mean, sigma2, count};
 }
 
+template<typename U> __device__
+WelfordDataLN cuWelfordOnlineSum4(const U val0, const U val1, const U val2, const U val3)
+{
+  U delta = val0;
+  U new_mean = delta;
+  U new_sigma2 = delta * (val0 - new_mean);
+
+  delta = val1 - new_mean;
+  new_mean = new_mean + delta * 0.5;
+  new_sigma2 = new_sigma2 + delta * (val1 - new_mean);
+
+  delta = val2 - new_mean;
+  new_mean = new_mean + delta * 0.333333333333333333333333333;
+  new_sigma2 = new_sigma2 + delta * (val2 - new_mean);
+
+  delta = val3 - new_mean;
+  new_mean = new_mean + delta * 0.25;
+  new_sigma2 = new_sigma2 + delta * (val3 - new_mean);
+
+  return {new_mean, new_sigma2, 4.f};
+}
+
 template<typename T>
 __device__ WelfordDataLN compute_stats(
   const T*  __restrict__ X,
@@ -177,9 +199,16 @@ __device__ WelfordDataLN compute_stats(
     //no tail, we check that N is multiple of vec_size
     for (int i = thrx; i < n_vec_to_read; i += numx) {
       vec_t data = X_vec[i];
-      #pragma unroll
-      for (int ii=0; ii < vec_size; ii++){
-        wd = cuWelfordOnlineSum(static_cast<acc_t>(data.val[ii]), wd);
+      if constexpr (vec_size == 4) {
+        wd = cuWelfordOnlineSum4(static_cast<acc_t>(data.val[0]),
+                                 static_cast<acc_t>(data.val[1]),
+                                 static_cast<acc_t>(data.val[2]),
+                                 static_cast<acc_t>(data.val[3]));
+      } else {
+        #pragma unroll
+        for (int ii=0; ii < vec_size; ii++){
+          wd = cuWelfordOnlineSum(static_cast<acc_t>(data.val[ii]), wd);
+        }
       }
     }
     // intra-warp reduction
