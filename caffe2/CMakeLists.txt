@@ -1369,7 +1369,11 @@ if(USE_ROCM)
     ${ROCM_SOURCE_DIR}/hcc/include
     ${ROCM_SOURCE_DIR}/rocblas/include
     ${ROCM_SOURCE_DIR}/hipsparse/include
-    ${ROCM_SOURCE_DIR}/include/rccl/
+    $ENV{THRUST_PATH}/include
+    $ENV{ROCPRIM_PATH}/include
+    $ENV{HIPCUB_PATH}/include
+    $ENV{ROCRAND_PATH}/include
+
     )
   if(USE_FLASH_ATTENTION)
     target_compile_definitions(torch_hip PRIVATE USE_FLASH_ATTENTION)
