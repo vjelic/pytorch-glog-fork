@@ -127,6 +127,7 @@ WelfordDataLN cuWelfordOnlineSum(
   U delta = val - curr_sum.mean;
   U new_count = curr_sum.count + 1.f;
   U new_mean = curr_sum.mean + delta * (1.f/new_count); //proper division is slow, this is less accurate but noticeably faster
+  // if (threadIdx.x == 0 && blockIdx.x == 0) printf(" new_count = %f, (1.f/new_count) = %f\n", new_count, (1.f/new_count));
   return {new_mean, curr_sum.sigma2 + delta * (val - new_mean), new_count};
 }
 
@@ -138,18 +139,30 @@ WelfordDataLN cuWelfordOnlineSum4(const U val0, const U val1, const U val2, cons
   U new_sigma2 = delta * (val0 - new_mean);
 
   delta = val1 - new_mean;
-  new_mean = new_mean + delta * 0.5;
+  new_mean = new_mean + delta * U(0.5);
   new_sigma2 = new_sigma2 + delta * (val1 - new_mean);
 
   delta = val2 - new_mean;
-  new_mean = new_mean + delta * 0.333333333333333333333333333;
+  new_mean = new_mean + delta * U(0.333333333333333333333333333);
   new_sigma2 = new_sigma2 + delta * (val2 - new_mean);
 
   delta = val3 - new_mean;
-  new_mean = new_mean + delta * 0.25;
+  new_mean = new_mean + delta * U(0.25);
   new_sigma2 = new_sigma2 + delta * (val3 - new_mean);
 
   return {new_mean, new_sigma2, 4.f};
+}
+
+template<typename U> __device__
+WelfordDataLN cuWelfordOnlineSumPrecomp(
+  const U val,
+  const U div_val,
+  const WelfordDataLN& curr_sum)
+{
+  U delta = val - curr_sum.mean;
+  U new_count = curr_sum.count + 1.f;
+  U new_mean = curr_sum.mean + delta * div_val;
+  return {new_mean, curr_sum.sigma2 + delta * (val - new_mean), new_count};
 }
 
 __device__
@@ -162,7 +175,7 @@ WelfordDataLN cuWelfordCombine(
   U count = dataA.count + dataB.count;
   U mean, sigma2;
   if (count > decltype(dataB.count){0}) {
-    auto coef = 1.f/count; //NB we don't use --use_fast_math, but this is emulation, 1./count goes to intrinsic, `* coef` is multiplication, instead of slow fp division
+    auto coef = __builtin_amdgcn_rcpf(count);//1.f/count; //NB we don't use --use_fast_math, but this is emulation, 1./count goes to intrinsic, `* coef` is multiplication, instead of slow fp division
     auto nA = dataA.count * coef;
     auto nB = dataB.count * coef;
     mean = nA*dataA.mean + nB*dataB.mean;
@@ -177,71 +190,73 @@ WelfordDataLN cuWelfordCombine(
 template<typename T>
 __device__ WelfordDataLN compute_stats(
   const T*  __restrict__ X,
+  const T*  __restrict__ div_data,
   const int N,
   float * buf
   ) {
-    //X points to the row to read
-    using vec_t = aligned_vector<T, vec_size>;
-    using acc_t = acc_type<T, true>;
-    const vec_t * X_vec = reinterpret_cast<const vec_t*>(X);
-    const int numx = blockDim.x * blockDim.y;
-    const int thrx = threadIdx.x + threadIdx.y * blockDim.x;
-    const int n_vec_to_read = N/vec_size;
-    WelfordDataLN wd(0.f, 0.f, 0.f);
-    //no tail, we check that N is multiple of vec_size
-    for (int i = thrx; i < n_vec_to_read; i += numx) {
-      vec_t data = X_vec[i];
-      if constexpr (vec_size == 4) {
-        wd = cuWelfordOnlineSum4(static_cast<acc_t>(data.val[0]),
-                                 static_cast<acc_t>(data.val[1]),
-                                 static_cast<acc_t>(data.val[2]),
-                                 static_cast<acc_t>(data.val[3]));
-      } else {
-        #pragma unroll
-        for (int ii=0; ii < vec_size; ii++){
-          wd = cuWelfordOnlineSum(static_cast<acc_t>(data.val[ii]), wd);
-        }
-      }
+  //X points to the row to read
+  using vec_t = aligned_vector<T, vec_size>;
+  using acc_t = acc_type<T, true>;
+  const vec_t * X_vec = reinterpret_cast<const vec_t*>(X);
+  const vec_t * div_data_vec = reinterpret_cast<const vec_t*>(div_data);
+  const int numx = blockDim.x * blockDim.y;
+  const int thrx = threadIdx.x + threadIdx.y * blockDim.x;
+  const int warpIdx = threadIdx.x / C10_WARP_SIZE;
+  const int warps = numx / C10_WARP_SIZE;
+  const int laneIdx = thrx - warpIdx * C10_WARP_SIZE;
+  const int n_vec_to_read = N/vec_size;
+  WelfordDataLN wd(0.f, 0.f, 0.f);
+
+  //no tail, we check that N is multiple of vec_size
+  int count = 0;
+  for (int i = thrx; i < n_vec_to_read; i += numx) {
+    vec_t data = X_vec[i];
+    vec_t div = div_data_vec[count];
+    #pragma unroll
+    for (int ii=0; ii < vec_size; ii++) {
+      // wd = cuWelfordOnlineSumPrecomp(static_cast<acc_t>(data.val[ii]), static_cast<acc_t>(div.val[ii]), wd);
+      wd = cuWelfordOnlineSum(static_cast<acc_t>(data.val[ii]), wd);
     }
-    // intra-warp reduction
-    for (int offset = (C10_WARP_SIZE >> 1); offset > 0; offset >>= 1) {
-      WelfordDataLN wdB{WARP_SHFL_DOWN(wd.mean, offset),
-          WARP_SHFL_DOWN(wd.sigma2, offset), WARP_SHFL_DOWN(wd.count, offset)};
+    count++;
+  }
+  // intra-warp reduction
+  for (int offset = (C10_WARP_SIZE >> 1); offset > 0; offset >>= 1) {
+    WelfordDataLN wdB{WARP_SHFL_DOWN(wd.mean, offset),
+        WARP_SHFL_DOWN(wd.sigma2, offset), WARP_SHFL_DOWN(wd.count, offset)};
+    wd = cuWelfordCombine(wd, wdB);
+  }
+  // threadIdx.x == 0 has correct values for each warp
+  // inter-warp reductions
+  // DORU
+  if (warps < 2)
+    return WelfordDataLN{WARP_SHFL(wd.mean,0), WARP_SHFL(wd.sigma2,0)/float(N), 0.f};
+
+  float * meansigmabuf = buf;
+  float * countbuf = buf + warps;
+  for (int offset = warps/2;  offset > 0;  offset /= 2) {
+    // upper half of warps write to shared
+    if (laneIdx == 0 && warpIdx >= offset && warpIdx < 2*offset) {
+      const int wrt_y = warpIdx - offset;
+      meansigmabuf[2*wrt_y] = wd.mean;
+      meansigmabuf[2*wrt_y+1] = wd.sigma2;
+      countbuf[wrt_y] = wd.count;
+    }
+    __syncthreads();
+    // lower half merges
+    if (laneIdx == 0 && warpIdx < offset) {
+      WelfordDataLN wdB{meansigmabuf[2*warpIdx],
+                      meansigmabuf[2*warpIdx+1],
+                      countbuf[warpIdx]};
       wd = cuWelfordCombine(wd, wdB);
     }
-    // threadIdx.x == 0 has correct values for each warp
-    // inter-warp reductions
-    if (blockDim.y > 1) {
-      float * meansigmabuf = buf;
-      float * countbuf = buf + blockDim.y;
-      for (int offset = blockDim.y/2;  offset > 0;  offset /= 2) {
-        // upper half of warps write to shared
-        if (threadIdx.x == 0 && threadIdx.y >= offset && threadIdx.y < 2*offset) {
-          const int wrt_y = threadIdx.y - offset;
-          meansigmabuf[2*wrt_y] = wd.mean;
-          meansigmabuf[2*wrt_y+1] = wd.sigma2;
-          countbuf[wrt_y] = wd.count;
-        }
-        __syncthreads();
-        // lower half merges
-        if (threadIdx.x == 0 && threadIdx.y < offset) {
-          WelfordDataLN wdB{meansigmabuf[2*threadIdx.y],
-                          meansigmabuf[2*threadIdx.y+1],
-                          countbuf[threadIdx.y]};
-          wd = cuWelfordCombine(wd, wdB);
-        }
-        __syncthreads();
-      }
-      if (threadIdx.x == 0 && threadIdx.y ==0) {
-        meansigmabuf[0] = wd.mean;
-        meansigmabuf[1] = wd.sigma2/float(N);
-      }
-      __syncthreads();
-      return WelfordDataLN{meansigmabuf[0], meansigmabuf[1],0.f};
-
-    } else {
-      return WelfordDataLN{WARP_SHFL(wd.mean,0), WARP_SHFL(wd.sigma2,0)/float(N), 0.f};
-    }
+    __syncthreads();
+  }
+  if (laneIdx == 0 && warpIdx == 0) {
+    meansigmabuf[0] = wd.mean;
+    meansigmabuf[1] = wd.sigma2/float(N);
+  }
+  __syncthreads();
+  return WelfordDataLN{meansigmabuf[0], meansigmabuf[1], 0.f};
 }
 
 
@@ -255,12 +270,13 @@ __device__ __inline__ void vectorized_layer_norm_kernel_impl(
   const  T* beta,
   T_ACC* mean,
   T_ACC* rstd,
-  T* Y){
+  T* Y,
+  T* div_data){
     extern __shared__ float s_data[]; //if we made smem WelfordDataLN type, there would be bank conflicts,
     //as one thread would have to write 3 consecutive floats
     auto i1 = blockIdx.x;
     const T * block_row = X + i1 * N;
-    WelfordDataLN wd = compute_stats(block_row, N, s_data);
+    WelfordDataLN wd = compute_stats(block_row, div_data, N, s_data);
 
     using vec_t = aligned_vector<T, vec_size>;
     const vec_t * X_vec = reinterpret_cast<const vec_t*>(block_row);
@@ -320,7 +336,8 @@ __device__ __inline__ void vectorized_layer_norm_kernel_impl(
   const  T* /*beta*/,
   T_ACC* /*mean*/,
   T_ACC* /*rstd*/,
-  T* /*Y*/){
+  T* /*Y*/,
+  T* /*div_data*/){
     CUDA_KERNEL_ASSERT(false && "doesn't work with double");
   }
 
@@ -334,8 +351,9 @@ __global__ void vectorized_layer_norm_kernel(
   const  T* beta,
   T_ACC* mean,
   T_ACC* rstd,
-  T* Y){
-    vectorized_layer_norm_kernel_impl(N, eps, X, gamma, beta, mean, rstd, Y);
+  T* Y,
+  T* div_data){
+    vectorized_layer_norm_kernel_impl(N, eps, X, gamma, beta, mean, rstd, Y, div_data);
   }
 
 
@@ -758,6 +776,19 @@ __global__ void GammaBetaBackwardCUDAKernel(
   }
 }
 
+template <typename T>
+__global__ void do_divisions_aot_kernel(const int num_divs, T* div_data) {
+  const int thrx = blockDim.x * blockIdx.x + threadIdx.x;
+
+  // Position 0 holds the value of 1 / 1
+  // Position 1 holds the value of 1 / 2 aso.
+  if (thrx < num_divs) {
+    div_data[thrx] = 1.0 / (thrx + 1);
+    // printf(" div_data[%d] = %g\n", thrx, 1.0 / (thrx + 1));
+    // if (thrx < 4) printf(" ===>> %f\n", div_data[thrx]);
+  }
+}
+
 template <typename T, typename T_ACC>
 void launch_vectorized_layer_norm_kernel(
   int N,
@@ -767,18 +798,30 @@ void launch_vectorized_layer_norm_kernel(
   const T* gamma_data,
   const T* beta_data,
   T* Y_data,
+  T* div_data,
   T_ACC* mean_data,
   T_ACC* rstd_data
 ) {
     //constexpr int alignment = 16; //currently unused to make sure float and half results are bw accurate
     auto stream = at::cuda::getCurrentCUDAStream().stream();
     const int warp_size = at::cuda::warp_size();
-    const dim3 threads(warp_size, num_threads() / warp_size, 1);
+
+    // printf("N = %d M = %d\n", N, M);
+    // const int num_divs = N / vec_size;
+    // const dim3 threads4div(num_threads(), 1, 1);
+    // const dim3 blocks4div((num_divs + num_threads() - 1) / num_threads(), 1, 1);
+    // do_divisions_aot_kernel<<<blocks4div, threads4div, 0, stream>>>(num_divs, div_data);
+
+    // DORU
+    const int num_warps_per_block = num_threads() / warp_size;
+    // const dim3 threads(warp_size, num_threads() / warp_size, 1);
+    const dim3 threads(num_threads() * 4, 1, 1);
     const dim3 blocks(M);
-    TORCH_INTERNAL_ASSERT_DEBUG_ONLY(threads.y % 2 == 0 || threads.y == 1);
-    int nshared = threads.y > 1 ? threads.y * 3/2 *sizeof(T_ACC) : 0;
+    TORCH_INTERNAL_ASSERT_DEBUG_ONLY(num_warps_per_block % 2 == 0 || num_warps_per_block == 1);
+    int nshared = num_warps_per_block > 1 ? num_warps_per_block * 3/2 *sizeof(T_ACC) : 0;
+    // printf(" blocks = (%d, %d, %d) threads = (%d, %d, %d)  nshared = %d N = %d\n", blocks.x, blocks.y, blocks.z, threads.x, threads.y, threads.z, nshared, N);
     vectorized_layer_norm_kernel<<<blocks, threads, nshared, stream>>>(N, eps, X_data,
-    gamma_data, beta_data, mean_data, rstd_data, Y_data);
+    gamma_data, beta_data, mean_data, rstd_data, Y_data, div_data);
     C10_CUDA_KERNEL_LAUNCH_CHECK();
 }
 
@@ -816,7 +859,15 @@ void LayerNormKernelImplInternal(
   if ((std::is_same_v<T, float> || std::is_same_v<T, at::Half> || std::is_same_v<T, at::BFloat16>) &&
   N <= static_cast<int64_t>(1ULL << std::numeric_limits<float>::digits) && N % num_vec_elems == 0 &&
   can_vec_X && can_vec_Y && can_vec_gamma && can_vec_beta) {
-    launch_vectorized_layer_norm_kernel(static_cast<int>(N), M, eps, X_data, gamma_data, beta_data, Y_data, mean_data, rstd_data);
+    // Prepare to do divisions ahead of time based on vec_size:
+    const int num_divs = N / vec_size;
+    
+    // Create a tensor to hold the precomputed division values:
+    Tensor div = at::empty({num_divs}, X.options());
+    T* div_data = div.data_ptr<T>();
+
+    //printf
+    launch_vectorized_layer_norm_kernel(static_cast<int>(N), M, eps, X_data, gamma_data, beta_data, Y_data, div_data, mean_data, rstd_data);
   } else {
   cudaStream_t cuda_stream = at::cuda::getCurrentCUDAStream();
   RowwiseMomentsCUDAKernel<T, T_ACC>
