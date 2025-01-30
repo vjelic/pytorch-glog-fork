@@ -1338,10 +1338,6 @@ if(NOT NO_API)
 endif()
 
 if(USE_ROCM)
-  SET(THRUST_PATH $ENV{THRUST_PATH})
-  SET(ROCPRIM_PATH $ENV{ROCPRIM_PATH})
-  SET(HIPCUB_PATH $ENV{HIPCUB_PATH})
-  SET(ROCRAND_PATH $ENV{ROCRAND_PATH})
   target_compile_definitions(torch_hip PRIVATE
     USE_ROCM
     __HIP_PLATFORM_AMD__
@@ -1373,11 +1369,11 @@ if(USE_ROCM)
     ${ROCM_SOURCE_DIR}/hcc/include
     ${ROCM_SOURCE_DIR}/rocblas/include
     ${ROCM_SOURCE_DIR}/hipsparse/include
-    ${ROCM_SOURCE_DIR}/include/rccl/
-    ${THRUST_PATH}/include
-    ${ROCPRIM_PATH}/include
-    ${HIPCUB_PATH}/include
-    ${ROCRAND_PATH}/include
+    $ENV{THRUST_PATH}/include
+    $ENV{ROCPRIM_PATH}/include
+    $ENV{HIPCUB_PATH}/include
+    $ENV{ROCRAND_PATH}/include
+
     )
   if(USE_FLASH_ATTENTION)
     target_compile_definitions(torch_hip PRIVATE USE_FLASH_ATTENTION)
