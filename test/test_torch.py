@@ -3547,6 +3547,7 @@ else:
     @onlyNativeDeviceTypes
     def test_index_add_deterministic(self, device: torch.device) -> None:
         for dim in range(3):
+            #dim = 2
             x, index, src = self._prepare_data_for_index_copy_and_add_deterministic(dim, device)
             alpha = random.random() + 1
             # on CPU it should be deterministic regardless of the deterministic mode
@@ -3556,9 +3557,15 @@ else:
                     y = torch.index_add(x, dim, index, src, alpha=alpha)
                     self.assertEqual(y, y0, atol=0, rtol=0)
 
+            #print(y0.shape)
+            #print(y0[0][1][269])
+            #print(y0[0][1][200:300])
+            #print(y0)
+            #print("=========================================")
             with DeterministicGuard(False):
                 for _ in range(3):
                     y_nd = torch.index_add(x, dim, index, src, alpha=alpha)
+                    #print(y_nd[0][1][200:300])
                     self.assertEqual(y_nd, y0, atol=1e-3, rtol=1e-5)
 
     # FIXME: find a test suite for the put operator

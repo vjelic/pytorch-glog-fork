@@ -182,14 +182,109 @@ __global__ void indexing_backward_kernel_rocm(
 }
 #endif
 
+
+// Small warp kernel
+#define SMALL_WARP 1
 template <typename scalar_t>
 __global__ void indexing_backward_kernel_stride_1(
   const int64_t* sorted_indices, const int64_t* indices, const scalar_t* grad_output, scalar_t* grad_weight,
   int64_t numel, int64_t stride, int64_t stride_before, int64_t outer_dim, bool accumulate) {
   using opmath_t = at::opmath_type<scalar_t>;
 
+  bool first_warp = blockIdx.x == 0 && threadIdx.x < 64 && threadIdx.y == 0;
+
+  // if (first_warp) printf("[BLOCK %d, TID.X = %d TID.Y = %d] First warp idx = %d\n", blockIdx.x, threadIdx.x, threadIdx.y, blockIdx.x * blockDim.y + threadIdx.y);
+
+  // if (first_warp && threadIdx.x == 0) printf("numel = %d, stride = %d, stride_before = %d, outer_dim = %d accumulate = %d\n", numel, stride, stride_before, outer_dim, accumulate);
+
+  // TODO: replace divides by shifts since they are all power of 2.
+  int fullWarpLaneIdx = threadIdx.x % C10_WARP_SIZE;
+  int warpIdx = fullWarpLaneIdx / SMALL_WARP;
+  int laneIdx = fullWarpLaneIdx - warpIdx * SMALL_WARP;
+  int warp_multiplier = C10_WARP_SIZE / SMALL_WARP;
+
   // Number of values processed by each thread (grain size)
-  for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z){
+  for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z) {
+    int64_t idx = blockIdx.x * blockDim.y * warp_multiplier + threadIdx.y * warp_multiplier + warpIdx;
+    int64_t crnt_sorted_idx = sorted_indices[idx];
+
+    // if (first_warp && laneIdx == 0) printf("BLOCK = %d, LANE IDX = %d (threadIdx.x = %d), IDX = %d\n", blockIdx.x, laneIdx, threadIdx.x, idx);
+
+    if ((idx < numel) &&
+        (idx == 0 || crnt_sorted_idx != sorted_indices[idx - 1]))
+    {
+      // Determine the number of duplicates in advance
+      int64_t num_duplicates = 1;
+      while (((idx + num_duplicates) < numel) && (sorted_indices[idx + num_duplicates] == crnt_sorted_idx)) {
+        num_duplicates++;
+      }
+
+      // Continue computing weights
+      const int64_t weight_row = crnt_sorted_idx * stride + z * stride_before;
+      int64_t grad_row = 0;
+      const opmath_t scale = (opmath_t)1.0;
+
+      // if (laneIdx == 0 && weight_row == 2269)
+      //   printf("idx %d has %d duplicates and outputs to weight_row = %d z = %d\n", idx, num_duplicates, weight_row, z);
+
+      // if (first_warp && laneIdx == 0) printf("BLOCK = %d, LANE IDX = %d (threadIdx.x = %d), IDX = %d weight_row= %d crnt_sorted_idx = %d\n", blockIdx.x, laneIdx, threadIdx.x, idx, weight_row, crnt_sorted_idx);
+
+      if (!accumulate) {
+        grad_row = ((int64_t)indices[idx + num_duplicates - 1]) * stride + z * numel * stride;
+        grad_weight[weight_row] =
+          static_cast<scalar_t>(static_cast<opmath_t>(grad_output[grad_row]) * scale);
+      } else {
+        opmath_t gradient = (opmath_t)0.0;
+
+        // int laneIdx = threadIdx.x % C10_WARP_SIZE;
+        int64_t num_warp_passes = num_duplicates / SMALL_WARP;
+        for (int64_t i = 0; i < num_warp_passes; ++i) {
+          grad_row = ((int64_t) indices[idx + i * SMALL_WARP + laneIdx]) * stride + z * numel * stride;
+          gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+        }
+
+        WARP_SYNC();
+        for (int offset = SMALL_WARP / 2; offset > 0; offset /= 2) {
+          // if (num_duplicates > 1) printf("laneIdx =%d offset = %d\n", laneIdx, offset);
+          // 0 1 2 ...           63
+          // 0 1 2 ... 31 0  ... 31
+          // 
+          // if (laneIdx < offset)
+          gradient += WARP_SHFL_DOWN(gradient, offset);
+        }
+        //WARP_SYNC();
+
+        if (laneIdx == 0) {
+          for (int64_t i = num_warp_passes * SMALL_WARP; i < num_duplicates; ++i) {
+            grad_row = ((int64_t) indices[idx + i]) * stride + z * numel * stride;
+            gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+          }
+          // if (first_warp) printf("[BLOCK %d, TID.X = %d TID.Y = %d] idx = %d First warp_multiplier = %d warp warpIdx = %d laneIdx = %d num_duplicates = %d grad_row = %d weight_row=%d\n", idx, blockIdx.x, threadIdx.x, threadIdx.y, warp_multiplier, warpIdx, laneIdx, num_duplicates, grad_row, weight_row);
+
+          grad_weight[weight_row] = static_cast<scalar_t>(static_cast<opmath_t>(grad_weight[weight_row]) + gradient);
+
+          // printf("[BLOCK %d, TID.X = %d TID.Y = %d] grad_weight[%d] = %g\n", blockIdx.x, threadIdx.x, threadIdx.y, weight_row, __bfloat162float(grad_weight[weight_row]));
+        }
+      }
+    }
+  }
+}
+
+/*
+template <typename scalar_t>
+__global__ void indexing_backward_kernel_stride_1(
+  const int64_t* sorted_indices, const int64_t* indices, const scalar_t* grad_output, scalar_t* grad_weight,
+  int64_t numel, int64_t stride, int64_t stride_before, int64_t outer_dim, bool accumulate) {
+  using opmath_t = at::opmath_type<scalar_t>;
+
+  // bool first_warp = blockIdx.x == 0 && threadIdx.x < 64 && threadIdx.y == 0;
+
+  // if (first_warp) printf("[BLOCK %d, TID.X = %d TID.Y = %d] First warp idx = %d\n", blockIdx.x, threadIdx.x, threadIdx.y, blockIdx.x * blockDim.y + threadIdx.y);
+
+  // if (first_warp && threadIdx.x == 0) printf("numel = %d, stride = %d, stride_before = %d, outer_dim = %d accumulate = %d\n", numel, stride, stride_before, outer_dim, accumulate);
+
+  // Number of values processed by each thread (grain size)
+  for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z) {
     int64_t idx = blockIdx.x * blockDim.y + threadIdx.y;
     int64_t crnt_sorted_idx = sorted_indices[idx];
 
@@ -238,6 +333,7 @@ __global__ void indexing_backward_kernel_stride_1(
   }
 }
 
+*/
 template <typename scalar_t>
 __global__ void indexing_backward_kernel_small_stride(
   const int64_t* sorted_indices, const int64_t* indices, const scalar_t* grad_output, scalar_t* grad_weight,
@@ -560,16 +656,22 @@ void index_put_with_sort_kernel(Tensor & self, const c10::List<std::optional<Ten
            std::min<int>(at::cuda::getCurrentDeviceProperties()->maxGridSize[1], ceil_div(sliceSize, (int64_t) (warp_size*UNROLL))),
            std::min(std::max<int>(1,nElemBefore), at::cuda::getCurrentDeviceProperties()->maxGridSize[2]));
       dim3 block(warp_size, indices_per_block);
+      // printf("ORIGINAL indexing_backward_kernel_stride_1 grid = (%d, %d, %d), block = (%d, %d, %d) sliceSize = %d\n", grid.x, grid.y, grid.z, block.x, block.y, block.z, sliceSize);
 
 
       if (sliceSize == 1) {
+        dim3 stride_1_grid(ceil_div(num_indices, (int64_t) (indices_per_block * (warp_size / SMALL_WARP))), grid.y, grid.z);
         // This implementation is faster with high amounts of duplicates but could overflow
         // if FP16 / BF16 is used
+        // for(int i=1; i<num_indices; i++)
+        //   if (sorted_indices.const_data_ptr<int64_t>()[i] == sorted_indices.const_data_ptr<int64_t>()[i-1])
+        //     printf(" Sorted indices at positions %d and %d match! Value = %d\n", i, i-1, sorted_indices.const_data_ptr<int64_t>()[i]);
+        // printf("Calling indexing_backward_kernel_stride_1 grid = (%d, %d, %d), block = (%d, %d, %d)\n", stride_1_grid.x, stride_1_grid.y, stride_1_grid.z, block.x, block.y, block.z);
         AT_DISPATCH_V2(
           expandedValue.scalar_type(),
           "indexing_backward_kernel_stride_1",
           AT_WRAP([&] {
-            indexing_backward_kernel_stride_1<scalar_t><<<grid, block, 0, stream>>>(
+            indexing_backward_kernel_stride_1<scalar_t><<<stride_1_grid, block, 0, stream>>>(
               sorted_indices.const_data_ptr<int64_t>(),
               orig_indices.const_data_ptr<int64_t>(),
               expandedValue.const_data_ptr<scalar_t>(),
@@ -587,6 +689,7 @@ void index_put_with_sort_kernel(Tensor & self, const c10::List<std::optional<Ten
           kHalf,
           kBool,
           kBFloat16);
+        // printf("Done calling indexing_backward_kernel_stride_1\n");
       } else {
         if (sliceSize <= warp_size) {
           AT_DISPATCH_V2(
