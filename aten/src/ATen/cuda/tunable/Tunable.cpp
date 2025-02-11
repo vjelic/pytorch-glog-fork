@@ -412,6 +412,20 @@ void TuningContext::EnableTuning(bool value) {
   }
 }
 
+<<<<<<< HEAD
+=======
+void TuningContext::EnableRecordUntuned(bool value) {
+  record_untuned_enable_ = value;
+  if (value) {
+    TUNABLE_LOG1("Enable Record Untuned for TunableOp");
+  } else {
+    TUNABLE_LOG1("Disable Record Untuned for TunableOp");
+    TUNABLE_LOG1("Closing Untuned GEMM Results File");
+    untuned_file_.close();
+  }
+}
+
+>>>>>>> e97127679e ([rocm6.4_internal_testing] [ROCm][TunableOp] Close offline tuning results file when offline tuning is disabled. (#1889))
 bool TuningContext::IsTuningEnabled() const {
   static const char *env = std::getenv("PYTORCH_TUNABLEOP_TUNING");
   if (env != nullptr && strcmp(env, "0") == 0) {
