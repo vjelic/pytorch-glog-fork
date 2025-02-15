@@ -182,9 +182,603 @@ __global__ void indexing_backward_kernel_rocm(
 }
 #endif
 
+/// Full warp works on idx = 0
+/// sorted_indcies[idx]
+/// 7 7 7 7 7 7 ... 7 x 64 times
+/// dup count for number 7
+/// 32 32 .... 32 x 64 times
+/// Reduction
 
-// Small warp kernel
+
+/// SMALL_WARP = 1
+/// idx: 0 1 2 ... 63 64 ... 127
+/// sorted_indces[idx]
+/// sorted_indces[idx + 64]
+
 #define SMALL_WARP 1
+#define MULTI_WARP 4
+#define SKIP 32
+
+template <typename scalar_t>
+__global__ void indexing_backward_kernel_stride_1(
+  const int64_t* sorted_indices, const int64_t* indices, const scalar_t* grad_output, scalar_t* grad_weight,
+  int64_t numel, int64_t stride, int64_t stride_before, int64_t outer_dim, bool accumulate) {
+  using opmath_t = at::opmath_type<scalar_t>;
+
+  int laneIdx = threadIdx.x % C10_WARP_SIZE;
+
+  const opmath_t scale = (opmath_t)1.0;
+  int64_t grad_row = 0;
+
+  extern __shared__ unsigned char smem[];
+  auto smem_dups_cache = reinterpret_cast<int64_t*>(smem);
+
+  // Each warp gets a different section of the share memory allocation:
+  int smem_offset = threadIdx.y * C10_WARP_SIZE;
+
+  // Number of values processed by each thread (grain size)
+  for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z) {
+    // Init duplicates every time we compute a new set of entries:
+    smem_dups_cache[smem_offset + laneIdx] = 0;
+    WARP_SYNC();
+
+    int64_t base_idx = blockIdx.x * blockDim.y * C10_WARP_SIZE + threadIdx.y * C10_WARP_SIZE;
+    int64_t idx = base_idx + laneIdx;
+
+    // Each lane calculates the number of duplicates:
+    if (idx < numel) {
+      int64_t crnt_sorted_idx = sorted_indices[idx];
+
+      if (idx == 0 || crnt_sorted_idx != sorted_indices[idx - 1]) {
+        // Determine the number of duplicates in advance:
+        int64_t num_duplicates = 1;
+
+        // Lookahead in case there is a large number of duplicates. Once that is done, handle the tail.
+        while ((idx + num_duplicates + SKIP - 1) < numel) {
+          if (sorted_indices[idx + num_duplicates + SKIP - 1] != crnt_sorted_idx) break;
+            num_duplicates += SKIP;
+        }
+        while (((idx + num_duplicates) < numel) && (sorted_indices[idx + num_duplicates] == crnt_sorted_idx)) {
+          num_duplicates++;
+        }
+
+        if (!accumulate) {
+          const int64_t weight_row = crnt_sorted_idx * stride + z * stride_before;
+          grad_row = ((int64_t)indices[idx + num_duplicates - 1]) * stride + z * numel * stride;
+          grad_weight[weight_row] =
+            static_cast<scalar_t>(static_cast<opmath_t>(grad_output[grad_row]) * scale);
+          continue;
+        }
+      
+        // Each lane sequentially handles the duplicate elimination:
+        if (num_duplicates < C10_WARP_SIZE) {
+          opmath_t gradient = (opmath_t)0.0;
+          const int64_t weight_row = crnt_sorted_idx * stride + z * stride_before;
+          for (int64_t i = 0; i < num_duplicates; ++i) {
+            grad_row = ((int64_t) indices[idx + i]) * stride + z * numel * stride;
+            gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+          }
+
+          grad_weight[weight_row] = static_cast<scalar_t>(static_cast<opmath_t>(grad_weight[weight_row]) + gradient);
+        } else {
+          // Add duplicate to the cache:
+          smem_dups_cache[smem_offset + laneIdx] = num_duplicates;
+        }
+      }
+    }
+
+    WARP_SYNC();
+
+    // All lanes in the warp are still active here. Use them all to reduce duplicates when
+    // large number of duplicates are present:
+    for (int subwarp = 0; subwarp < C10_WARP_SIZE; subwarp++) {
+      // All lanes read the shared memory entry for number of duplicates
+      int64_t new_num_duplicates = smem_dups_cache[smem_offset + subwarp];
+
+      // Check if the original sub-warp had duplicates to eliminate, if not skip.
+      if (new_num_duplicates == 0)
+        continue;
+
+      // There are duplicates that need eliminating:
+      int64_t new_idx = base_idx + subwarp;
+      int64_t new_crnt_sorted_idx = sorted_indices[new_idx];
+      const int64_t new_weight_row = new_crnt_sorted_idx * stride + z * stride_before;
+
+      // Result of the reduction will be in this variable:
+      opmath_t gradient = (opmath_t)0.0;
+
+      int64_t num_warp_passes = new_num_duplicates / C10_WARP_SIZE;
+      // Parallel reduction across the array of duplicates using all the lanes in the warp:
+      for (int64_t i = 0; i < num_warp_passes; ++i) {
+        grad_row = ((int64_t) indices[new_idx + i * C10_WARP_SIZE + laneIdx]) * stride + z * numel * stride;
+        gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+      }
+
+      // Reduce across the lanes of the warp:
+      WARP_SYNC();
+      for (int offset = C10_WARP_SIZE / 2; offset > 0; offset /= 2) {
+        gradient += WARP_SHFL_DOWN(gradient, offset);
+      }
+
+      if (laneIdx == 0) {
+        for (int64_t i = num_warp_passes * C10_WARP_SIZE; i < new_num_duplicates; ++i) {
+          grad_row = ((int64_t) indices[new_idx + i]) * stride + z * numel * stride;
+          gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+        }
+
+        grad_weight[new_weight_row] = static_cast<scalar_t>(static_cast<opmath_t>(grad_weight[new_weight_row]) + gradient);
+      }
+    }
+  }
+}
+
+/*
+// Small warp kernel
+// TODO: separate kernel for accumulate case and for non-accumulate case.
+
+template <typename scalar_t>
+__global__ void indexing_backward_kernel_stride_1(
+  const int64_t* sorted_indices, const int64_t* indices, const scalar_t* grad_output, scalar_t* grad_weight,
+  int64_t numel, int64_t stride, int64_t stride_before, int64_t outer_dim, bool accumulate) {
+  using opmath_t = at::opmath_type<scalar_t>;
+
+  int laneIdx = threadIdx.x % C10_WARP_SIZE;
+
+  const opmath_t scale = (opmath_t)1.0;
+  int64_t grad_row = 0;
+
+  extern __shared__ unsigned char smem[];
+  auto smem_dups_cache = reinterpret_cast<int64_t*>(smem);
+
+  // Each warp gets a different section of the share memory allocation:
+  int smem_offset = threadIdx.y * C10_WARP_SIZE;
+
+  // Number of values processed by each thread (grain size)
+  for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z) {
+    // Init duplicates every time we compute a new set of entries:
+    if (accumulate) {
+      smem_dups_cache[smem_offset + laneIdx] = 0;
+    }
+
+    int64_t base_idx = blockIdx.x * blockDim.y * C10_WARP_SIZE + threadIdx.y * C10_WARP_SIZE;
+    int64_t idx = base_idx + laneIdx;
+
+    // Each lane calculates the number of duplicates:
+    if (idx < numel) {
+      int64_t crnt_sorted_idx = sorted_indices[idx];
+
+      if (idx == 0 || crnt_sorted_idx != sorted_indices[idx - 1]) {
+        // Determine the number of duplicates in advance:
+        int64_t num_duplicates = 1;
+
+        // Lookahead in case there is a large number of duplicates. Once that is done, handle the tail.
+        while ((idx + num_duplicates + SKIP - 1) < numel) {
+          if (sorted_indices[idx + num_duplicates + SKIP - 1] != crnt_sorted_idx) break;
+            num_duplicates += SKIP;
+        }
+        while (((idx + num_duplicates) < numel) && (sorted_indices[idx + num_duplicates] == crnt_sorted_idx)) {
+          num_duplicates++;
+        }
+
+        if (!accumulate) {
+          const int64_t weight_row = crnt_sorted_idx * stride + z * stride_before;
+          grad_row = ((int64_t)indices[idx + num_duplicates - 1]) * stride + z * numel * stride;
+          grad_weight[weight_row] =
+            static_cast<scalar_t>(static_cast<opmath_t>(grad_output[grad_row]) * scale);
+          continue;
+        }
+
+        // Each lane sequentially handles the duplicate elimination:
+        if (num_duplicates < C10_WARP_SIZE) {
+          opmath_t gradient = (opmath_t)0.0;
+          const int64_t weight_row = crnt_sorted_idx * stride + z * stride_before;
+          for (int64_t i = 0; i < num_duplicates; ++i) {
+            grad_row = ((int64_t) indices[idx + i]) * stride + z * numel * stride;
+            gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+          }
+
+          grad_weight[weight_row] = static_cast<scalar_t>(static_cast<opmath_t>(grad_weight[weight_row]) + gradient);
+          continue;
+        }
+
+        // Add duplicate to the cache:
+        smem_dups_cache[smem_offset + laneIdx] = num_duplicates;
+      }
+    }
+
+    WARP_SYNC();
+
+    // All lanes in the warp are still active here. Use them all to reduce duplicates when
+    // large number of duplicates are present:
+    for (int subwarp = 0; subwarp < C10_WARP_SIZE; subwarp++) {
+      // All lanes read the shared memory entry for number of duplicates
+      int64_t new_num_duplicates = smem_dups_cache[smem_offset + subwarp];
+
+      // Check if the original sub-warp had duplicates to eliminate, if not skip.
+      if (new_num_duplicates == 0)
+        continue;
+
+      // There are duplicates that need eliminating:
+      int64_t new_idx = base_idx + subwarp;
+      int64_t new_crnt_sorted_idx = sorted_indices[new_idx];
+      const int64_t new_weight_row = new_crnt_sorted_idx * stride + z * stride_before;
+
+      // Result of the reduction will be in this variable:
+      opmath_t gradient = (opmath_t)0.0;
+
+      int64_t num_warp_passes = new_num_duplicates / C10_WARP_SIZE;
+      if (new_num_duplicates >= C10_WARP_SIZE) {
+        // Parallel reduction across the array of duplicates using all the lanes in the warp:
+        for (int64_t i = 0; i < num_warp_passes; ++i) {
+          grad_row = ((int64_t) indices[new_idx + i * C10_WARP_SIZE + laneIdx]) * stride + z * numel * stride;
+          gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+        }
+
+        // Reduce across the lanes of the warp:
+        WARP_SYNC();
+        for (int offset = C10_WARP_SIZE / 2; offset > 0; offset /= 2) {
+          gradient += WARP_SHFL_DOWN(gradient, offset);
+        }
+      }
+
+      if (laneIdx == 0) {
+        for (int64_t i = num_warp_passes * C10_WARP_SIZE; i < new_num_duplicates; ++i) {
+          grad_row = ((int64_t) indices[new_idx + i]) * stride + z * numel * stride;
+          gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+        }
+
+        grad_weight[new_weight_row] = static_cast<scalar_t>(static_cast<opmath_t>(grad_weight[new_weight_row]) + gradient);
+      }
+    }
+  }
+}
+*/
+/*
+template <typename scalar_t>
+__global__ void indexing_backward_kernel_stride_1(
+  const int64_t* sorted_indices, const int64_t* indices, const scalar_t* grad_output, scalar_t* grad_weight,
+  int64_t numel, int64_t stride, int64_t stride_before, int64_t outer_dim, bool accumulate) {
+  using opmath_t = at::opmath_type<scalar_t>;
+
+  int warpIdx = threadIdx.x % C10_WARP_SIZE;
+  int warp_multiplier = C10_WARP_SIZE / SMALL_WARP;
+
+  const opmath_t scale = (opmath_t)1.0;
+  int64_t grad_row = 0;
+
+  extern __shared__ unsigned char smem[];
+  auto smem_dups_cache = reinterpret_cast<int64_t*>(smem);
+
+  // Each warp gets a different section of the share memory allocation:
+  int smem_offset = threadIdx.y * warp_multiplier;
+
+  // Number of values processed by each thread (grain size)
+  for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z) {
+    // Init duplicates every time we compute a new set of entries:
+    smem_dups_cache[smem_offset + warpIdx] = 0;
+
+    int64_t base_idx = blockIdx.x * blockDim.y * warp_multiplier + threadIdx.y * warp_multiplier;
+    int64_t idx = base_idx + warpIdx;
+
+    // Each sub-warp calculates the number of duplicates:
+    if (idx < numel) {
+      // Arrange current and prev index values:
+      int64_t crnt_sorted_idx = sorted_indices[idx];
+
+      // Now we can start eliminating duplicates:
+      if (idx == 0 || crnt_sorted_idx != sorted_indices[idx - 1]) {
+        // Determine the number of duplicates in advance
+        int64_t num_duplicates = 1;
+
+        // Lookahead in case there is a large number of duplicates. Once that is done, handle the tail.
+        while ((idx + num_duplicates + SKIP - 1) < numel) {
+          if (sorted_indices[idx + num_duplicates + SKIP - 1] != crnt_sorted_idx) break;
+            num_duplicates += SKIP;
+        }
+        while (((idx + num_duplicates) < numel) && (sorted_indices[idx + num_duplicates] == crnt_sorted_idx)) {
+          num_duplicates++;
+        }
+
+        if (!accumulate) {
+          const int64_t weight_row = crnt_sorted_idx * stride + z * stride_before;
+          grad_row = ((int64_t)indices[idx + num_duplicates - 1]) * stride + z * numel * stride;
+          grad_weight[weight_row] =
+            static_cast<scalar_t>(static_cast<opmath_t>(grad_output[grad_row]) * scale);
+          continue;
+        }
+
+        if (num_duplicates < C10_WARP_SIZE) {
+          opmath_t gradient = (opmath_t)0.0;
+          const int64_t weight_row = crnt_sorted_idx * stride + z * stride_before;
+          for (int64_t i = 0; i < num_duplicates; ++i) {
+            grad_row = ((int64_t) indices[idx + i]) * stride + z * numel * stride;
+            gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+          }
+
+          grad_weight[weight_row] = static_cast<scalar_t>(static_cast<opmath_t>(grad_weight[weight_row]) + gradient);
+          continue;
+        }
+
+        // Add duplicate to the cache:
+        smem_dups_cache[smem_offset + warpIdx] = num_duplicates;
+      }
+    }
+
+    WARP_SYNC();
+
+    // All lanes in the warp are still active here. Use them all to reduce duplicates:
+    for (int subwarp = 0; subwarp < warp_multiplier; subwarp++) {
+      // All lanes read the shared memory entry for number of duplicates
+      int64_t new_num_duplicates = smem_dups_cache[smem_offset + subwarp];
+
+      // Check if the original sub-warp had duplicates to eliminate, if not skip.
+      if (new_num_duplicates == 0)
+        continue;
+
+      // There are duplicates that need eliminating:
+      int64_t new_idx = base_idx + subwarp;
+      int64_t new_crnt_sorted_idx = sorted_indices[new_idx];
+      const int64_t new_weight_row = new_crnt_sorted_idx * stride + z * stride_before;
+
+      // Result of the reduction will be in this variable:
+      opmath_t gradient = (opmath_t)0.0;
+
+      int64_t num_warp_passes = new_num_duplicates / C10_WARP_SIZE;
+      if (new_num_duplicates >= C10_WARP_SIZE) {
+        // Parallel reduction across the array of duplicates using all the lanes in the warp:
+        for (int64_t i = 0; i < num_warp_passes; ++i) {
+          grad_row = ((int64_t) indices[new_idx + i * C10_WARP_SIZE + warpIdx]) * stride + z * numel * stride;
+          gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+        }
+
+        // Reduce across the lanes of the warp:
+        WARP_SYNC();
+        for (int offset = C10_WARP_SIZE / 2; offset > 0; offset /= 2) {
+          gradient += WARP_SHFL_DOWN(gradient, offset);
+        }
+      }
+
+      if (warpIdx == 0) {
+        for (int64_t i = num_warp_passes * C10_WARP_SIZE; i < new_num_duplicates; ++i) {
+          grad_row = ((int64_t) indices[new_idx + i]) * stride + z * numel * stride;
+          gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+        }
+
+        grad_weight[new_weight_row] = static_cast<scalar_t>(static_cast<opmath_t>(grad_weight[new_weight_row]) + gradient);
+      }
+    }
+  }
+}
+*/
+/*
+template <typename scalar_t>
+__global__ void indexing_backward_kernel_stride_1(
+  const int64_t* sorted_indices, const int64_t* indices, const scalar_t* grad_output, scalar_t* grad_weight,
+  int64_t numel, int64_t stride, int64_t stride_before, int64_t outer_dim, bool accumulate) {
+  using opmath_t = at::opmath_type<scalar_t>;
+
+  // TODO: replace divides by shifts since they are all power of 2.
+  int fullWarpLaneIdx = threadIdx.x % C10_WARP_SIZE;
+  int warpIdx = fullWarpLaneIdx / SMALL_WARP;
+  int laneIdx = fullWarpLaneIdx - warpIdx * SMALL_WARP;
+  int warp_multiplier = C10_WARP_SIZE / SMALL_WARP;
+
+  const opmath_t scale = (opmath_t)1.0;
+  int64_t grad_row = 0;
+
+  extern __shared__ unsigned char smem[];
+  auto smem_dups_cache = reinterpret_cast<int64_t*>(smem);
+
+  // Each warp gets a different section of the share memory allocation:
+  int smem_offset = threadIdx.y * warp_multiplier;
+
+  // Number of values processed by each thread (grain size)
+  for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z) {
+    // Init duplicates every time we compute a new set of entries:
+    if (accumulate && laneIdx == 0) {
+      smem_dups_cache[smem_offset + warpIdx] = 0;
+    }
+
+    int64_t base_idx = blockIdx.x * blockDim.y * warp_multiplier + threadIdx.y * warp_multiplier;
+    int64_t idx = base_idx + warpIdx;
+
+    // Each sub-warp calculates the number of duplicates:
+    if (idx < numel) {
+      // Arrange current and prev index values:
+      int64_t crnt_sorted_idx = sorted_indices[idx];
+
+      // Now we can start eliminating duplicates:
+      if (idx == 0 || crnt_sorted_idx != sorted_indices[idx - 1]) {
+        // Determine the number of duplicates in advance
+        int64_t num_duplicates = 1;
+
+        // lookahead...
+        while ((idx + num_duplicates + SKIP - 1) < numel) {
+          if (sorted_indices[idx + num_duplicates + SKIP - 1] != crnt_sorted_idx) break;
+            num_duplicates += SKIP;
+        }
+        //remainder...
+        while (((idx + num_duplicates) < numel) && (sorted_indices[idx + num_duplicates] == crnt_sorted_idx)) {
+          num_duplicates++;
+        }
+
+        if (!accumulate) {
+          const int64_t weight_row = crnt_sorted_idx * stride + z * stride_before;
+          grad_row = ((int64_t)indices[idx + num_duplicates - 1]) * stride + z * numel * stride;
+          grad_weight[weight_row] =
+            static_cast<scalar_t>(static_cast<opmath_t>(grad_output[grad_row]) * scale);
+          continue;
+        }
+
+        // Add duplicate to the cache:
+        if (laneIdx == 0) {
+          smem_dups_cache[smem_offset + warpIdx] = num_duplicates;
+          // smem_dups_cache[smem_offset + warp_multiplier + warpIdx] = crnt_sorted_idx;
+        }
+      }
+    }
+
+    // TODO: Check if here I need a block level sync or a warp level sync?
+    WARP_SYNC();
+
+    // All lanes in the warp are still active here. Use them all to reduce duplicates:
+
+    for (int subwarp = 0; subwarp < warp_multiplier; subwarp++) {
+      // All lanes read the shared memory entry for number of duplicates
+      int64_t new_num_duplicates = smem_dups_cache[smem_offset + subwarp];
+
+      // Check if the original sub-warp had duplicates to eliminate, if not skip.
+      if (new_num_duplicates == 0)
+        continue;
+
+      // There are duplicates that need eliminating:
+      int64_t new_idx = base_idx + subwarp;
+      int64_t new_crnt_sorted_idx = sorted_indices[new_idx]; //smem_dups_cache[smem_offset + warp_multiplier + subwarp];
+      const int64_t new_weight_row = new_crnt_sorted_idx * stride + z * stride_before;
+
+      // Result of the reduction will be in this variable:
+      opmath_t gradient = (opmath_t)0.0;
+
+      // Parallel reduction across the array of duplicates using all the lanes in the warp:
+      int64_t num_warp_passes = new_num_duplicates / C10_WARP_SIZE;
+      for (int64_t i = 0; i < num_warp_passes; ++i) {
+        grad_row = ((int64_t) indices[new_idx + i * C10_WARP_SIZE + fullWarpLaneIdx]) * stride + z * numel * stride;
+        gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+      }
+
+      // Reduce across the lanes of the warp:
+      WARP_SYNC();
+      for (int offset = C10_WARP_SIZE / 2; offset > 0; offset /= 2) {
+        gradient += WARP_SHFL_DOWN(gradient, offset);
+      }
+
+      if (fullWarpLaneIdx == 0) {
+        for (int64_t i = num_warp_passes * C10_WARP_SIZE; i < new_num_duplicates; ++i) {
+          grad_row = ((int64_t) indices[new_idx + i]) * stride + z * numel * stride;
+          gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+        }
+
+        grad_weight[new_weight_row] = static_cast<scalar_t>(static_cast<opmath_t>(grad_weight[new_weight_row]) + gradient);
+      }
+    }
+  }
+}
+*/
+/*
+template <typename scalar_t>
+__global__ void indexing_backward_kernel_stride_1(
+  const int64_t* sorted_indices, const int64_t* indices, const scalar_t* grad_output, scalar_t* grad_weight,
+  int64_t numel, int64_t stride, int64_t stride_before, int64_t outer_dim, bool accumulate) {
+  using opmath_t = at::opmath_type<scalar_t>;
+
+  // TODO: replace divides by shifts since they are all power of 2.
+  int fullWarpLaneIdx = threadIdx.x % C10_WARP_SIZE;
+  int warpIdx = fullWarpLaneIdx / SMALL_WARP;
+  int laneIdx = fullWarpLaneIdx - warpIdx * SMALL_WARP;
+  int warp_multiplier = C10_WARP_SIZE / SMALL_WARP;
+
+  const opmath_t scale = (opmath_t)1.0;
+  int64_t grad_row = 0;
+
+  extern __shared__ unsigned char smem[];
+  auto smem_dups_cache = reinterpret_cast<int64_t*>(smem);
+
+  // Each warp gets a different section of the share memory allocation:
+  int smem_offset = threadIdx.y * warp_multiplier;
+
+  // Number of values processed by each thread (grain size)
+  for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z) {
+    // Init duplicates every time we compute a new set of entries:
+    if (accumulate && laneIdx == 0) {
+      smem_dups_cache[smem_offset + warpIdx] = 0;
+    }
+
+    int64_t base_idx = blockIdx.x * blockDim.y * warp_multiplier + threadIdx.y * warp_multiplier;
+    int64_t idx = base_idx + warpIdx;
+
+    // Each sub-warp calculates the number of duplicates:
+    if (idx < numel) {
+      // Arrange current and prev index values:
+      int64_t crnt_sorted_idx = sorted_indices[idx];
+
+      // Now we can start eliminating duplicates:
+      if (idx == 0 || crnt_sorted_idx != sorted_indices[idx - 1]) {
+        // Determine the number of duplicates in advance
+        int64_t num_duplicates = 1;
+
+        // lookahead...
+        while ((idx + num_duplicates + SKIP - 1) < numel) {
+          if (sorted_indices[idx + num_duplicates + SKIP - 1] != crnt_sorted_idx) break;
+            num_duplicates += SKIP;
+        }
+        //remainder...
+        while (((idx + num_duplicates) < numel) && (sorted_indices[idx + num_duplicates] == crnt_sorted_idx)) {
+          num_duplicates++;
+        }
+
+        if (!accumulate) {
+          const int64_t weight_row = crnt_sorted_idx * stride + z * stride_before;
+          grad_row = ((int64_t)indices[idx + num_duplicates - 1]) * stride + z * numel * stride;
+          grad_weight[weight_row] =
+            static_cast<scalar_t>(static_cast<opmath_t>(grad_output[grad_row]) * scale);
+          continue;
+        }
+
+        // Add duplicate to the cache:
+        if (laneIdx == 0) {
+          smem_dups_cache[smem_offset + warpIdx] = num_duplicates;
+          // smem_dups_cache[smem_offset + warp_multiplier + warpIdx] = crnt_sorted_idx;
+        }
+      }
+    }
+
+    // TODO: Check if here I need a block level sync or a warp level sync?
+    WARP_SYNC();
+
+    // All lanes in the warp are still active here. Use them all to reduce duplicates:
+
+    for (int subwarp = 0; subwarp < warp_multiplier; subwarp++) {
+      // All lanes read the shared memory entry for number of duplicates
+      int64_t new_num_duplicates = smem_dups_cache[smem_offset + subwarp];
+
+      // Check if the original sub-warp had duplicates to eliminate, if not skip.
+      if (new_num_duplicates == 0)
+        continue;
+
+      // There are duplicates that need eliminating:
+      int64_t new_idx = base_idx + subwarp;
+      int64_t new_crnt_sorted_idx = sorted_indices[new_idx]; //smem_dups_cache[smem_offset + warp_multiplier + subwarp];
+      const int64_t new_weight_row = new_crnt_sorted_idx * stride + z * stride_before;
+
+      // Result of the reduction will be in this variable:
+      opmath_t gradient = (opmath_t)0.0;
+
+      // Parallel reduction across the array of duplicates using all the lanes in the warp:
+      int64_t num_warp_passes = new_num_duplicates / C10_WARP_SIZE;
+      for (int64_t i = 0; i < num_warp_passes; ++i) {
+        grad_row = ((int64_t) indices[new_idx + i * C10_WARP_SIZE + fullWarpLaneIdx]) * stride + z * numel * stride;
+        gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+      }
+
+      // Reduce across the lanes of the warp:
+      WARP_SYNC();
+      for (int offset = C10_WARP_SIZE / 2; offset > 0; offset /= 2) {
+        gradient += WARP_SHFL_DOWN(gradient, offset);
+      }
+
+      if (fullWarpLaneIdx == 0) {
+        for (int64_t i = num_warp_passes * C10_WARP_SIZE; i < new_num_duplicates; ++i) {
+          grad_row = ((int64_t) indices[new_idx + i]) * stride + z * numel * stride;
+          gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+        }
+
+        grad_weight[new_weight_row] = static_cast<scalar_t>(static_cast<opmath_t>(grad_weight[new_weight_row]) + gradient);
+      }
+    }
+  }
+}
+*/
+/*
 template <typename scalar_t>
 __global__ void indexing_backward_kernel_stride_1(
   const int64_t* sorted_indices, const int64_t* indices, const scalar_t* grad_output, scalar_t* grad_weight,
@@ -203,76 +797,486 @@ __global__ void indexing_backward_kernel_stride_1(
   int laneIdx = fullWarpLaneIdx - warpIdx * SMALL_WARP;
   int warp_multiplier = C10_WARP_SIZE / SMALL_WARP;
 
+  const opmath_t scale = (opmath_t)1.0;
+  int64_t grad_row = 0;
+
+  extern __shared__ unsigned char smem[];
+  auto smem_dups_cache = reinterpret_cast<int64_t*>(smem);
+
+  union x2lng { int64_t l[2]; long2 l2; } tmpl2;
+
   // Number of values processed by each thread (grain size)
   for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z) {
-    int64_t idx = blockIdx.x * blockDim.y * warp_multiplier + threadIdx.y * warp_multiplier + warpIdx;
-    int64_t crnt_sorted_idx = sorted_indices[idx];
+    // Instead of 4 warps use 1 warp:
+    for (int j = 0; j < MULTI_WARP; j++) {
+      // Init duplicates every time we compute a new set of entries:
+      if (accumulate && laneIdx == 0) {
+        smem_dups_cache[warpIdx] = 0;
+      }
+      WARP_SYNC();
 
-    // if (first_warp && laneIdx == 0) printf("BLOCK = %d, LANE IDX = %d (threadIdx.x = %d), IDX = %d\n", blockIdx.x, laneIdx, threadIdx.x, idx);
+      int64_t base_idx = blockIdx.x * MULTI_WARP * warp_multiplier + j * warp_multiplier;
+      int64_t idx = base_idx + warpIdx;
 
-    if ((idx < numel) &&
-        (idx == 0 || crnt_sorted_idx != sorted_indices[idx - 1]))
-    {
-      // Determine the number of duplicates in advance
-      int64_t num_duplicates = 1;
-      while (((idx + num_duplicates) < numel) && (sorted_indices[idx + num_duplicates] == crnt_sorted_idx)) {
-        num_duplicates++;
+      if (idx < numel) {
+        // Arrange current and prev index values:
+        int64_t crnt_sorted_idx;
+        int64_t prev_sorted_idx;
+        if (warpIdx == 0 && idx > 0) {
+          tmpl2.l2 = *((long2*)(&sorted_indices[idx - 1]));
+          crnt_sorted_idx = tmpl2.l[1];
+        } else {
+          crnt_sorted_idx = sorted_indices[idx];
+        }
+        prev_sorted_idx = WARP_SHFL_UP(crnt_sorted_idx, SMALL_WARP);
+        if (warpIdx == 0 && idx > 0) {
+          prev_sorted_idx = tmpl2.l[0];
+        }
+
+        // Now we can start eliminating duplicates:
+        if (idx == 0 || crnt_sorted_idx != prev_sorted_idx) {
+          // Determine the number of duplicates in advance
+          int64_t num_duplicates = 1;
+          while (((idx + num_duplicates) < numel) && (sorted_indices[idx + num_duplicates] == crnt_sorted_idx)) {
+            num_duplicates++;
+          }
+
+          if (!accumulate) {
+            const int64_t weight_row = crnt_sorted_idx * stride + z * stride_before;
+            grad_row = ((int64_t)indices[idx + num_duplicates - 1]) * stride + z * numel * stride;
+            grad_weight[weight_row] =
+              static_cast<scalar_t>(static_cast<opmath_t>(grad_output[grad_row]) * scale);
+            continue;
+          }
+
+          // Add duplicate to the cache:
+          if (laneIdx == 0) {
+            smem_dups_cache[warpIdx] = num_duplicates;
+            smem_dups_cache[warp_multiplier + warpIdx] = crnt_sorted_idx;
+          }
+        }
       }
 
-      // Continue computing weights
-      const int64_t weight_row = crnt_sorted_idx * stride + z * stride_before;
-      int64_t grad_row = 0;
-      const opmath_t scale = (opmath_t)1.0;
+      WARP_SYNC();
 
-      // if (laneIdx == 0 && weight_row == 2269)
-      //   printf("idx %d has %d duplicates and outputs to weight_row = %d z = %d\n", idx, num_duplicates, weight_row, z);
+      // All lanes in the warp are still active here. Use them all to reduce duplicates:
 
-      // if (first_warp && laneIdx == 0) printf("BLOCK = %d, LANE IDX = %d (threadIdx.x = %d), IDX = %d weight_row= %d crnt_sorted_idx = %d\n", blockIdx.x, laneIdx, threadIdx.x, idx, weight_row, crnt_sorted_idx);
+      for (int subwarp = 0; subwarp < warp_multiplier; subwarp++) {
+        // All lanes read the shared memory entry for number of duplicates
+        int64_t new_num_duplicates = smem_dups_cache[subwarp];
 
-      if (!accumulate) {
-        grad_row = ((int64_t)indices[idx + num_duplicates - 1]) * stride + z * numel * stride;
-        grad_weight[weight_row] =
-          static_cast<scalar_t>(static_cast<opmath_t>(grad_output[grad_row]) * scale);
-      } else {
+        // Check if the original sub-warp had duplicates to eliminate, if not skip.
+        if (new_num_duplicates == 0)
+          continue;
+
+        // There are duplicates that need eliminating:
+        int64_t new_idx = base_idx + subwarp;
+        int64_t new_crnt_sorted_idx = smem_dups_cache[warp_multiplier + subwarp];
+        const int64_t new_weight_row = new_crnt_sorted_idx * stride + z * stride_before;
+
+        // Result of the reduction will be in this variable:
         opmath_t gradient = (opmath_t)0.0;
 
-        // int laneIdx = threadIdx.x % C10_WARP_SIZE;
-        int64_t num_warp_passes = num_duplicates / SMALL_WARP;
+        // Parallel reduction across the array of duplicates using all the lanes in the warp:
+        int64_t num_warp_passes = new_num_duplicates / C10_WARP_SIZE;
         for (int64_t i = 0; i < num_warp_passes; ++i) {
-          grad_row = ((int64_t) indices[idx + i * SMALL_WARP + laneIdx]) * stride + z * numel * stride;
+          grad_row = ((int64_t) indices[new_idx + i * C10_WARP_SIZE + fullWarpLaneIdx]) * stride + z * numel * stride;
           gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
         }
 
+        // Reduce across the lanes of the warp:
         WARP_SYNC();
-        for (int offset = SMALL_WARP / 2; offset > 0; offset /= 2) {
-          // if (num_duplicates > 1) printf("laneIdx =%d offset = %d\n", laneIdx, offset);
-          // 0 1 2 ...           63
-          // 0 1 2 ... 31 0  ... 31
-          // 
-          // if (laneIdx < offset)
+        for (int offset = C10_WARP_SIZE / 2; offset > 0; offset /= 2) {
           gradient += WARP_SHFL_DOWN(gradient, offset);
         }
-        //WARP_SYNC();
 
-        if (laneIdx == 0) {
-          for (int64_t i = num_warp_passes * SMALL_WARP; i < num_duplicates; ++i) {
-            grad_row = ((int64_t) indices[idx + i]) * stride + z * numel * stride;
+        if (fullWarpLaneIdx == 0) {
+          for (int64_t i = num_warp_passes * C10_WARP_SIZE; i < new_num_duplicates; ++i) {
+            grad_row = ((int64_t) indices[new_idx + i]) * stride + z * numel * stride;
             gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
           }
-          // if (first_warp) printf("[BLOCK %d, TID.X = %d TID.Y = %d] idx = %d First warp_multiplier = %d warp warpIdx = %d laneIdx = %d num_duplicates = %d grad_row = %d weight_row=%d\n", idx, blockIdx.x, threadIdx.x, threadIdx.y, warp_multiplier, warpIdx, laneIdx, num_duplicates, grad_row, weight_row);
 
-          grad_weight[weight_row] = static_cast<scalar_t>(static_cast<opmath_t>(grad_weight[weight_row]) + gradient);
-
-          // printf("[BLOCK %d, TID.X = %d TID.Y = %d] grad_weight[%d] = %g\n", blockIdx.x, threadIdx.x, threadIdx.y, weight_row, __bfloat162float(grad_weight[weight_row]));
+          grad_weight[new_weight_row] = static_cast<scalar_t>(static_cast<opmath_t>(grad_weight[new_weight_row]) + gradient);
         }
       }
     }
   }
 }
-
+*/
 /*
 template <typename scalar_t>
 __global__ void indexing_backward_kernel_stride_1(
+  const int64_t* sorted_indices, const int64_t* indices, const scalar_t* grad_output, scalar_t* grad_weight,
+  int64_t numel, int64_t stride, int64_t stride_before, int64_t outer_dim, bool accumulate) {
+  using opmath_t = at::opmath_type<scalar_t>;
+
+  bool first_warp = blockIdx.x == 0 && threadIdx.x < 64 && threadIdx.y == 0;
+
+  // if (first_warp) printf("[BLOCK %d, TID.X = %d TID.Y = %d] First warp idx = %d\n", blockIdx.x, threadIdx.x, threadIdx.y, blockIdx.x * blockDim.y + threadIdx.y);
+
+  // if (first_warp && threadIdx.x == 0) printf("numel = %d, stride = %d, stride_before = %d, outer_dim = %d accumulate = %d\n", numel, stride, stride_before, outer_dim, accumulate);
+
+  // TODO: replace divides by shifts since they are all power of 2.
+  int fullWarpLaneIdx = threadIdx.x % C10_WARP_SIZE;
+  int warpIdx = fullWarpLaneIdx / SMALL_WARP;
+  int laneIdx = fullWarpLaneIdx - warpIdx * SMALL_WARP;
+  int warp_multiplier = C10_WARP_SIZE / SMALL_WARP;
+
+  const opmath_t scale = (opmath_t)1.0;
+  int64_t grad_row = 0;
+
+  extern __shared__ unsigned char smem[];
+  auto smem_dups_cache = reinterpret_cast<int64_t*>(smem);
+
+  union x2lng { int64_t l[2]; long2 l2; } tmpl2;
+
+  // Number of values processed by each thread (grain size)
+  for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z) {
+    // Instead of 4 warps use 1 warp:
+    for (int j = 0; j < MULTI_WARP; j++) {
+      // Init duplicates every time we compute a new set of entries:
+      if (accumulate && laneIdx == 0) {
+        smem_dups_cache[warpIdx] = 0;
+      }
+      WARP_SYNC();
+
+      int64_t idx = blockIdx.x * MULTI_WARP * warp_multiplier + j * warp_multiplier + warpIdx;
+
+      if (idx < numel) {
+        // Arrange current and prev index values:
+        int64_t crnt_sorted_idx;
+        int64_t prev_sorted_idx;
+        if (warpIdx == 0 && idx > 0) {
+          tmpl2.l2 = *((long2*)(&sorted_indices[idx - 1]));
+          crnt_sorted_idx = tmpl2.l[1];
+        } else {
+          crnt_sorted_idx = sorted_indices[idx];
+        }
+        prev_sorted_idx = WARP_SHFL_UP(crnt_sorted_idx, SMALL_WARP);
+        if (warpIdx == 0 && idx > 0) {
+          prev_sorted_idx = tmpl2.l[0];
+        }
+
+        // Now we can start eliminating duplicates:
+        if (idx == 0 || crnt_sorted_idx != prev_sorted_idx) {
+          // Determine the number of duplicates in advance
+          int64_t num_duplicates = 1;
+          while (((idx + num_duplicates) < numel) && (sorted_indices[idx + num_duplicates] == crnt_sorted_idx)) {
+            num_duplicates++;
+          }
+
+          if (!accumulate) {
+            const int64_t weight_row = crnt_sorted_idx * stride + z * stride_before;
+            grad_row = ((int64_t)indices[idx + num_duplicates - 1]) * stride + z * numel * stride;
+            grad_weight[weight_row] =
+              static_cast<scalar_t>(static_cast<opmath_t>(grad_output[grad_row]) * scale);
+            continue;
+          }
+
+          // Add duplicate to the cache:
+          if (laneIdx == 0) {
+            smem_dups_cache[warpIdx] = num_duplicates;
+          }
+        }
+      }
+      
+      WARP_SYNC();
+
+      // All lanes in the warp are still active here. Use them all to reduce duplicates:
+
+      for (int subwarp = 0; subwarp < warp_multiplier; subwarp++) {
+        // All lanes read the shared memory entry for number of duplicates
+        int64_t new_num_duplicates = smem_dups_cache[subwarp];
+
+        // Check if the original sub-warp had duplicates to eliminate, if not skip.
+        if (new_num_duplicates == 0)
+          continue;
+
+        // There are duplicates that need eliminating:
+        int64_t new_idx = blockIdx.x * MULTI_WARP * warp_multiplier + j * warp_multiplier + subwarp;
+        int64_t new_crnt_sorted_idx = sorted_indices[new_idx];
+        const int64_t new_weight_row = new_crnt_sorted_idx * stride + z * stride_before;
+
+        // Result of the reduction will be in this variable:
+        opmath_t gradient = (opmath_t)0.0;
+
+        // Parallel reduction across the array of duplicates using all the lanes in the warp:
+        int64_t num_warp_passes = new_num_duplicates / C10_WARP_SIZE;
+        for (int64_t i = 0; i < num_warp_passes; ++i) {
+          grad_row = ((int64_t) indices[new_idx + i * C10_WARP_SIZE + fullWarpLaneIdx]) * stride + z * numel * stride;
+          gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+        }
+
+        // Reduce across the lanes of the warp:
+        WARP_SYNC();
+        for (int offset = C10_WARP_SIZE / 2; offset > 0; offset /= 2) {
+          gradient += WARP_SHFL_DOWN(gradient, offset);
+        }
+
+        if (fullWarpLaneIdx == 0) {
+          for (int64_t i = num_warp_passes * C10_WARP_SIZE; i < new_num_duplicates; ++i) {
+            grad_row = ((int64_t) indices[new_idx + i]) * stride + z * numel * stride;
+            gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+          }
+
+          grad_weight[new_weight_row] = static_cast<scalar_t>(static_cast<opmath_t>(grad_weight[new_weight_row]) + gradient);
+        }
+      }
+    }
+  }
+}
+*/
+/*
+template <typename scalar_t>
+__global__ void indexing_backward_kernel_stride_1(
+  const int64_t* sorted_indices, const int64_t* indices, const scalar_t* grad_output, scalar_t* grad_weight,
+  int64_t numel, int64_t stride, int64_t stride_before, int64_t outer_dim, bool accumulate) {
+  using opmath_t = at::opmath_type<scalar_t>;
+
+  bool first_warp = blockIdx.x == 0 && threadIdx.x < 64 && threadIdx.y == 0;
+
+  // if (first_warp) printf("[BLOCK %d, TID.X = %d TID.Y = %d] First warp idx = %d\n", blockIdx.x, threadIdx.x, threadIdx.y, blockIdx.x * blockDim.y + threadIdx.y);
+
+  // if (first_warp && threadIdx.x == 0) printf("numel = %d, stride = %d, stride_before = %d, outer_dim = %d accumulate = %d\n", numel, stride, stride_before, outer_dim, accumulate);
+
+  // TODO: replace divides by shifts since they are all power of 2.
+  int fullWarpLaneIdx = threadIdx.x % C10_WARP_SIZE;
+  int warpIdx = fullWarpLaneIdx / SMALL_WARP;
+  int laneIdx = fullWarpLaneIdx - warpIdx * SMALL_WARP;
+  int warp_multiplier = C10_WARP_SIZE / SMALL_WARP;
+
+  union x2lng { int64_t l[2]; long2 l2; } tmpl2;
+
+  // Number of values processed by each thread (grain size)
+  for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z) {
+    // Instead of 4 warps use 1 warp:
+    for(int j = 0; j < MULTI_WARP; j++) {
+      // blockDim.y == 4
+      // threadIdx.y
+      int64_t idx = blockIdx.x * MULTI_WARP * warp_multiplier + j * warp_multiplier + warpIdx;
+      // int64_t prev_sorted_idx = WARP_SHFL_UP(crnt_sorted_idx, SMALL_WARP);
+      // if (warpIdx == 0)
+      //   prev_sorted_idx = sorted_indices[idx - 1];
+
+      // if (first_warp && laneIdx == 0) printf("BLOCK = %d, LANE IDX = %d (threadIdx.x = %d), IDX = %d\n", blockIdx.x, laneIdx, threadIdx.x, idx);
+
+      // if ((idx < numel) &&
+      //     (idx == 0 || crnt_sorted_idx != sorted_indices[idx - 1]))
+      // if ((idx < numel) &&
+      //     (idx == 0 || crnt_sorted_idx != prev_sorted_idx))
+      if (idx < numel)
+      {
+        // Arrange current and prev index values:
+        int64_t crnt_sorted_idx;
+        int64_t prev_sorted_idx;
+        if (warpIdx == 0 && idx > 0) {
+          tmpl2.l2 = *((long2*)(&sorted_indices[idx - 1]));
+          crnt_sorted_idx = tmpl2.l[1];
+          // prev_sorted_idx = tmpl2.l[0];
+        } else {
+          crnt_sorted_idx = sorted_indices[idx];
+        }
+        // WARP_SYNC();
+        prev_sorted_idx = WARP_SHFL_UP(crnt_sorted_idx, SMALL_WARP);
+        if (warpIdx == 0 && idx > 0) {
+          prev_sorted_idx = tmpl2.l[0];
+        }
+        // WARP_SYNC();
+        // if (first_warp) {
+        //   if (crnt_sorted_idx != sorted_indices[idx])
+        //     printf("CURRENT INDEX IS WRONG!!! [TID = %d laneIDX = %d, idx = %d] crnt_sorted_idx = %d AND IT SHOULD BE %d\n", threadIdx.x, laneIdx, idx, crnt_sorted_idx, sorted_indices[idx]);
+        // }
+          // printf("[TID = %d laneIdx = %d idx = %d] prev_sorted_idx = %d crnt_sorted_idx = %d\n", threadIdx.x, laneIdx, idx, prev_sorted_idx, crnt_sorted_idx);
+        // WARP_SYNC();
+
+        // Now we can start eliminating duplicates:
+        if (idx == 0 || crnt_sorted_idx != prev_sorted_idx)
+        {
+
+          // if (idx > 0 && prev_sorted_idx != sorted_indices[idx - 1]) {
+          //   printf("THIS IS WRONG!!!! [TID = %d laneIDX = %d, idx = %d THEN = %d] prev_sorted_idx = %d, crnt_sorted_idx = %d sorted_indices[idx - 1] = %d\n", threadIdx.x, laneIdx, idx, isThen, prev_sorted_idx, crnt_sorted_idx, sorted_indices[idx - 1]);
+          // }
+          // Determine the number of duplicates in advance
+          int64_t num_duplicates = 1;
+          while (((idx + num_duplicates) < numel) && (sorted_indices[idx + num_duplicates] == crnt_sorted_idx)) {
+            num_duplicates++;
+          }
+
+          // Continue computing weights
+          const int64_t weight_row = crnt_sorted_idx * stride + z * stride_before;
+          int64_t grad_row = 0;
+          const opmath_t scale = (opmath_t)1.0;
+
+          // if (laneIdx == 0 && weight_row == 2269)
+          //   printf("idx %d has %d duplicates and outputs to weight_row = %d z = %d\n", idx, num_duplicates, weight_row, z);
+
+          // if (first_warp && laneIdx == 0) printf("BLOCK = %d, LANE IDX = %d (threadIdx.x = %d), IDX = %d weight_row= %d crnt_sorted_idx = %d\n", blockIdx.x, laneIdx, threadIdx.x, idx, weight_row, crnt_sorted_idx);
+
+          if (!accumulate) {
+            grad_row = ((int64_t)indices[idx + num_duplicates - 1]) * stride + z * numel * stride;
+            grad_weight[weight_row] =
+              static_cast<scalar_t>(static_cast<opmath_t>(grad_output[grad_row]) * scale);
+          } else {
+            opmath_t gradient = (opmath_t)0.0;
+
+            int64_t num_warp_passes = num_duplicates / SMALL_WARP;
+            for (int64_t i = 0; i < num_warp_passes; ++i) {
+              grad_row = ((int64_t) indices[idx + i * SMALL_WARP + laneIdx]) * stride + z * numel * stride;
+              gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+            }
+
+            WARP_SYNC();
+            for (int offset = SMALL_WARP / 2; offset > 0; offset /= 2) {
+              gradient += WARP_SHFL_DOWN(gradient, offset);
+            }
+
+            if (laneIdx == 0) {
+              for (int64_t i = num_warp_passes * SMALL_WARP; i < num_duplicates; ++i) {
+                grad_row = ((int64_t) indices[idx + i]) * stride + z * numel * stride;
+                gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+              }
+              // if (first_warp) printf("[BLOCK %d, TID.X = %d TID.Y = %d] idx = %d First warp_multiplier = %d warp warpIdx = %d laneIdx = %d num_duplicates = %d grad_row = %d weight_row=%d\n", idx, blockIdx.x, threadIdx.x, threadIdx.y, warp_multiplier, warpIdx, laneIdx, num_duplicates, grad_row, weight_row);
+
+              grad_weight[weight_row] = static_cast<scalar_t>(static_cast<opmath_t>(grad_weight[weight_row]) + gradient);
+
+              // printf("[BLOCK %d, TID.X = %d TID.Y = %d] grad_weight[%d] = %g\n", blockIdx.x, threadIdx.x, threadIdx.y, weight_row, __bfloat162float(grad_weight[weight_row]));
+            }
+          }
+        }
+      }
+    }
+  }
+}
+*/
+
+
+/*
+//WORK!!!! DORU!!!
+template <typename scalar_t>
+__global__ void indexing_backward_kernel_stride_1(
+  const int64_t* sorted_indices, const int64_t* indices, const scalar_t* grad_output, scalar_t* grad_weight,
+  int64_t numel, int64_t stride, int64_t stride_before, int64_t outer_dim, bool accumulate) {
+  using opmath_t = at::opmath_type<scalar_t>;
+
+  bool first_warp = blockIdx.x == 0 && threadIdx.x < 64 && threadIdx.y == 0;
+
+  // if (first_warp) printf("[BLOCK %d, TID.X = %d TID.Y = %d] First warp idx = %d\n", blockIdx.x, threadIdx.x, threadIdx.y, blockIdx.x * blockDim.y + threadIdx.y);
+
+  // if (first_warp && threadIdx.x == 0) printf("numel = %d, stride = %d, stride_before = %d, outer_dim = %d accumulate = %d\n", numel, stride, stride_before, outer_dim, accumulate);
+
+  // TODO: replace divides by shifts since they are all power of 2.
+  int fullWarpLaneIdx = threadIdx.x % C10_WARP_SIZE;
+  int warpIdx = fullWarpLaneIdx / SMALL_WARP;
+  int laneIdx = fullWarpLaneIdx - warpIdx * SMALL_WARP;
+  int warp_multiplier = C10_WARP_SIZE / SMALL_WARP;
+
+  // union x2lng { int64_t l[2]; long2 l2; } tmpl2;
+
+  // Number of values processed by each thread (grain size)
+  for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z) {
+    int64_t idx = blockIdx.x * blockDim.y * warp_multiplier + threadIdx.y * warp_multiplier + warpIdx;
+
+    // int64_t prev_sorted_idx = WARP_SHFL_UP(crnt_sorted_idx, SMALL_WARP);
+    // if (warpIdx == 0)
+    //   prev_sorted_idx = sorted_indices[idx - 1];
+
+    // if (first_warp && laneIdx == 0) printf("BLOCK = %d, LANE IDX = %d (threadIdx.x = %d), IDX = %d\n", blockIdx.x, laneIdx, threadIdx.x, idx);
+
+    // if ((idx < numel) &&
+    //     (idx == 0 || crnt_sorted_idx != sorted_indices[idx - 1]))
+    // if ((idx < numel) &&
+    //     (idx == 0 || crnt_sorted_idx != prev_sorted_idx))
+    if (idx < numel)
+    {
+      // Arrange current and prev index values:
+      int64_t crnt_sorted_idx = sorted_indices[idx];
+      // int64_t prev_sorted_idx;
+      // if (warpIdx == 0 && idx > 0) {
+      //   tmpl2.l2 = *((long2*)(&sorted_indices[idx - 1]));
+      //   crnt_sorted_idx = tmpl2.l[1];
+      //   // prev_sorted_idx = tmpl2.l[0];
+      // } else {
+      //   crnt_sorted_idx = sorted_indices[idx];
+      // }
+      // // WARP_SYNC();
+      // prev_sorted_idx = WARP_SHFL_UP(crnt_sorted_idx, SMALL_WARP);
+      // if (warpIdx == 0 && idx > 0) {
+      //   prev_sorted_idx = tmpl2.l[0];
+      // }
+      // WARP_SYNC();
+      // if (first_warp) {
+      //   if (crnt_sorted_idx != sorted_indices[idx])
+      //     printf("CURRENT INDEX IS WRONG!!! [TID = %d laneIDX = %d, idx = %d] crnt_sorted_idx = %d AND IT SHOULD BE %d\n", threadIdx.x, laneIdx, idx, crnt_sorted_idx, sorted_indices[idx]);
+      // }
+        // printf("[TID = %d laneIdx = %d idx = %d] prev_sorted_idx = %d crnt_sorted_idx = %d\n", threadIdx.x, laneIdx, idx, prev_sorted_idx, crnt_sorted_idx);
+      // WARP_SYNC();
+
+      // Now we can start eliminating duplicates:
+      if (idx == 0 || crnt_sorted_idx != sorted_indices[idx - 1])
+      {
+
+        // if (idx > 0 && prev_sorted_idx != sorted_indices[idx - 1]) {
+        //   printf("THIS IS WRONG!!!! [TID = %d laneIDX = %d, idx = %d THEN = %d] prev_sorted_idx = %d, crnt_sorted_idx = %d sorted_indices[idx - 1] = %d\n", threadIdx.x, laneIdx, idx, isThen, prev_sorted_idx, crnt_sorted_idx, sorted_indices[idx - 1]);
+        // }
+        // Determine the number of duplicates in advance
+        int64_t num_duplicates = 1;
+        // lookahead...
+        while ((idx + num_duplicates + SKIP - 1) < numel) {
+          if (sorted_indices[idx + num_duplicates + SKIP - 1] != crnt_sorted_idx) break;
+            num_duplicates += SKIP;
+        }
+        // remainder...
+        while (((idx + num_duplicates) < numel) && (sorted_indices[idx + num_duplicates] == crnt_sorted_idx)) {
+          num_duplicates++;
+        }
+
+        // Continue computing weights
+        const int64_t weight_row = crnt_sorted_idx * stride + z * stride_before;
+        int64_t grad_row = 0;
+        const opmath_t scale = (opmath_t)1.0;
+
+        // if (laneIdx == 0 && weight_row == 2269)
+        //   printf("idx %d has %d duplicates and outputs to weight_row = %d z = %d\n", idx, num_duplicates, weight_row, z);
+
+        // if (first_warp && laneIdx == 0) printf("BLOCK = %d, LANE IDX = %d (threadIdx.x = %d), IDX = %d weight_row= %d crnt_sorted_idx = %d\n", blockIdx.x, laneIdx, threadIdx.x, idx, weight_row, crnt_sorted_idx);
+
+        if (!accumulate) {
+          grad_row = ((int64_t)indices[idx + num_duplicates - 1]) * stride + z * numel * stride;
+          grad_weight[weight_row] =
+            static_cast<scalar_t>(static_cast<opmath_t>(grad_output[grad_row]) * scale);
+        } else {
+          opmath_t gradient = (opmath_t)0.0;
+
+          int64_t num_warp_passes = num_duplicates / SMALL_WARP;
+          for (int64_t i = 0; i < num_warp_passes; ++i) {
+            grad_row = ((int64_t) indices[idx + i * SMALL_WARP + laneIdx]) * stride + z * numel * stride;
+            gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+          }
+
+          WARP_SYNC();
+          for (int offset = SMALL_WARP / 2; offset > 0; offset /= 2) {
+            gradient += WARP_SHFL_DOWN(gradient, offset);
+          }
+
+          if (laneIdx == 0) {
+            for (int64_t i = num_warp_passes * SMALL_WARP; i < num_duplicates; ++i) {
+              grad_row = ((int64_t) indices[idx + i]) * stride + z * numel * stride;
+              gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+            }
+            // if (first_warp) printf("[BLOCK %d, TID.X = %d TID.Y = %d] idx = %d First warp_multiplier = %d warp warpIdx = %d laneIdx = %d num_duplicates = %d grad_row = %d weight_row=%d\n", idx, blockIdx.x, threadIdx.x, threadIdx.y, warp_multiplier, warpIdx, laneIdx, num_duplicates, grad_row, weight_row);
+
+            grad_weight[weight_row] = static_cast<scalar_t>(static_cast<opmath_t>(grad_weight[weight_row]) + gradient);
+
+            // printf("[BLOCK %d, TID.X = %d TID.Y = %d] grad_weight[%d] = %g\n", blockIdx.x, threadIdx.x, threadIdx.y, weight_row, __bfloat162float(grad_weight[weight_row]));
+          }
+        }
+      }
+    }
+  }
+}
+*/
+template <typename scalar_t>
+__global__ void indexing_backward_kernel_stride_1_old(
   const int64_t* sorted_indices, const int64_t* indices, const scalar_t* grad_output, scalar_t* grad_weight,
   int64_t numel, int64_t stride, int64_t stride_before, int64_t outer_dim, bool accumulate) {
   using opmath_t = at::opmath_type<scalar_t>;
@@ -311,6 +1315,7 @@ __global__ void indexing_backward_kernel_stride_1(
 
         int laneIdx = threadIdx.x % C10_WARP_SIZE;
         int64_t num_warp_passes = num_duplicates / C10_WARP_SIZE;
+        if (num_warp_passes > 0) printf("num_warp_passes = %d\n", num_warp_passes);
         for (int64_t i = 0; i < num_warp_passes; ++i) {
             grad_row = ((int64_t) indices[idx + i * C10_WARP_SIZE + laneIdx]) * stride + z * numel * stride;
             gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
@@ -333,7 +1338,6 @@ __global__ void indexing_backward_kernel_stride_1(
   }
 }
 
-*/
 template <typename scalar_t>
 __global__ void indexing_backward_kernel_small_stride(
   const int64_t* sorted_indices, const int64_t* indices, const scalar_t* grad_output, scalar_t* grad_weight,
@@ -660,36 +1664,76 @@ void index_put_with_sort_kernel(Tensor & self, const c10::List<std::optional<Ten
 
 
       if (sliceSize == 1) {
-        dim3 stride_1_grid(ceil_div(num_indices, (int64_t) (indices_per_block * (warp_size / SMALL_WARP))), grid.y, grid.z);
+        // dim3 new_block_size(warp_size, (int) indices_per_block / MULTI_WARP);
+
         // This implementation is faster with high amounts of duplicates but could overflow
         // if FP16 / BF16 is used
         // for(int i=1; i<num_indices; i++)
         //   if (sorted_indices.const_data_ptr<int64_t>()[i] == sorted_indices.const_data_ptr<int64_t>()[i-1])
         //     printf(" Sorted indices at positions %d and %d match! Value = %d\n", i, i-1, sorted_indices.const_data_ptr<int64_t>()[i]);
-        // printf("Calling indexing_backward_kernel_stride_1 grid = (%d, %d, %d), block = (%d, %d, %d)\n", stride_1_grid.x, stride_1_grid.y, stride_1_grid.z, block.x, block.y, block.z);
-        AT_DISPATCH_V2(
-          expandedValue.scalar_type(),
-          "indexing_backward_kernel_stride_1",
-          AT_WRAP([&] {
-            indexing_backward_kernel_stride_1<scalar_t><<<stride_1_grid, block, 0, stream>>>(
-              sorted_indices.const_data_ptr<int64_t>(),
-              orig_indices.const_data_ptr<int64_t>(),
-              expandedValue.const_data_ptr<scalar_t>(),
-              src_.mutable_data_ptr<scalar_t>(),
-              num_indices,
-              sliceSize,
-              strideBefore,
-              nElemBefore,
-              accumulate);
-            C10_CUDA_KERNEL_LAUNCH_CHECK();
-          }),
-          AT_EXPAND(AT_ALL_TYPES_AND_COMPLEX),
-          AT_EXPAND(AT_FLOAT8_TYPES),
-          kComplexHalf,
-          kHalf,
-          kBool,
-          kBFloat16);
-        // printf("Done calling indexing_backward_kernel_stride_1\n");
+        // printf("Calling indexing_backward_kernel_stride_1 grid = (%d, %d, %d), block = (%d, %d, %d) accumulate = %d\n", stride_1_grid.x, stride_1_grid.y, stride_1_grid.z, block.x, block.y, block.z, accumulate);
+        
+        // The size of the shared memory needs to be 1 int (i.e. the number of duplicates) per sub-warp.
+        // warp_size / SMALL_WARP
+        // size_t smem_dups_size = indices_per_block * 2 * (warp_size / SMALL_WARP) * sizeof(int64_t);
+        // size_t smem_dups_size = indices_per_block * (warp_size / SMALL_WARP) * sizeof(int64_t);
+
+        // Shared memory to hold the number of duplicates for a value in the sorted array:
+        // if (accumulate) {
+          dim3 stride_1_grid(ceil_div(num_indices, (int64_t) (indices_per_block * warp_size)), grid.y, grid.z);
+          // dim3 stride_1_grid(ceil_div(num_indices, (int64_t) (indices_per_block * (warp_size / SMALL_WARP))), grid.y, grid.z);
+          size_t smem_dups_size = indices_per_block * warp_size * sizeof(int64_t);
+          // printf("Calling indexing_backward_kernel_stride_1 grid = (%d, %d, %d), block = (%d, %d, %d) accumulate = %d num_indices = %d\n", stride_1_grid.x, stride_1_grid.y, stride_1_grid.z, block.x, block.y, block.z, accumulate, num_indices);
+
+          // printf("Calling indexing_backward_kernel_stride_1 grid = (%d, %d, %d), block = (%d, %d, %d) accumulate = %d num_indices = %d\n", grid.x, grid.y, grid.z, block.x, block.y, block.z, accumulate, num_indices);
+
+
+          AT_DISPATCH_V2(
+            expandedValue.scalar_type(),
+            "indexing_backward_kernel_stride_1",
+            AT_WRAP([&] {
+              indexing_backward_kernel_stride_1<scalar_t><<<stride_1_grid, block, smem_dups_size, stream>>>(
+                sorted_indices.const_data_ptr<int64_t>(),
+                orig_indices.const_data_ptr<int64_t>(),
+                expandedValue.const_data_ptr<scalar_t>(),
+                src_.mutable_data_ptr<scalar_t>(),
+                num_indices,
+                sliceSize,
+                strideBefore,
+                nElemBefore,
+                accumulate);
+              C10_CUDA_KERNEL_LAUNCH_CHECK();
+            }),
+            AT_EXPAND(AT_ALL_TYPES_AND_COMPLEX),
+            AT_EXPAND(AT_FLOAT8_TYPES),
+            kComplexHalf,
+            kHalf,
+            kBool,
+            kBFloat16);
+        // } else {
+          // AT_DISPATCH_V2(
+          //   expandedValue.scalar_type(),
+          //   "indexing_backward_kernel_stride_1_old",
+          //   AT_WRAP([&] {
+          //     indexing_backward_kernel_stride_1_old<scalar_t><<<grid, block, 0, stream>>>(
+          //       sorted_indices.const_data_ptr<int64_t>(),
+          //       orig_indices.const_data_ptr<int64_t>(),
+          //       expandedValue.const_data_ptr<scalar_t>(),
+          //       src_.mutable_data_ptr<scalar_t>(),
+          //       num_indices,
+          //       sliceSize,
+          //       strideBefore,
+          //       nElemBefore,
+          //       accumulate);
+          //     C10_CUDA_KERNEL_LAUNCH_CHECK();
+          //   }),
+          //   AT_EXPAND(AT_ALL_TYPES_AND_COMPLEX),
+          //   AT_EXPAND(AT_FLOAT8_TYPES),
+          //   kComplexHalf,
+          //   kHalf,
+          //   kBool,
+          //   kBFloat16);
+        // }
       } else {
         if (sliceSize <= warp_size) {
           AT_DISPATCH_V2(
