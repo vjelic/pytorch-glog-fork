@@ -47,6 +47,9 @@ inline char BlasOpToString(BlasOp op) {
 namespace detail {
 
 static bool NumericalCheck(ScalarType dtype, void* c, void* other_c, int64_t size) {
+  // NumericalCheck uses an element-wise tolerance check
+  // TODO?: Euclidean norm with a relative tolerance might be more numerically stable
+  //        across floating point precisions and dimensionality.
   auto options = at::TensorOptions().dtype(dtype).device(at::kCUDA);
   // comparison done as 1D tensor
   at::Tensor ref = at::from_blob(c,       {size}, options);
@@ -65,7 +68,7 @@ static bool NumericalCheck(ScalarType dtype, void* c, void* other_c, int64_t siz
       }
     }
   }
-  if (last_succeed_atol == 1) {
+  if (last_succeed_rtol == 1e-1) {  // Probably at the limit of FP8 data type
     return false;
   }
   else {
