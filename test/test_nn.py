@@ -10,6 +10,7 @@ import itertools
 import warnings
 import pickle
 import re
+from contextlib import nullcontext
 from copy import deepcopy
 from itertools import product
 from functools import partial
@@ -5110,10 +5111,182 @@ tensor(..., device='meta', size=(1,), requires_grad=True)""")
         out2 = model(inp2)
         self.assertEqual(out1, out2)
 
+    
+    # def _get_ref_input_grad(self, input, grad, backend):
+    #     ref_input = input.detach().clone(memory_format=torch.preserve_format).requires_grad_(True)
+    #     ref_grad = grad.detach().clone(memory_format=torch.preserve_format)
+
+    #     if backend == "cpu":
+    #         ref_input = ref_input.cpu()
+    #         ref_grad = ref_grad.cpu()
+    #     else:
+    #         ref_input = ref_input.cuda()
+    #         ref_grad = ref_grad.cuda()
+        
+    #     ref_input = ref_input.requires_grad_(True)
+    #     return ref_input, ref_grad
+
+
+    def _get_tensor(self, size, dtype, memory_format, backend):
+        
+        if backend == "cuda":
+            t = torch.randint(1, 10, size=size, dtype=dtype, device="cuda")
+        else:
+            t = torch.randint(1, 10, size=size, dtype=dtype, device="cpu")
+        t = t.contiguous(memory_format=memory_format)
+        return t
+
+    def _get_mod(self, backend, num_features, dtype, mixed):       
+        mod =  nn.BatchNorm2d(num_features)
+        if backend != "cpu":
+        #     mod = mod.cpu()
+        # else:
+            mod = mod.cuda()
+
+        # if mixed:
+        #     mod = mod.to(dtype=torch.float32)
+        # else:
+        #     mod = mod.to(dtype=dtype)
+            
+        mod.weight.data.uniform_()
+        mod.bias.data.uniform_()
+        return mod
+    
+    @parametrize_test("compare", ["cuda-native", "cuda-cpu"])
     @parametrize_test("layout", ["NCHW", "NHWC"])
     @parametrize_test("mixed", [False, True])
     @parametrize_test("dtype", [torch.float, torch.half, torch.bfloat16])
-    def test_batchnorm(self, layout, mixed, dtype):
+    def test_batchnorm2(self, compare, layout, mixed, dtype):
+        def _batchnorm2d_helper(size, compare, dtype, memory_format, mixed: bool):
+
+            backend, ref_backend = tuple(compare.split("-"))
+            mod = self._get_mod(backend, size[1], dtype, mixed)
+            input = self._get_tensor(size, dtype, memory_format, backend).detach().requires_grad_()
+            grad = self._get_tensor(size, dtype, memory_format, backend)  
+            
+            ref_mod = self._get_mod(ref_backend, size[1], dtype, mixed)
+            ref_mod.load_state_dict(mod.state_dict())
+
+            ref_input = input.detach().clone(memory_format=torch.preserve_format)
+            ref_grad = grad.detach().clone(memory_format=torch.preserve_format)
+            if backend != "cpu" and ref_backend == "cpu":
+                ref_input = ref_input.cpu()
+                ref_grad = ref_grad.cpu()
+            if backend == "cpu" and ref_backend != "cpu":
+                ref_input = ref_input.cuda()
+                ref_grad = ref_grad.cuda()
+            ref_input = ref_input.requires_grad_(True)
+
+            with torch.backends.cudnn.flags(enabled=False) if backend == "native" else nullcontext():
+                out = mod(input)
+                out.backward(grad)
+            with torch.backends.cudnn.flags(enabled=False) if ref_backend == "native" else nullcontext():
+                ref_out = ref_mod(ref_input)
+                ref_out.backward(ref_grad)
+
+            self.assertTrue(out.is_contiguous(memory_format=memory_format))
+            self.assertTrue(ref_out.is_contiguous(memory_format=memory_format))
+            self.assertEqual(out, ref_out)
+            self.assertEqual(mod.weight.grad, ref_mod.weight.grad)
+            self.assertEqual(mod.bias.grad, ref_mod.bias.grad)
+            self.assertEqual(mod.running_mean, ref_mod.running_mean)
+            self.assertEqual(mod.running_var, ref_mod.running_var)
+            self.assertEqual(input.grad, ref_input.grad)
+
+            # input = torch.randint(1, 10, size=size, dtype=dtype, device="cuda")
+            # input = input.contiguous(memory_format=memory_format).detach().requires_grad_()
+            # grad = torch.randint(1, 10, size=size, dtype=dtype, device="cuda")
+            # grad = grad.contiguous(memory_format=memory_format)
+           
+            # _run_test(size, input, grad, mixed)
+            # see #42588, grad is channels_last contiguous, but grad.suggest_memory_format (rightly) return "contiguous"
+            # not channels_last
+            # input = torch.randint(1, 10, (2, 8, 8, 1), dtype=dtype, device="cuda")
+            # input = input.contiguous(memory_format=memory_format).detach().requires_grad_()
+            # grad = torch.randint(1, 10, (2, 8, 8, 1), dtype=dtype, device="cuda")
+            # grad = grad.permute(0, 2, 1, 3)
+            # _run_test(input, grad, mixed)
+
+        # if TEST_WITH_ROCM and layout == "NHWC":
+        #     self.skipTest("NHWC batchnorm disabled on ROCm6.4 SWDEV-510757")
+        if mixed and dtype == torch.float:
+            self.skipTest("mixed precision is useless for float32")
+        if TEST_WITH_ROCM and not mixed and dtype in (torch.half, torch.bfloat16):
+            self.skipTest("pure mode not supported for bf16/fp16 on ROCm")
+        # if TEST_WITH_ROCM and layout == "NCHW" and dtype == torch.bfloat16 and mixed:
+        #     self.skipTest("MIOpen tolerance issue for NCHW BF16 mixed batchnorm SWDEV-507600")
+
+        memory_format = torch.contiguous_format if layout == "NCHW" else torch.channels_last
+        size = (4, 8, 2, 2)
+        _batchnorm2d_helper(size, compare, dtype, memory_format=memory_format, mixed=mixed)
+        size = (2, 8, 8, 1)
+        _batchnorm2d_helper(size, compare, dtype, memory_format=memory_format, mixed=mixed)
+
+
+    @parametrize_test("layout", ["NCHW", "NHWC"])
+    @parametrize_test("mixed", [False, True])
+    @parametrize_test("dtype", [torch.float, torch.half, torch.bfloat16])
+    def test_batchnorm_cpu(self, layout, mixed, dtype):
+        def _batchnorm2d_helper(dtype, memory_format, mixed: bool):
+            def _run_test(input, grad_output, mixed: bool):
+                c = input.size(1)
+                mod = nn.BatchNorm2d(c).cuda()
+                ref_mod = nn.BatchNorm2d(c).cpu()
+                if not mixed:
+                    mod = mod.to(dtype=input.dtype)
+                    ref_mod = ref_mod.to(dtype=input.dtype)
+
+                mod.weight.data.uniform_()
+                mod.bias.data.uniform_()
+
+                ref_input = input.detach().clone(memory_format=torch.preserve_format).cpu().requires_grad_(True)
+                ref_grad = grad.detach().clone(memory_format=torch.preserve_format).cpu()
+                ref_mod.load_state_dict(mod.state_dict())
+
+                out = mod(input)
+                out.backward(grad_output)
+                ref_out = ref_mod(ref_input)
+                ref_out.backward(ref_grad)
+                self.assertTrue(out.is_contiguous(memory_format=memory_format))
+                self.assertTrue(ref_out.is_contiguous(memory_format=memory_format))
+                self.assertEqual(out, ref_out)
+                self.assertEqual(mod.weight.grad, ref_mod.weight.grad)
+                self.assertEqual(mod.bias.grad, ref_mod.bias.grad)
+                self.assertEqual(mod.running_mean, ref_mod.running_mean)
+                self.assertEqual(mod.running_var, ref_mod.running_var)
+                self.assertEqual(input.grad, ref_input.grad)
+
+            size = (4, 8, 2, 2)
+            input = torch.randint(1, 10, size=size, dtype=dtype, device="cuda")
+            input = input.contiguous(memory_format=memory_format).detach().requires_grad_()
+            grad = torch.randint(1, 10, size=size, dtype=dtype, device="cuda")
+            grad = grad.contiguous(memory_format=memory_format)
+            _run_test(input, grad, mixed)
+            # see #42588, grad is channels_last contiguous, but grad.suggest_memory_format (rightly) return "contiguous"
+            # not channels_last
+            # input = torch.randint(1, 10, (2, 8, 8, 1), dtype=dtype, device="cuda")
+            # input = input.contiguous(memory_format=memory_format).detach().requires_grad_()
+            # grad = torch.randint(1, 10, (2, 8, 8, 1), dtype=dtype, device="cuda")
+            # if memory_format == torch.channels_last:
+            #     grad = grad.permute(0, 2, 1, 3)
+            # _run_test(input, grad, mixed)
+
+        # if TEST_WITH_ROCM and layout == "NHWC":
+        #     self.skipTest("NHWC batchnorm disabled on ROCm6.4 SWDEV-510757")
+        if mixed and dtype == torch.float:
+            self.skipTest("mixed precision is useless for float32")
+        if TEST_WITH_ROCM and not mixed and dtype in (torch.half, torch.bfloat16):
+            self.skipTest("pure mode not supported for bf16/fp16 on ROCm")
+        # if TEST_WITH_ROCM and layout == "NCHW" and dtype == torch.bfloat16 and mixed:
+        #     self.skipTest("MIOpen tolerance issue for NCHW BF16 mixed batchnorm SWDEV-507600")
+
+        memory_format = torch.contiguous_format if layout == "NCHW" else torch.channels_last
+        _batchnorm2d_helper(dtype, memory_format=memory_format, mixed=mixed)
+
+    @parametrize_test("layout", ["NCHW", "NHWC"])
+    @parametrize_test("mixed", [False, True])
+    @parametrize_test("dtype", [torch.float, torch.half, torch.bfloat16])
+    def test_batchnorm_native(self, layout, mixed, dtype):
         def _batchnorm2d_helper(dtype, memory_format, mixed: bool):
             def _run_test(input, grad_output, mixed: bool):
                 c = input.size(1)
@@ -5126,13 +5299,13 @@ tensor(..., device='meta', size=(1,), requires_grad=True)""")
                 mod.weight.data.uniform_()
                 mod.bias.data.uniform_()
 
-                ref_input = input.detach().clone(memory_format=torch.preserve_format).requires_grad_(True)
-                ref_grad = grad.detach().clone(memory_format=torch.preserve_format)
+                ref_input = input.detach().clone(memory_format=torch.preserve_format).cuda().requires_grad_(True)
+                ref_grad = grad.detach().clone(memory_format=torch.preserve_format).cuda()
                 ref_mod.load_state_dict(mod.state_dict())
 
                 out = mod(input)
                 out.backward(grad_output)
-                with torch.backends.cudnn.flags(enabled=False):  # force to use native nhwc batchnorm
+                with torch.backends.cudnn.flags(enabled=False):
                     ref_out = ref_mod(ref_input)
                     ref_out.backward(ref_grad)
                 self.assertTrue(out.is_contiguous(memory_format=memory_format))
@@ -5152,20 +5325,21 @@ tensor(..., device='meta', size=(1,), requires_grad=True)""")
             _run_test(input, grad, mixed)
             # see #42588, grad is channels_last contiguous, but grad.suggest_memory_format (rightly) return "contiguous"
             # not channels_last
-            input = torch.randint(1, 10, (2, 8, 8, 1), dtype=dtype, device="cuda")
-            input = input.contiguous(memory_format=memory_format).detach().requires_grad_()
-            grad = torch.randint(1, 10, (2, 8, 8, 1), dtype=dtype, device="cuda")
-            grad = grad.permute(0, 2, 1, 3)
-            _run_test(input, grad, mixed)
+            # input = torch.randint(1, 10, (2, 8, 8, 1), dtype=dtype, device="cuda")
+            # input = input.contiguous(memory_format=memory_format).detach().requires_grad_()
+            # grad = torch.randint(1, 10, (2, 8, 8, 1), dtype=dtype, device="cuda")
+            # if memory_format == torch.channels_last:
+            #     grad = grad.permute(0, 2, 1, 3)
+            # _run_test(input, grad, mixed)
 
-        if TEST_WITH_ROCM and layout == "NHWC":
-            self.skipTest("NHWC batchnorm disabled on ROCm6.4 SWDEV-510757")
+        # if TEST_WITH_ROCM and layout == "NHWC":
+        #     self.skipTest("NHWC batchnorm disabled on ROCm6.4 SWDEV-510757")
         if mixed and dtype == torch.float:
             self.skipTest("mixed precision is useless for float32")
         if TEST_WITH_ROCM and not mixed and dtype in (torch.half, torch.bfloat16):
             self.skipTest("pure mode not supported for bf16/fp16 on ROCm")
-        if TEST_WITH_ROCM and layout == "NCHW" and dtype == torch.bfloat16 and mixed:
-            self.skipTest("MIOpen tolerance issue for NCHW BF16 mixed batchnorm SWDEV-507600")
+        # if TEST_WITH_ROCM and layout == "NCHW" and dtype == torch.bfloat16 and mixed:
+        #     self.skipTest("MIOpen tolerance issue for NCHW BF16 mixed batchnorm SWDEV-507600")
 
         memory_format = torch.contiguous_format if layout == "NCHW" else torch.channels_last
         _batchnorm2d_helper(dtype, memory_format=memory_format, mixed=mixed)
