@@ -44,7 +44,9 @@ self-hosted-runner:
     # Organization-wide AMD hosted runners
     - linux.rocm.gpu
     - linux.rocm.gpu.2
+    - linux.rocm.gpu.mi300.2
     - linux.rocm.gpu.4
+    - linux.rocm.gpu.mi300.4
     # Repo-specific Apple hosted  runners
     - macos-m1-ultra
     - macos-m2-14
