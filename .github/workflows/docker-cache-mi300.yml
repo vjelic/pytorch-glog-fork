@@ -18,6 +18,7 @@ permissions:
 
 jobs:
   docker-cache:
+    if: github.repository_owner == 'pytorch'
     runs-on: linux.rocm.gpu.mi300.2
     steps:
       - name: Checkout PyTorch
