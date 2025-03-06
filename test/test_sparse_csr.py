@@ -3898,7 +3898,7 @@ class TestSparseCompressedTritonKernels(TestCase):
             and dtype == torch.bfloat16
             and "gfx12" in str(torch.cuda.get_device_properties(0).gcnArchName.split(":", 1)[0])
         ):
-            self.skipTest("failed on Navi4 with: \"torch/sparse/_triton_ops.py Unsupported conversion from 'bf16' to 'f16'\"")
+            self.skipTest("failed on RDNA4 with: \"torch/sparse/_triton_ops.py Unsupported conversion from 'bf16' to 'f16'\"")
         import triton
         from torch.sparse._triton_ops import bsr_scatter_mm, bsr_scatter_mm_indices_data
         from functools import partial

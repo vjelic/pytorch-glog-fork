@@ -187,7 +187,7 @@ ROCM_BLOCKLIST = [
     "distributed/_tensor/test_attention",
 ]
 
-# Skip inductor tests on Navi4
+# Skip inductor tests on RDNA4
 if TEST_WITH_ROCM:
     gcn_arch = str(torch.cuda.get_device_properties(0).gcnArchName.split(":", 1)[0])
     if "gfx12" in gcn_arch:

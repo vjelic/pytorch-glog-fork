@@ -50,7 +50,7 @@ from torch.testing._internal.common_utils import (
     GRADCHECK_NONDET_TOL,
     gradgradcheck,
     instantiate_parametrized_tests,
-    NAVI_ARCH,
+    RDNA_ARCH,
     parametrize as parametrize_test,
     run_tests,
     set_default_dtype,
@@ -3861,8 +3861,8 @@ class TestConvolutionNNDeviceType(NNTestCase):
     def test_cudnn_convolution_relu(self, device, dtype):
         if TEST_WITH_ROCM:
             prop = torch.cuda.get_device_properties(0)
-            if prop.gcnArchName.split(":")[0] in NAVI_ARCH:
-                self.skipTest("Fails on Navi GPUs")
+            if prop.gcnArchName.split(":")[0] in RDNA_ARCH:
+                self.skipTest("Fails on RDNA GPUs")
         for batch, groups, image_size, kernel_size, memory_format in product(
             (1, 2, 3),
             (1, 2, 4),

@@ -14,7 +14,7 @@ from torch.testing._internal.common_cuda import TEST_CUDA, TEST_CUDNN
 from torch.testing._internal.common_quantization import skipIfNoFBGEMM
 from torch.testing._internal.common_quantized import override_quantized_engine
 from torch.testing._internal.common_utils import (
-    NAVI_ARCH,
+    RDNA_ARCH,
     set_default_dtype,
     skipCUDAMemoryLeakCheckIf,
     skipIfRocmArch,
@@ -2974,7 +2974,7 @@ class TestFrozenOptimizations(JitTestCase):
             self.assertEqual(frozen(inp), mod(inp))
 
     @unittest.skipIf(not (TEST_CUDNN or TEST_WITH_ROCM), "requires CUDNN")
-    @skipIfRocmArch(NAVI_ARCH)  # not supported by MIOPEN on NAVI
+    @skipIfRocmArch(RDNA_ARCH)  # not supported by MIOPEN on RDNA
     def test_freeze_conv_relu_fusion(self):
         with set_default_dtype(torch.float):
             conv_bias = [True, False]
@@ -3037,7 +3037,7 @@ class TestFrozenOptimizations(JitTestCase):
                 self.assertEqual(mod_eager(inp), frozen_mod(inp))
 
     @unittest.skipIf(not (TEST_CUDNN or TEST_WITH_ROCM), "requires CUDNN")
-    @skipIfRocmArch(NAVI_ARCH)  # not supported by MIOPEN on NAVI
+    @skipIfRocmArch(RDNA_ARCH)  # not supported by MIOPEN on RDNA
     def test_freeze_conv_relu_fusion_not_forward(self):
         with set_default_dtype(torch.float):
 

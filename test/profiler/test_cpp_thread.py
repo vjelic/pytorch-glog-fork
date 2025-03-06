@@ -9,7 +9,7 @@ import torch
 import torch.utils.cpp_extension
 from torch.testing._internal.common_utils import (
     IS_WINDOWS,
-    NAVI4_ARCH,
+    RDNA4_ARCH,
     run_tests,
     skipIfRocmArch,
     TestCase,
@@ -196,7 +196,7 @@ class CppThreadTest(TestCase):
         IS_WINDOWS,
         "Failing on windows cuda, see https://github.com/pytorch/pytorch/pull/130037 for slightly more context",
     )
-    @skipIfRocmArch(NAVI4_ARCH)  # Flaky on Navi
+    @skipIfRocmArch(RDNA4_ARCH)  # Flaky on RDNA
     def test_without_enable_profiler_in_child_thread(self) -> None:
         self.start_profiler(False)
         cpp.start_threads(self.ThreadCount, IterationCount, False)
