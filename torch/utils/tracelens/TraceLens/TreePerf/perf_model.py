@@ -94,8 +94,11 @@ class aten_mm(GEMM):
         K = A_shape[1]
 
         dtype_A_B = tuple(event['args']['Input type'][:2])
-        stride_A = tuple(event['args']['Input Strides'][0])
-        stride_B = tuple(event['args']['Input Strides'][1])
+        try:
+            stride_A = tuple(event['args']['Input Strides'][0])
+            stride_B = tuple(event['args']['Input Strides'][1])
+        except KeyError:
+            stride_A = stride_B = None
 
         return {"M": M, "N": N, "K": K, "bias": False,
                 "stride_A": stride_A, "stride_B": stride_B,
@@ -128,8 +131,11 @@ class aten_addmm(GEMM):
         K = A_shape[1]
 
         dtype_A_B = tuple(event['args']['Input type'][1:3])
-        stride_A = tuple(event['args']['Input Strides'][1])
-        stride_B = tuple(event['args']['Input Strides'][2])
+        try:
+            stride_A = tuple(event['args']['Input Strides'][1])
+            stride_B = tuple(event['args']['Input Strides'][2])
+        except KeyError:
+            stride_A = stride_B = None
 
         return {"M": M, "N": N, "K": K, "bias": True,
                 "stride_A": stride_A, "stride_B": stride_B,
@@ -167,8 +173,12 @@ class aten_scaled_mm(GEMM):
         bias = len(input_dims) == 3
 
         dtype_A_B = tuple(event['args']['Input type'][:2])
-        stride_A = tuple(event['args']['Input Strides'][0])
-        stride_B = tuple(event['args']['Input Strides'][1])
+        try:
+            stride_A = tuple(event['args']['Input Strides'][0])
+            stride_B = tuple(event['args']['Input Strides'][1])
+        except KeyError:
+            stride_A = stride_B = None
+
         return {"M": M, "N": N, "K": K, "bias": bias,
                 "stride_A": stride_A, "stride_B": stride_B,
                 "dtype_A_B": dtype_A_B}
@@ -215,8 +225,11 @@ class aten_linear(GEMM):
         
         # TODO: remove repeated code, this is not cool
         dtype_A_B = tuple(event['args']['Input type'][:2])
-        stride_A = tuple(event['args']['Input Strides'][0])
-        stride_B = tuple(event['args']['Input Strides'][1])
+        try:
+            stride_A = tuple(event['args']['Input Strides'][0])
+            stride_B = tuple(event['args']['Input Strides'][1])
+        except KeyError:
+            stride_A = stride_B = None
 
         return {"M": M, "N": N, "K": K, "bias": bias,
                 "stride_A": stride_A, "stride_B": stride_B,
@@ -361,11 +374,23 @@ class aten_conv(CONV):
         # check no mixed precision
         if dtype_input_weight[0] != dtype_input_weight[1]:
             raise ValueError(f"Data types of input and weight are different: {dtype_input_weight}")
-        input_stride = tuple(event['args']['Input Strides'][0])
-        weight_stride = tuple(event['args']['Input Strides'][1])
+        try:
+            input_stride = tuple(event['args']['Input Strides'][0])
+            weight_stride = tuple(event['args']['Input Strides'][1])
+        except KeyError:
+            input_stride = weight_stride = None
+        
+        if len(input_shape) == 3:
+            convNd = 'conv1d'
+        elif len(input_shape) == 4:
+            convNd = 'conv2d'
+        elif len(input_shape) == 5:
+            convNd = 'conv3d'
+        else:
+            raise ValueError(f"Unknown convolution dimension: {len(input_shape)}")
 
-        return {"input_shape": input_shape, "filter_shape": filter_shape, "dtype_input_weight": dtype_input_weight,
-                "input_stide": input_stride, "weight_stride": weight_stride,
+        return {"convNd": convNd, "input_shape": input_shape, "filter_shape": filter_shape, "dtype_input_weight": dtype_input_weight,
+                "input_stride": input_stride, "weight_stride": weight_stride,
                 "bias": bias, "stride": stride, "padding": padding, "dilation": dilation,
                 "transposed_conv": transposed_conv, "output_padding": output_padding,
                 "groups": groups}

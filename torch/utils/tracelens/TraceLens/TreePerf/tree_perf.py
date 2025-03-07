@@ -104,7 +104,6 @@ class TreePerfAnalyzer:
         dict_metrics = {
             'GFLOPS': gflops,
             'Kernel Time (µs)': busy_kernel_time,
-            'Kernel sum Time (µs)': sum([kernel['dur'] for kernel in list_kernels]),
             'TFLOPS/s': tflops_per_s,
         }
         if non_data_mov:
@@ -205,7 +204,7 @@ class TreePerfAnalyzer:
         # Perform the aggregation
         df_perf_metrics_summary = (
             df_perf_metrics
-            .groupby(['name'] + param_cols)
+            .groupby(['name'] + param_cols, dropna=False)
             .agg(dict_agg)
         )
         df_perf_metrics_summary.columns = ['_'.join(col).strip() for col in df_perf_metrics_summary.columns.values]
@@ -264,6 +263,8 @@ class TreePerfAnalyzer:
             for arg in ['Input Dims', 'Input type', 'Input Strides']:
                 if arg in event['args']:
                     metrics_event[arg] = list_to_tuple(event['args'][arg])
+                else:
+                    metrics_event[arg] = None
 
             if id_cols:
                 metrics_event['pid'] = event['pid']
@@ -298,7 +299,7 @@ class TreePerfAnalyzer:
                     'direct_kernel_count': ['max', 'min']}
         # df_agg = df_temp.groupby(['Input Dims']).agg(dict_agg)
         #check if the input dims and others are present in the df
-        df_agg = df_temp.groupby(['Input Dims', 'Input type', 'Input Strides']).agg(dict_agg)
+        df_agg = df_temp.groupby(['Input Dims', 'Input type', 'Input Strides'], dropna=False).agg(dict_agg)
         df_agg.columns = ['_'.join(col).strip() for col in df_agg.columns.values]
         df_agg.reset_index(inplace=True)
         df_agg.rename(columns={'total_direct_kernel_time_sum': 'Total Kernel Time (µs)',
