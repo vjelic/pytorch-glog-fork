@@ -63,6 +63,7 @@
 // AOTriton headers
 #include <aotriton/flash.h>
 #include <aotriton/runtime.h>
+#include "tensordump.hh"
 
 namespace pytorch_flash {
 
