@@ -82,8 +82,29 @@
 #include <ATen/native/transformers/hip/aotriton_adapter.h>
 #include <aotriton/flash.h>
 #include <aotriton/runtime.h>
+
+#include <ATen/native/transformers/hip/flash_attn/tensordump.hh>
+#include <fstream>
+#include <sstream>
+#include <unistd.h>
+#include <unordered_map>
+
 #endif
 #endif
+
+namespace {
+
+  bool is_nan(const at::Tensor& t) {
+    return t.isnan().any().item().toBool();
+  };
+
+}
+
+#define ISNAN(name) #name << " is nan? " << is_nan(name) << " "
+#define PRINTSIZE(name) #name << name.sizes() << " dtype " << name.dtype() << " "
+#define HAS_VALUE(name) #name << " has value " << bool(name.has_value()) << " "
+#define PRINTVALUE(name) #name << " = " << name << " "
+
 
 namespace at {
 
@@ -1216,6 +1237,53 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, c10::SymInt, c10::SymInt> _efficient_
                    is_causal,
                    stream);
   }
+#if 0
+  int gpu_index = q_t.get_device();
+  std::stringstream nanfn;
+  nanfn << "NaN_" << int(gpu_index) << ".log";
+  static std::unordered_map<int, int> call_index_map;
+  int call_index = call_index_map[gpu_index];
+  if (is_nan(softmax_lse) || is_nan(output_t)) {
+    std::fstream nanlog(nanfn.str(), std::fstream::in | std::fstream::out | std::fstream::app);
+		nanlog << "[pid:" << getpid() << "]"
+           << "[gpu:" << gpu_index << "]"
+           << "[call:" << call_index<< "]"
+           << " forward "
+			     << ISNAN(q_t)
+			     << ISNAN(k_t)
+			     << ISNAN(v_t);
+    if (bias.has_value()) {
+      auto bias_t = bias.value();
+      nanlog << ISNAN(bias_t);
+    }
+    nanlog << PRINTVALUE(err)
+			     << ISNAN(softmax_lse)
+			     << ISNAN(output_t)
+			     << "Sizes: "
+			     << PRINTSIZE(q_t)
+			     << PRINTSIZE(k_t)
+			     << PRINTSIZE(v_t)
+			     << PRINTVALUE(softmax_scale)
+			     << PRINTVALUE(dropout_p)
+			     << std::endl;
+    using namespace libtensordump;
+    tensordump(q_t, "q", gpu_index, call_index);
+    tensordump(k_t, "k", gpu_index, call_index);
+    tensordump(v_t, "v", gpu_index, call_index);
+    tensordump(softmax_lse, "L", gpu_index, call_index);
+    tensordump(output_t, "Out", gpu_index, call_index);
+    scalardump(softmax_scale, "softmax_scale", gpu_index, call_index);
+    scalardump(dropout_p, "dropout_p", gpu_index, call_index);
+    if (dropout_p > 0.0) {
+      tensordump(seed_t, "seed", gpu_index, call_index);
+      tensordump(offset_t, "offset1", gpu_index, call_index);
+      scalardump(offset2, "offset2", gpu_index, call_index);
+    }
+    scalardump(is_causal, "is_causal", gpu_index, call_index);
+  }
+  call_index_map[gpu_index] += 1;
+#endif
+
   if (!compute_logsumexp) {
     // Set the tensor to empty when compute_logsumexp is false
     logsumexp = at::empty(

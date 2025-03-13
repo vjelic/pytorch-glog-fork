@@ -43,10 +43,18 @@
 #include <ATen/native/transformers/cuda/mem_eff_attention/gemm_kernel_utils.h>
 #include <ATen/native/transformers/cuda/mem_eff_attention/pytorch_utils.h>
 #else
+
 // MemoryEfficient Attention Specific Imports for ROCM
 #include <ATen/native/transformers/hip/aotriton_adapter.h>
 #include <aotriton/flash.h>
 #include <aotriton/runtime.h>
+
+#include <ATen/native/transformers/hip/flash_attn/tensordump.hh>
+#include <fstream>
+#include <sstream>
+#include <unistd.h>
+#include <unordered_map>
+
 #endif
 #endif
 
@@ -55,6 +63,20 @@
 #else
 #include <ATen/native/cudnn/MHA.h>
 #endif
+
+namespace {
+
+  bool is_nan(const at::Tensor& t) {
+    return t.isnan().any().item().toBool();
+  };
+
+}
+
+#define ISNAN(name) #name << " is nan? " << is_nan(name) << " "
+#define PRINTSIZE(name) #name << name.sizes() << " dtype " << name.dtype() << " "
+#define HAS_VALUE(name) #name << " has value " << bool(name.has_value()) << " "
+#define PRINTVALUE(name) #name << " = " << name << " "
+
 
 namespace at::native {
 
@@ -492,6 +514,89 @@ _efficient_attention_backward(
                    is_causal,
                    stream);
   }
+
+#if 0
+  int gpu_index = q_t.get_device();
+  std::stringstream nanfn;
+  nanfn << "NaN_" << int(gpu_index) << ".log";
+  static std::unordered_map<int, int> call_index_map;
+  int call_index = call_index_map[gpu_index];
+  if (is_nan(dq_t) || is_nan(dk_t) || is_nan(dv_t) || is_nan(delta)) {
+    std::fstream nanlog(nanfn.str(), std::fstream::in | std::fstream::out | std::fstream::app);
+    if (bias.has_value() && bias_requires_grad) {
+      nanlog << "[pid:" << getpid() << "]"
+             << "[gpu:" << gpu_index << "]"
+             << "[call:" << call_index<< "]"
+             << " backward "
+             << ISNAN(q_t)
+             << ISNAN(k_t)
+             << ISNAN(v_t)
+             << ISNAN(bias.value())
+             << PRINTVALUE(err)
+             << ISNAN(out_t)
+             << ISNAN(dout_t)
+             << ISNAN(dq_t)
+             << ISNAN(dk_t)
+             << ISNAN(dv_t)
+             << ISNAN(grad_bias)
+             << "Sizes: "
+             << PRINTSIZE(q_t)
+             << PRINTSIZE(k_t)
+             << PRINTSIZE(v_t)
+             << PRINTVALUE(softmax_scale)
+             << PRINTVALUE(dropout_p)
+             << std::endl;
+    } else {
+      nanlog << "[pid:" << getpid() << "]"
+             << "[gpu:" << gpu_index << "]"
+             << "[call:" << call_index<< "]"
+             << " backward "
+             << ISNAN(q_t)
+             << ISNAN(k_t)
+             << ISNAN(v_t)
+             << " empty bias "
+             << PRINTVALUE(err)
+             << ISNAN(out_t)
+             << ISNAN(dout_t)
+             << ISNAN(dq_t)
+             << ISNAN(dk_t)
+             << ISNAN(dv_t)
+             << PRINTVALUE(bias_requires_grad)
+             << "Sizes: "
+             << PRINTSIZE(q_t)
+             << PRINTSIZE(k_t)
+             << PRINTSIZE(v_t)
+             << PRINTVALUE(softmax_scale)
+             << PRINTVALUE(dropout_p)
+             << std::endl;
+    }
+    using namespace libtensordump;
+    tensordump(q_t, "q", gpu_index, call_index);
+    tensordump(k_t, "k", gpu_index, call_index);
+    tensordump(v_t, "v", gpu_index, call_index);
+    if (bias.has_value()) {
+      tensordump(bias.value(), "b", gpu_index, call_index);
+    }
+    tensordump(softmax_lse, "L", gpu_index, call_index);
+    tensordump(out_t, "out", gpu_index, call_index);
+    tensordump(dout_t, "dout", gpu_index, call_index);
+    tensordump(dq_t, "dq", gpu_index, call_index);
+    tensordump(dk_t, "dk", gpu_index, call_index);
+    tensordump(dv_t, "dv", gpu_index, call_index);
+    if (bias_requires_grad) {
+      tensordump(grad_bias, "db", gpu_index, call_index);
+    }
+    tensordump(delta, "delta", gpu_index, call_index);
+    scalardump(dropout_p, "dropout_p", gpu_index, call_index);
+    if (dropout_p > 0.0) {
+      tensordump(philox_seed, "seed", gpu_index, call_index);
+      tensordump(philox_offset, "offset", gpu_index, call_index);
+    }
+    scalardump(is_causal, "is_causal", gpu_index, call_index);
+  }
+  call_index_map[gpu_index] += 1;
+#endif // Tensordump
+
 #else
   at::Tensor workspace;
   cudaDeviceProp* p = at::cuda::getDeviceProperties(query.device().index());
