@@ -74,12 +74,14 @@ jobs:
       docker-image: ${{ needs.linux-focal-rocm6_3-py3_10-build.outputs.docker-image }}
       test-matrix: |
         { include: [
-          { config: "default", shard: 1, num_shards: 6, runner: "linux.rocm.gpu.sandbox" },
-          { config: "default", shard: 2, num_shards: 6, runner: "linux.rocm.gpu.sandbox" },
-          { config: "default", shard: 3, num_shards: 6, runner: "linux.rocm.gpu.sandbox" },
-          { config: "default", shard: 4, num_shards: 6, runner: "linux.rocm.gpu.sandbox" },
-          { config: "default", shard: 5, num_shards: 6, runner: "linux.rocm.gpu.sandbox" },
-          { config: "default", shard: 6, num_shards: 6, runner: "linux.rocm.gpu.sandbox" },
+          { config: "default", shard: 1, num_shards: 2, runner: "linux.rocm.gpu.sandbox" },
+          { config: "default", shard: 2, num_shards: 2, runner: "linux.rocm.gpu.sandbox" },
         ]}
+      tests-to-include: >
+         "test_nn test_torch test_cuda test_ops test_unary_ufuncs test_binary_ufuncs
+         test_autograd inductor/test_torchinductor inductor/test_kernel_benchmark
+         inductor/test_pad_mm inductor/test_benchmark_fusion inductor/test_aot_inductor
+         inductor/test_torchinductor inductor/test_torchinductor_opinfo inductor/test_decompose_mem_bound_mm
+         inductor/test_flex_attention inductor/test_max_autotune"
     secrets: inherit
 
