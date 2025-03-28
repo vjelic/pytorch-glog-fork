@@ -575,7 +575,7 @@ docker build \
 UBUNTU_VERSION=$(echo ${UBUNTU_VERSION} | sed 's/-rc$//')
 
 function drun() {
-  docker run --rm "$tmp_tag" $*
+  docker run --rm "$tmp_tag" "$@"
 }
 
 if [[ "$OS" == "ubuntu" ]]; then
@@ -634,6 +634,7 @@ elif [ "$HAS_TRITON" = "yes" ]; then
   echo "expecting triton to not be installed, but it is"
   exit 1
 fi
+<<<<<<< HEAD
 
 # Sanity check cmake version.  Executorch reinstalls cmake and I'm not sure if
 # they support 4.0.0 yet, so exclude them from this check.
@@ -643,3 +644,5 @@ if [[ "$EXECUTORCH" != *yes* && "$CMAKE_VERSION" != *4.* ]]; then
   drun cmake --version
   exit 1
 fi
+=======
+>>>>>>> d5a8bd06882 ([CI][docker] Use multistage build for triton (#149413))
