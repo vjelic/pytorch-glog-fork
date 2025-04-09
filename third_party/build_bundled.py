@@ -93,6 +93,21 @@ def identify_license(f, exception=''):
         elif 'MITLicense' in txt:
             # Hmm, do we need to check the text?
             return 'MIT'
+        elif 'gettimeofday' in txt:
+            # Used in opentelemetry-cpp/tools/vcpkg/ports/gettimeofday
+            return 'Apache-2.0'
+        elif 'libhungarian' in txt:
+            # Used in opentelemetry-cpp/tools/vcpkg/ports/hungarian
+            return 'Permissive (free to use)'
+        elif 'PDCurses' in txt:
+            # Used in opentelemetry-cpp/tools/vcpkg/ports/pdcurses
+            return 'Public Domain for core'
+        elif 'Copyright1999UniversityofNorthCarolina' in txt:
+            # Used in opentelemetry-cpp/tools/vcpkg/ports/pqp
+            return 'Apache-2.0'
+        elif 'sigslot' in txt:
+            # Used in opentelemetry-cpp/tools/vcpkg/ports/sigslot
+            return 'Public Domain'
         elif 'BSD-3-ClauseLicense' in txt:
             # Hmm, do we need to check the text?
             return 'BSD-3-Clause'
