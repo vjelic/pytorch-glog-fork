@@ -341,7 +341,7 @@ void direct_copy_kernel_cuda(TensorIteratorBase &iter) {
     AT_DISPATCH_BIT_TYPES(dtype, "copy_", [&] {
       gpu_kernel_nocast(iter, [] GPU_LAMBDA(scalar_t x) { return x; });
     });
-  } else if (is_permute_021(iter) && (dtype == kBFloat16 || dtype == kHalf)) {
+  } else if (is_permute_021(iter) && (dtype == kBFloat16 || dtype == kHalf) && !at::detail::getCUDAHooks().isGPUArch({"gfx1100"})) {
       transpose_last2dim(iter);
   } else {
     AT_DISPATCH_V2(
