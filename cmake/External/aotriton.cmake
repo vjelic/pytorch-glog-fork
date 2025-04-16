@@ -24,14 +24,14 @@ if(NOT __AOTRITON_INCLUDED)
   # But they must be listed from lower version to higher version
   set(__AOTRITON_VER "0.9.2b_607fcc616f")
   set(__AOTRITON_MANYLINUX_LIST
-      "manylinux_2_35"  # rocm6.5 on Ubuntu 22.04
+      "manylinux_2_28"  # rocm6.5 on Ubuntu 22.04
       )
   set(__AOTRITON_ROCM_LIST
       "rocm6.5"
       )
   set(__AOTRITON_CI_COMMIT "607fcc616ff6836c2fcc9ad0fd37e528191d36fe")
   set(__AOTRITON_SHA256_LIST
-      "6318ccd92c4eb943241ba5c4c72f07f9ceec4f26e3913d3cf346d9c98cfd4d22"  # rocm6.5
+      "9c31470fb7b25b860d21108316c5c73fa2117f14c4cc8d82c6f51ad1ed2c6218"  # rocm6.5
       )
   set(__AOTRITON_Z "gz")
 
