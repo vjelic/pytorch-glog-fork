@@ -25,6 +25,7 @@ RUN bash ./install_docs_reqs.sh && rm install_docs_reqs.sh
 
 # Install conda and other packages (e.g., numpy, pytest)
 ARG ANACONDA_PYTHON_VERSION
+ARG BUILD_ENVIRONMENT
 ENV ANACONDA_PYTHON_VERSION=$ANACONDA_PYTHON_VERSION
 ENV PATH /opt/conda/envs/py_$ANACONDA_PYTHON_VERSION/bin:/opt/conda/bin:$PATH
 ARG CONDA_CMAKE
@@ -63,7 +64,7 @@ COPY ./common/install_rocm.sh install_rocm.sh
 RUN bash ./install_rocm.sh
 RUN rm install_rocm.sh
 COPY ./common/install_rocm_magma.sh install_rocm_magma.sh
-RUN bash ./install_rocm_magma.sh ${ROCM_VERSION}
+RUN bash ./install_rocm_magma.sh
 RUN rm install_rocm_magma.sh
 ADD ./common/install_miopen.sh install_miopen.sh
 RUN bash ./install_miopen.sh ${ROCM_VERSION} && rm install_miopen.sh
