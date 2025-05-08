@@ -40,7 +40,7 @@
 #include <thrust/iterator/discard_iterator.h>
 
 
-#if defined(__CUDACC__) && (CUSPARSE_VERSION >= 11000)
+#if defined(__CUDACC__) && ((CUSPARSE_VERSION >= 11000) || (defined(USE_ROCM) && ROCM_VERSION >= 60400))
 #define IS_CUSPARSE11_AVAILABLE() 1
 #else
 #define IS_CUSPARSE11_AVAILABLE() 0
@@ -207,8 +207,10 @@ struct CusparseMatrixMultiplyOp {
 
   CusparseMatrixMultiplyOp() {
     static_assert(
+#if !defined(USE_ROCM)
       std::is_same_v<c10::Half, scalar_t> ||
           std::is_same_v<c10::BFloat16, scalar_t> ||
+#endif
           std::is_same_v<float, scalar_t> ||
           std::is_same_v<double, scalar_t> ||
           std::is_same_v<c10::complex<float>, scalar_t> ||
@@ -265,7 +267,7 @@ struct CusparseMatrixMultiplyOp {
     //--------------------------------------------------------------------------
 
     cudaDataType computeType = at::cuda::getCudaDataType<scalar_t>();
-
+    #if !defined(USE_ROCM)
     // If a specific GPU model does not provide native support for a given data type,
     // the routine returns CUSPARSE_STATUS_ARCH_MISMATCH error
     cudaDeviceProp* prop = at::cuda::getCurrentDeviceProperties();
@@ -273,6 +275,7 @@ struct CusparseMatrixMultiplyOp {
         "sparse_mm: CUDA Float16 requires compute capability >= 53 (current: ", prop->major, prop->minor, ")");
     TORCH_CHECK(!(prop->major < 8 && computeType == CUDA_R_16BF),
         "sparse_mm: CUDA BFloat16 requires compute capability >= 80 (current: ", prop->major, prop->minor, ")");
+    #endif
 
     // ask bufferSize1 bytes for external memory
     TORCH_CUDASPARSE_CHECK(cusparseSpGEMM_workEstimation(
@@ -811,7 +814,11 @@ Tensor sparse_sparse_matmul_cuda(const Tensor& mat1_, const Tensor& mat2_) {
   output.sparse_resize_and_clear_({mat1_.size(0), mat2_.size(1)}, mat1_.sparse_dim(), 0);
 
 #if IS_CUSPARSE11_AVAILABLE()
+#if !defined(USE_ROCM)
   AT_DISPATCH_FLOATING_AND_COMPLEX_TYPES_AND2(kHalf, kBFloat16, mat1_.scalar_type(), "sparse_matmul", [&] {
+#else
+  AT_DISPATCH_FLOATING_AND_COMPLEX_TYPES(mat1_.scalar_type(), "sparse_matmul", [&] {
+#endif
     sparse_sparse_matmul_cuda_kernel<scalar_t>(output, mat1_.coalesce(), mat2_.coalesce());
   });
 #else

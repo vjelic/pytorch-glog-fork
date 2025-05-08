@@ -3607,14 +3607,30 @@ class TestSparse(TestSparseBase):
         self._check_zero_nnz_softmax_op(torch.sparse.log_softmax, 1, device, dtype)
         self._check_zero_nnz_softmax_op(torch.sparse.log_softmax, 10, device, dtype)
 
+    @onlyCUDA
+    @dtypes(*[torch.float32, torch.float64, torch.half, torch.bfloat16, torch.complex64, torch.complex128])
+    @parametrize("coalesced", [True, False])
+    def test_my(self, coalesced, device, dtype):
+            sparse_dims = 2
+            nnz = 10
+            shape_a = [2, 2]
+            shape_b = [2, 2]
+            a, i_a, v_a = self._gen_sparse(sparse_dims, nnz, shape_a, dtype, device, coalesced)
+            b, i_b, v_b = self._gen_sparse(sparse_dims, nnz, shape_b, dtype, device, coalesced)
+
+            # cpp implementation
+            r2 = torch.sparse.mm(a, b)
+            self.assertTrue(True)
+
     # TODO: Check after why ROCm's cusparseXcsrgemm2Nnz function doesn't return the same nnz value as CUDA
-    @skipIfRocm
+    # @skipIfRocm
     @coalescedonoff
+    # @parametrize("coalesced", [True, False])
     @dtypes(*floating_and_complex_types())
-    @dtypesIfCUDA(*floating_types_and(*[torch.half] if SM53OrLater else [],
-                                      *[torch.bfloat16] if SM80OrLater else [],
-                                      torch.complex64,
-                                      *[torch.complex128] if CUSPARSE_SPMM_COMPLEX128_SUPPORTED else []))
+    @dtypesIfCUDA(*floating_types_and(*[torch.half] if SM53OrLater and not TEST_WITH_ROCM else [],
+                                      *[torch.bfloat16] if SM80OrLater and not TEST_WITH_ROCM else [],
+                                      *[torch.complex64] ,
+                                      *[torch.complex128] if CUSPARSE_SPMM_COMPLEX128_SUPPORTED or HIPSPARSE_SPMM_COMPLEX128_SUPPORTED else []))
     @unittest.skipIf(TEST_WITH_CROSSREF, "not working with fake tensor")
     @precisionOverride({torch.bfloat16: 1e-2, torch.float16: 1e-2, torch.complex64: 1e-2, torch.float32: 1e-2})
     def test_sparse_matmul(self, device, dtype, coalesced):
