@@ -277,13 +277,13 @@ struct CusparseMatrixMultiplyOp {
     #if defined(USE_ROCM)
     TORCH_CHECK(!(computeType == CUDA_R_16F || computeType == CUDA_R_16BF), 
         "sparse_mm: Float16 and BFloat16 are not supported on ROCm");
-    #else
+    #else // defined(USE_ROCM)
     cudaDeviceProp* prop = at::cuda::getCurrentDeviceProperties();
     TORCH_CHECK(prop->major >= 5 && !((10*prop->major + prop->minor) < 53 && computeType == CUDA_R_16F),
         "sparse_mm: CUDA Float16 requires compute capability >= 53 (current: ", prop->major, prop->minor, ")");
     TORCH_CHECK(!(prop->major < 8 && computeType == CUDA_R_16BF),
         "sparse_mm: CUDA BFloat16 requires compute capability >= 80 (current: ", prop->major, prop->minor, ")");
-    #endif
+    #endif // defined(USE_ROCM)
 
     // ask bufferSize1 bytes for external memory
     TORCH_CUDASPARSE_CHECK(cusparseSpGEMM_workEstimation(

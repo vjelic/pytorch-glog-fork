@@ -616,14 +616,27 @@ void spmm(
   // CUDA < 11.0 doesn't support 64-bit indices and doesn't raise an error about this
   // silently returning incorrect results
 #if defined(USE_ROCM)
+#if (ROCM_VERSION < 60400)
+  auto mat1_32 = at::native::_sparse_csr_tensor_unsafe(
+      mat1.crow_indices().to(kInt),
+      mat1.col_indices().to(kInt),
+      mat1.values(),
+      mat1.sizes(),
+      mat1.scalar_type(),
+      mat1.layout(),
+      mat1.device());
+  auto descA = at::cuda::sparse::CuSparseSpMatCsrDescriptor(mat1_32);
+  auto algorithm = CUSPARSE_MM_ALG_DEFAULT;
+#else // (ROCM_VERSION < 60400)
   // TODO: update this to support COO sparse layout
   auto descA = at::cuda::sparse::CuSparseSpMatCsrDescriptor(mat1);
   auto algorithm = HIPSPARSE_SPMM_CSR_ALG2;
-#else
+#endif // (ROCM_VERSION < 60400)
+#else // defined(USE_ROCM)
   // TODO: update this to support COO sparse layout
   auto descA = at::cuda::sparse::CuSparseSpMatCsrDescriptor(mat1);
   auto algorithm = CUSPARSE_SPMM_CSR_ALG2;
-#endif
+#endif // defined(USE_ROCM)
 
   auto descB = at::cuda::sparse::CuSparseConstDnMatDescriptor(
       transpose_B ? mat2_->mT() : *mat2_);
