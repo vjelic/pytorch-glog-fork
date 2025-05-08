@@ -86,11 +86,39 @@ COPY ./common/install_amdsmi.sh install_amdsmi.sh
 RUN bash ./install_amdsmi.sh
 RUN rm install_amdsmi.sh
 
+<<<<<<< HEAD
 # (optional) Install non-default CMake version
 ARG CMAKE_VERSION
 COPY ./common/install_cmake.sh install_cmake.sh
 RUN if [ -n "${CMAKE_VERSION}" ]; then bash ./install_cmake.sh; fi
 RUN rm install_cmake.sh
+=======
+# (optional) Install UCC
+ARG UCX_COMMIT
+ARG UCC_COMMIT
+ENV UCX_COMMIT $UCX_COMMIT
+ENV UCC_COMMIT $UCC_COMMIT
+ENV UCX_HOME /usr
+ENV UCC_HOME /usr
+ADD ./common/install_ucc.sh install_ucc.sh
+RUN if [ -n "${UCX_COMMIT}" ] && [ -n "${UCC_COMMIT}" ]; then bash ./install_ucc.sh; fi
+RUN rm install_ucc.sh
+
+COPY ./common/install_openssl.sh install_openssl.sh
+ENV OPENSSL_ROOT_DIR /opt/openssl
+RUN bash ./install_openssl.sh
+ENV OPENSSL_DIR /opt/openssl
+
+ARG INDUCTOR_BENCHMARKS
+ARG ANACONDA_PYTHON_VERSION
+ENV ANACONDA_PYTHON_VERSION=$ANACONDA_PYTHON_VERSION
+COPY ./common/install_inductor_benchmark_deps.sh install_inductor_benchmark_deps.sh
+COPY ./common/common_utils.sh common_utils.sh
+COPY ci_commit_pins/huggingface.txt huggingface.txt
+COPY ci_commit_pins/timm.txt timm.txt
+RUN if [ -n "${INDUCTOR_BENCHMARKS}" ]; then bash ./install_inductor_benchmark_deps.sh; fi
+RUN rm install_inductor_benchmark_deps.sh common_utils.sh timm.txt huggingface.txt
+>>>>>>> 4b8b7c7fb95 ([CI] Use cmake from pip instead of conda in CI docker images (#152537))
 
 # (optional) Install non-default Ninja version
 ARG NINJA_VERSION

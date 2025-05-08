@@ -15,6 +15,7 @@ COPY ./common/install_user.sh install_user.sh
 RUN bash ./install_user.sh && rm install_user.sh
 
 # Install conda and other packages (e.g., numpy, pytest)
+<<<<<<< HEAD
 ARG ANACONDA_PYTHON_VERSION
 ARG CONDA_CMAKE
 ENV ANACONDA_PYTHON_VERSION=$ANACONDA_PYTHON_VERSION
@@ -23,6 +24,14 @@ COPY requirements-ci.txt /opt/conda/requirements-ci.txt
 COPY ./common/install_conda.sh install_conda.sh
 COPY ./common/common_utils.sh common_utils.sh
 RUN bash ./install_conda.sh && rm install_conda.sh common_utils.sh /opt/conda/requirements-ci.txt
+=======
+ARG PYTHON_VERSION
+ENV PATH /var/lib/jenkins/ci_env/bin:$PATH
+ENV VIRTUAL_ENV /var/lib/jenkins/ci_env
+COPY requirements-ci.txt /opt/requirements-ci.txt
+COPY ./common/install_python.sh install_python.sh
+RUN bash ./install_python.sh && rm install_python.sh /opt/requirements-ci.txt
+>>>>>>> 4b8b7c7fb95 ([CI] Use cmake from pip instead of conda in CI docker images (#152537))
 
 # Note that Docker build forbids copying file outside the build context
 COPY ./common/install_linter.sh install_linter.sh

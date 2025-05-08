@@ -83,9 +83,6 @@ elif [[ "$image" == *linter* ]]; then
   DOCKERFILE="linter/Dockerfile"
 fi
 
-# CMake 3.18 is needed to support CUDA17 language variant
-CMAKE_VERSION=3.18.5
-
 _UCX_COMMIT=7bb2722ff2187a0cad557ae4a6afa090569f83fb
 _UCC_COMMIT=20eae37090a4ce1b32bcce6144ccad0b49943e0b
 
@@ -118,7 +115,6 @@ case "$image" in
     KATEX=yes
     UCX_COMMIT=${_UCX_COMMIT}
     UCC_COMMIT=${_UCC_COMMIT}
-    CONDA_CMAKE=yes
     TRITON=yes
     ;;
   pytorch-linux-focal-cuda12.4-cudnn9-py3-gcc9-inductor-benchmarks)
@@ -162,7 +158,6 @@ case "$image" in
     KATEX=yes
     UCX_COMMIT=${_UCX_COMMIT}
     UCC_COMMIT=${_UCC_COMMIT}
-    CONDA_CMAKE=yes
     TRITON=yes
     INDUCTOR_BENCHMARKS=yes
     ;;
@@ -177,7 +172,6 @@ case "$image" in
     KATEX=yes
     UCX_COMMIT=${_UCX_COMMIT}
     UCC_COMMIT=${_UCC_COMMIT}
-    CONDA_CMAKE=yes
     TRITON=yes
     INDUCTOR_BENCHMARKS=yes
     ;;
@@ -186,13 +180,62 @@ case "$image" in
     CUDNN_VERSION=9
     ANACONDA_PYTHON_VERSION=3.13
     GCC_VERSION=9
+<<<<<<< HEAD
     PROTOBUF=yes
     DB=yes
+=======
     VISION=yes
     KATEX=yes
     UCX_COMMIT=${_UCX_COMMIT}
     UCC_COMMIT=${_UCC_COMMIT}
-    CONDA_CMAKE=yes
+    TRITON=yes
+    INDUCTOR_BENCHMARKS=yes
+    ;;
+  pytorch-linux-focal-cuda12.6-cudnn9-py3-gcc9)
+    CUDA_VERSION=12.6.3
+    CUDNN_VERSION=9
+    ANACONDA_PYTHON_VERSION=3.10
+    GCC_VERSION=9
+    VISION=yes
+    KATEX=yes
+    UCX_COMMIT=${_UCX_COMMIT}
+    UCC_COMMIT=${_UCC_COMMIT}
+    TRITON=yes
+    ;;
+  pytorch-linux-focal-cuda12.6-cudnn9-py3-gcc9-inductor-benchmarks)
+    CUDA_VERSION=12.6.3
+    CUDNN_VERSION=9
+    ANACONDA_PYTHON_VERSION=3.10
+    GCC_VERSION=9
+    VISION=yes
+    KATEX=yes
+    UCX_COMMIT=${_UCX_COMMIT}
+    UCC_COMMIT=${_UCC_COMMIT}
+    TRITON=yes
+    INDUCTOR_BENCHMARKS=yes
+    ;;
+  pytorch-linux-focal-cuda12.6-cudnn9-py3.12-gcc9-inductor-benchmarks)
+    CUDA_VERSION=12.6.3
+    CUDNN_VERSION=9
+    ANACONDA_PYTHON_VERSION=3.12
+    GCC_VERSION=9
+    VISION=yes
+    KATEX=yes
+    UCX_COMMIT=${_UCX_COMMIT}
+    UCC_COMMIT=${_UCC_COMMIT}
+    TRITON=yes
+    INDUCTOR_BENCHMARKS=yes
+    ;;
+  pytorch-linux-focal-cuda12.6-cudnn9-py3.13-gcc9-inductor-benchmarks)
+    CUDA_VERSION=12.6.3
+    CUDNN_VERSION=9
+    ANACONDA_PYTHON_VERSION=3.13
+    GCC_VERSION=9
+>>>>>>> 4b8b7c7fb95 ([CI] Use cmake from pip instead of conda in CI docker images (#152537))
+    VISION=yes
+    KATEX=yes
+    UCX_COMMIT=${_UCX_COMMIT}
+    UCC_COMMIT=${_UCC_COMMIT}
     TRITON=yes
     INDUCTOR_BENCHMARKS=yes
     ;;
@@ -249,7 +292,6 @@ case "$image" in
     KATEX=yes
     UCX_COMMIT=${_UCX_COMMIT}
     UCC_COMMIT=${_UCC_COMMIT}
-    CONDA_CMAKE=yes
     TRITON=yes
     ;;
   pytorch-linux-focal-py3-clang10-onnx)
@@ -258,7 +300,6 @@ case "$image" in
     PROTOBUF=yes
     DB=yes
     VISION=yes
-    CONDA_CMAKE=yes
     ONNX=yes
     ;;
   pytorch-linux-focal-py3.9-clang10)
@@ -267,9 +308,12 @@ case "$image" in
     PROTOBUF=yes
     DB=yes
     VISION=yes
+<<<<<<< HEAD
     VULKAN_SDK_VERSION=1.2.162.1
     SWIFTSHADER=yes
     CONDA_CMAKE=yes
+=======
+>>>>>>> 4b8b7c7fb95 ([CI] Use cmake from pip instead of conda in CI docker images (#152537))
     TRITON=yes
     ;;
   pytorch-linux-focal-py3.11-clang10)
@@ -278,9 +322,12 @@ case "$image" in
     PROTOBUF=yes
     DB=yes
     VISION=yes
+<<<<<<< HEAD
     VULKAN_SDK_VERSION=1.2.162.1
     SWIFTSHADER=yes
     CONDA_CMAKE=yes
+=======
+>>>>>>> 4b8b7c7fb95 ([CI] Use cmake from pip instead of conda in CI docker images (#152537))
     TRITON=yes
     ;;
   pytorch-linux-focal-py3.9-gcc9)
@@ -289,7 +336,6 @@ case "$image" in
     PROTOBUF=yes
     DB=yes
     VISION=yes
-    CONDA_CMAKE=yes
     TRITON=yes
     ;;
   pytorch-linux-focal-rocm-n-1-py3)
@@ -300,7 +346,6 @@ case "$image" in
     VISION=yes
     ROCM_VERSION=6.1
     NINJA_VERSION=1.9.0
-    CONDA_CMAKE=yes
     TRITON=yes
     ;;
   pytorch-linux-focal-rocm-n-py3)
@@ -311,7 +356,6 @@ case "$image" in
     VISION=yes
     ROCM_VERSION=6.2.4
     NINJA_VERSION=1.9.0
-    CONDA_CMAKE=yes
     TRITON=yes
     ;;
   pytorch-linux-jammy-xpu-2024.0-py3)
@@ -322,7 +366,6 @@ case "$image" in
     VISION=yes
     XPU_VERSION=0.5
     NINJA_VERSION=1.9.0
-    CONDA_CMAKE=yes
     TRITON=yes
     ;;
   pytorch-linux-jammy-xpu-2025.0-py3)
@@ -333,7 +376,6 @@ case "$image" in
     VISION=yes
     XPU_VERSION=2025.0
     NINJA_VERSION=1.9.0
-    CONDA_CMAKE=yes
     TRITON=yes
     ;;
     pytorch-linux-jammy-py3.9-gcc11-inductor-benchmarks)
@@ -343,7 +385,6 @@ case "$image" in
     DB=yes
     VISION=yes
     KATEX=yes
-    CONDA_CMAKE=yes
     TRITON=yes
     DOCS=yes
     INDUCTOR_BENCHMARKS=yes
@@ -364,19 +405,16 @@ case "$image" in
     PROTOBUF=yes
     DB=yes
     VISION=yes
-    CONDA_CMAKE=yes
     TRITON=yes
     ;;
   pytorch-linux-jammy-py3-clang15-asan)
     ANACONDA_PYTHON_VERSION=3.10
     CLANG_VERSION=15
-    CONDA_CMAKE=yes
     VISION=yes
     ;;
   pytorch-linux-jammy-py3-clang18-asan)
     ANACONDA_PYTHON_VERSION=3.10
     CLANG_VERSION=18
-    CONDA_CMAKE=yes
     VISION=yes
     ;;
   pytorch-linux-jammy-py3.9-gcc11)
@@ -386,7 +424,6 @@ case "$image" in
     DB=yes
     VISION=yes
     KATEX=yes
-    CONDA_CMAKE=yes
     TRITON=yes
     DOCS=yes
     UNINSTALL_DILL=yes
@@ -394,14 +431,12 @@ case "$image" in
   pytorch-linux-jammy-py3-clang12-executorch)
     ANACONDA_PYTHON_VERSION=3.10
     CLANG_VERSION=12
-    CONDA_CMAKE=yes
     EXECUTORCH=yes
     ;;
   pytorch-linux-jammy-py3.12-halide)
     CUDA_VERSION=12.4
     ANACONDA_PYTHON_VERSION=3.12
     GCC_VERSION=11
-    CONDA_CMAKE=yes
     HALIDE=yes
     TRITON=yes
     ;;
@@ -409,20 +444,26 @@ case "$image" in
     CUDA_VERSION=12.4
     ANACONDA_PYTHON_VERSION=3.12
     GCC_VERSION=11
-    CONDA_CMAKE=yes
     TRITON_CPU=yes
     ;;
   pytorch-linux-focal-linter)
     # TODO: Use 3.9 here because of this issue https://github.com/python/mypy/issues/13627.
     # We will need to update mypy version eventually, but that's for another day. The task
     # would be to upgrade mypy to 1.0.0 with Python 3.11
+<<<<<<< HEAD
     ANACONDA_PYTHON_VERSION=3.9
     CONDA_CMAKE=yes
+=======
+    PYTHON_VERSION=3.9
+>>>>>>> 4b8b7c7fb95 ([CI] Use cmake from pip instead of conda in CI docker images (#152537))
     ;;
   pytorch-linux-jammy-cuda11.8-cudnn9-py3.9-linter)
     ANACONDA_PYTHON_VERSION=3.9
     CUDA_VERSION=11.8
+<<<<<<< HEAD
     CONDA_CMAKE=yes
+=======
+>>>>>>> 4b8b7c7fb95 ([CI] Use cmake from pip instead of conda in CI docker images (#152537))
     ;;
   pytorch-linux-jammy-aarch64-py3.10-gcc11)
     ANACONDA_PYTHON_VERSION=3.10
@@ -431,7 +472,6 @@ case "$image" in
     PROTOBUF=yes
     DB=yes
     VISION=yes
-    CONDA_CMAKE=yes
     # snadampal: skipping llvm src build install because the current version
     # from pytorch/llvm:9.0.1 is x86 specific
     SKIP_LLVM_SRC_BUILD_INSTALL=yes
@@ -443,7 +483,6 @@ case "$image" in
     PROTOBUF=yes
     DB=yes
     VISION=yes
-    CONDA_CMAKE=yes
     # snadampal: skipping llvm src build install because the current version
     # from pytorch/llvm:9.0.1 is x86 specific
     SKIP_LLVM_SRC_BUILD_INSTALL=yes
@@ -468,8 +507,7 @@ case "$image" in
       TRITON=yes
       # To ensure that any ROCm config will build using conda cmake
       # and thus have LAPACK/MKL enabled
-      CONDA_CMAKE=yes
-    fi
+      fi
     if [[ "$image" == *centos7* ]]; then
       NINJA_VERSION=1.10.2
     fi
@@ -484,9 +522,6 @@ case "$image" in
     fi
     if [[ "$image" == *glibc* ]]; then
       extract_version_from_image_name glibc GLIBC_VERSION
-    fi
-    if [[ "$image" == *cmake* ]]; then
-      extract_version_from_image_name cmake CMAKE_VERSION
     fi
   ;;
 esac
@@ -532,9 +567,12 @@ docker build \
        --build-arg "CUDNN_VERSION=${CUDNN_VERSION}" \
        --build-arg "TENSORRT_VERSION=${TENSORRT_VERSION}" \
        --build-arg "GRADLE_VERSION=${GRADLE_VERSION}" \
+<<<<<<< HEAD
        --build-arg "VULKAN_SDK_VERSION=${VULKAN_SDK_VERSION}" \
        --build-arg "SWIFTSHADER=${SWIFTSHADER}" \
        --build-arg "CMAKE_VERSION=${CMAKE_VERSION:-}" \
+=======
+>>>>>>> 4b8b7c7fb95 ([CI] Use cmake from pip instead of conda in CI docker images (#152537))
        --build-arg "NINJA_VERSION=${NINJA_VERSION:-}" \
        --build-arg "KATEX=${KATEX:-}" \
        --build-arg "ROCM_VERSION=${ROCM_VERSION:-}" \
@@ -542,7 +580,10 @@ docker build \
        --build-arg "IMAGE_NAME=${IMAGE_NAME}" \
        --build-arg "UCX_COMMIT=${UCX_COMMIT}" \
        --build-arg "UCC_COMMIT=${UCC_COMMIT}" \
+<<<<<<< HEAD
        --build-arg "CONDA_CMAKE=${CONDA_CMAKE}" \
+=======
+>>>>>>> 4b8b7c7fb95 ([CI] Use cmake from pip instead of conda in CI docker images (#152537))
        --build-arg "TRITON=${TRITON}" \
        --build-arg "TRITON_CPU=${TRITON_CPU}" \
        --build-arg "ONNX=${ONNX}" \
@@ -616,3 +657,26 @@ if [ -n "$KATEX" ]; then
     exit 1
   fi
 fi
+<<<<<<< HEAD
+=======
+
+HAS_TRITON=$(drun python -c "import triton" > /dev/null 2>&1 && echo "yes" || echo "no")
+if [[ -n "$TRITON" || -n "$TRITON_CPU" ]]; then
+  if [ "$HAS_TRITON" = "no" ]; then
+    echo "expecting triton to be installed, but it is not"
+    exit 1
+  fi
+elif [ "$HAS_TRITON" = "yes" ]; then
+  echo "expecting triton to not be installed, but it is"
+  exit 1
+fi
+
+# Sanity check cmake version.  Executorch reinstalls cmake and I'm not sure if
+# they support 4.0.0 yet, so exclude them from this check.
+CMAKE_VERSION=$(drun cmake --version)
+if [[ "$EXECUTORCH" != *yes* && "$CMAKE_VERSION" != *4.* ]]; then
+  echo "CMake version is not 4.0.0:"
+  drun cmake --version
+  exit 1
+fi
+>>>>>>> 4b8b7c7fb95 ([CI] Use cmake from pip instead of conda in CI docker images (#152537))

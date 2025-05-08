@@ -88,6 +88,7 @@ if [ -n "$ANACONDA_PYTHON_VERSION" ]; then
   # and libpython-static for torch deploy
   conda_install llvmdev=8.0.0 "libpython-static=${ANACONDA_PYTHON_VERSION}"
 
+<<<<<<< HEAD
   # Use conda cmake in some cases. Conda cmake will be newer than our supported
   # min version (3.5 for xenial and 3.10 for bionic), so we only do it in those
   # following builds that we know should use conda. Specifically, Ubuntu bionic
@@ -96,6 +97,8 @@ if [ -n "$ANACONDA_PYTHON_VERSION" ]; then
     conda_install cmake=3.31.6
   fi
 
+=======
+>>>>>>> 4b8b7c7fb95 ([CI] Use cmake from pip instead of conda in CI docker images (#152537))
   # Magma package names are concatenation of CUDA major and minor ignoring revision
   # I.e. magma-cuda102 package corresponds to CUDA_VERSION=10.2 and CUDA_VERSION=10.2.89
   # Magma is installed from a tarball in the ossci-linux bucket into the conda env

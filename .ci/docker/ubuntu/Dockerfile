@@ -28,7 +28,6 @@ RUN bash ./install_docs_reqs.sh && rm install_docs_reqs.sh
 
 # Install conda and other packages (e.g., numpy, pytest)
 ARG ANACONDA_PYTHON_VERSION
-ARG CONDA_CMAKE
 ARG DOCS
 ENV ANACONDA_PYTHON_VERSION=$ANACONDA_PYTHON_VERSION
 ENV PATH /opt/conda/envs/py_$ANACONDA_PYTHON_VERSION/bin:/opt/conda/bin:$PATH
@@ -87,24 +86,6 @@ COPY ./common/install_vision.sh ./common/cache_vision_models.sh ./common/common_
 RUN if [ -n "${VISION}" ]; then bash ./install_vision.sh; fi
 RUN rm install_vision.sh cache_vision_models.sh common_utils.sh
 ENV INSTALLED_VISION ${VISION}
-
-# (optional) Install Vulkan SDK
-ARG VULKAN_SDK_VERSION
-COPY ./common/install_vulkan_sdk.sh install_vulkan_sdk.sh
-RUN if [ -n "${VULKAN_SDK_VERSION}" ]; then bash ./install_vulkan_sdk.sh; fi
-RUN rm install_vulkan_sdk.sh
-
-# (optional) Install swiftshader
-ARG SWIFTSHADER
-COPY ./common/install_swiftshader.sh install_swiftshader.sh
-RUN if [ -n "${SWIFTSHADER}" ]; then bash ./install_swiftshader.sh; fi
-RUN rm install_swiftshader.sh
-
-# (optional) Install non-default CMake version
-ARG CMAKE_VERSION
-COPY ./common/install_cmake.sh install_cmake.sh
-RUN if [ -n "${CMAKE_VERSION}" ]; then bash ./install_cmake.sh; fi
-RUN rm install_cmake.sh
 
 # (optional) Install non-default Ninja version
 ARG NINJA_VERSION
