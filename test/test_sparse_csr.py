@@ -2072,8 +2072,6 @@ class TestSparseCSR(TestCase):
     @precisionOverride({torch.double: 1e-8, torch.float: 1e-4, torch.bfloat16: 0.6,
                         torch.half: 1e-1, torch.cfloat: 1e-4, torch.cdouble: 1e-8})
     def test_addmm_sizes_all_sparse_csr(self, device, dtype, m, n, k):
-        if (TEST_WITH_ROCM and (k, n, m) in [(1, 10, 25), (8, 1, 1), (8, 1, 25)]):
-            self.skipTest("Skipped on ROCm due to 'is_column_major' runtime error")
         M = torch.randn(n, m, device=device).to(dtype)
         m1 = torch.randn(n, k, device=device).to(dtype)
         m2 = torch.randn(k, m, device=device).to(dtype)
