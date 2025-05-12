@@ -29,9 +29,19 @@ from torch.export import Dim, export, export_for_training
 from torch.testing import FileCheck
 from torch.testing._internal import common_utils
 from torch.testing._internal.common_cuda import (
+<<<<<<< HEAD
     PLATFORM_SUPPORTS_FLASH_ATTENTION,
     SM80OrLater,
     SM90OrLater,
+=======
+    SM80OrLater,
+    SM90OrLater,
+    PLATFORM_SUPPORTS_FLASH_ATTENTION
+)
+from torch.testing._internal.common_device_type import (
+    _has_sufficient_memory,
+    skipCUDAIf,
+>>>>>>> 4e4e3395e6 ([rocm6.4_internal_testing] Replaced ROCm specific skips to generalized conditions (#2100))
 )
 from torch.testing._internal.common_device_type import skipCUDAIf
 from torch.testing._internal.common_quantization import (
@@ -928,9 +938,13 @@ class AOTInductorTestsTemplate:
 
     @unittest.skipIf(IS_FBCODE, "Not yet runnable in fbcode")
     @unittest.skipIf(not SM80OrLater, "bfloat16 only supported in sm80+")
+<<<<<<< HEAD
     @unittest.skipIf(
         not PLATFORM_SUPPORTS_FLASH_ATTENTION, "Some archs don't support SDPA"
     )
+=======
+    @unittest.skipIf(not PLATFORM_SUPPORTS_FLASH_ATTENTION, "Some archs don't support SDPA")
+>>>>>>> 4e4e3395e6 ([rocm6.4_internal_testing] Replaced ROCm specific skips to generalized conditions (#2100))
     def test_sdpa_2(self):
         class Model(torch.nn.Module):
             def __init__(self) -> None:
@@ -1038,9 +1052,13 @@ class AOTInductorTestsTemplate:
         self.check_model(Repro(), example_inputs)
 
     @skipIfXpu(msg="_scaled_dot_product_flash_attention is not supported on XPU yet")
+<<<<<<< HEAD
     @unittest.skipIf(
         not PLATFORM_SUPPORTS_FLASH_ATTENTION, "Some archs don't support SDPA"
     )
+=======
+    @unittest.skipIf(not PLATFORM_SUPPORTS_FLASH_ATTENTION, "Some archs don't support SDPA")
+>>>>>>> 4e4e3395e6 ([rocm6.4_internal_testing] Replaced ROCm specific skips to generalized conditions (#2100))
     def test_fallback_kernel_with_symexpr_output(self):
         if self.device != GPU_TYPE:
             raise unittest.SkipTest("requires GPU")
@@ -3035,9 +3053,13 @@ class AOTInductorTestsTemplate:
             dynamic_shapes=dynamic_shapes,
         )
 
+<<<<<<< HEAD
     @unittest.skipIf(
         not PLATFORM_SUPPORTS_FLASH_ATTENTION, "Some archs don't support SDPA"
     )
+=======
+    @unittest.skipIf(not PLATFORM_SUPPORTS_FLASH_ATTENTION, "Some archs don't support SDPA")
+>>>>>>> 4e4e3395e6 ([rocm6.4_internal_testing] Replaced ROCm specific skips to generalized conditions (#2100))
     def test_scaled_dot_product_efficient_attention(self):
         if self.device != GPU_TYPE:
             raise unittest.SkipTest("requires GPU")
