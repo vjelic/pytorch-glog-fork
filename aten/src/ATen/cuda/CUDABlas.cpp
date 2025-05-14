@@ -16,8 +16,70 @@
 #endif
 
 #ifdef USE_ROCM
+#include <hipblas/hipblas.h>
+#include <rocblas/rocblas.h>
 #define PYTORCH_ROCBLAS_VERSION_DECIMAL (ROCBLAS_VERSION_MAJOR * 100 + ROCBLAS_VERSION_MINOR)
 #define USE_GEMM_FLAGS_FP16_ALT_IMPL (PYTORCH_ROCBLAS_VERSION_DECIMAL >= 242)
+// needed to work around calling rocblas API instead of hipblas API
+static rocblas_operation hipOperationToRocOperation(hipblasOperation_t op)
+{
+    switch(op)
+    {
+    case HIPBLAS_OP_N:
+        return rocblas_operation_none;
+    case HIPBLAS_OP_T:
+        return rocblas_operation_transpose;
+    case HIPBLAS_OP_C:
+        return rocblas_operation_conjugate_transpose;
+    }
+    TORCH_CHECK(false, "HIPBLAS_STATUS_INVALID_ENUM");
+}
+static hipblasStatus_t rocBLASStatusToHIPStatus(rocblas_status error)
+{
+    switch(error)
+    {
+    case rocblas_status_size_unchanged:
+    case rocblas_status_size_increased:
+    case rocblas_status_success:
+        return HIPBLAS_STATUS_SUCCESS;
+    case rocblas_status_invalid_handle:
+        return HIPBLAS_STATUS_NOT_INITIALIZED;
+    case rocblas_status_not_implemented:
+        return HIPBLAS_STATUS_NOT_SUPPORTED;
+    case rocblas_status_invalid_pointer:
+    case rocblas_status_invalid_size:
+    case rocblas_status_invalid_value:
+        return HIPBLAS_STATUS_INVALID_VALUE;
+    case rocblas_status_memory_error:
+        return HIPBLAS_STATUS_ALLOC_FAILED;
+    case rocblas_status_internal_error:
+        return HIPBLAS_STATUS_INTERNAL_ERROR;
+    }
+    TORCH_CHECK(false, "HIPBLAS_STATUS_INVALID_ENUM");
+}
+// hipblas does not have hipblasSetMathMode
+#define hipblasSetMathMode(handle, flags) HIPBLAS_STATUS_SUCCESS
+// until we use hiblas v2
+// hipify correctly maps things like CUDA_R_16F to HIP_R_16F,
+// however hipblas v1 is still using its custom type
+#ifndef HIPBLAS_V2
+#define HIP_R_16F  HIPBLAS_R_16F
+#define HIP_R_32F  HIPBLAS_R_32F
+#define HIP_R_64F  HIPBLAS_R_64F
+#define HIP_C_16F  HIPBLAS_C_16F
+#define HIP_C_32F  HIPBLAS_C_32F
+#define HIP_C_64F  HIPBLAS_C_64F
+#define HIP_R_8I   HIPBLAS_R_8I
+#define HIP_R_8U   HIPBLAS_R_8U
+#define HIP_R_32I  HIPBLAS_R_32I
+#define HIP_R_32U  HIPBLAS_R_32U
+#define HIP_C_8I   HIPBLAS_C_8I
+#define HIP_C_8U   HIPBLAS_C_8U
+#define HIP_C_32I  HIPBLAS_C_32I
+#define HIP_C_32U  HIPBLAS_C_32U
+#define HIP_R_16BF HIPBLAS_R_16B
+#define HIP_C_16BF HIPBLAS_C_16B
+#endif
 #endif
 
 #define CUDABLAS_POSINT_CHECK(FD, X)         \
@@ -255,13 +317,15 @@ void bgemm<at::Half>(CUDABLAS_BGEMM_ARGTYPES(at::Half)) {
 #if USE_GEMM_FLAGS_FP16_ALT_IMPL
   flag = at::ROCmBackwardPassGuard::is_backward_pass() ? rocblas_gemm_flags_fp16_alt_impl : 0;
 #endif
-  TORCH_CUDABLAS_CHECK(rocblas_gemm_strided_batched_ex(handle, opa, opb, (int)m, (int)n, (int)k,
+  TORCH_CUDABLAS_CHECK(rocBLASStatusToHIPStatus(rocblas_gemm_strided_batched_ex((rocblas_handle)handle,
+                                   hipOperationToRocOperation(opa),
+                                   hipOperationToRocOperation(opb), (int)m, (int)n, (int)k,
                                    (void*)&falpha, a, rocblas_datatype_f16_r, (int)lda, stridea,
                                    b, rocblas_datatype_f16_r, (int)ldb, strideb,
                                    (void*)&fbeta, c, rocblas_datatype_f16_r, (int)ldc, stridec,
                                    c, rocblas_datatype_f16_r, (int)ldc, stridec,
                                    (int) num_batches, rocblas_datatype_f32_r, rocblas_gemm_algo_standard,
-                                   0, flag));
+                                   0, flag)));
 #else
   #if defined(CUDA_VERSION) && CUDA_VERSION < 11000
     // On CUDA versions prior to 11, users are required to set the math mode to CUBLAS_TENSOR_OP_MATH
@@ -316,13 +380,15 @@ void bgemm<at::BFloat16>(CUDABLAS_BGEMM_ARGTYPES(at::BFloat16)) {
                                     (void*)&fbeta, c, CUDA_R_16BF, (int)ldc, stridec,
                                     (int)num_batches, CUDA_R_32F, CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   #elif defined(USE_ROCM)
-    TORCH_CUDABLAS_CHECK(rocblas_gemm_strided_batched_ex(handle, opa, opb, (int)m, (int)n, (int)k,
+    TORCH_CUDABLAS_CHECK(rocBLASStatusToHIPStatus(rocblas_gemm_strided_batched_ex((rocblas_handle)handle,
+                                   hipOperationToRocOperation(opa),
+                                   hipOperationToRocOperation(opb), (int)m, (int)n, (int)k,
                                    (void*)&falpha, a, rocblas_datatype_bf16_r, (int)lda, stridea,
                                    b, rocblas_datatype_bf16_r, (int)ldb, strideb,
                                    (void*)&fbeta, c, rocblas_datatype_bf16_r, (int)ldc, stridec,
                                    c, rocblas_datatype_bf16_r, (int)ldc, stridec,
                                    (int) num_batches, rocblas_datatype_f32_r, rocblas_gemm_algo_standard,
-                                   0, 0, NULL, NULL));
+                                   0, 0, NULL, NULL)));
   #else
     TORCH_CHECK(false, "CUDA BFloat16 bgemm requires CUDA 11 or later");
   #endif // defined(CUDA_VERSION) && CUDA_VERSION >= 11000
@@ -405,10 +471,10 @@ void gemm<at::Half>(CUDABLAS_GEMM_ARGTYPES(at::Half)) {
 #if USE_GEMM_FLAGS_FP16_ALT_IMPL
   flag = at::ROCmBackwardPassGuard::is_backward_pass() ? rocblas_gemm_flags_fp16_alt_impl : 0;
 #endif
-  TORCH_CUDABLAS_CHECK(rocblas_gemm_ex(
-      handle,
-      opa,
-      opb,
+  TORCH_CUDABLAS_CHECK(rocBLASStatusToHIPStatus(rocblas_gemm_ex(
+      (rocblas_handle)handle,
+      hipOperationToRocOperation(opa),
+      hipOperationToRocOperation(opb),
       m,
       n,
       k,
@@ -429,7 +495,7 @@ void gemm<at::Half>(CUDABLAS_GEMM_ARGTYPES(at::Half)) {
       rocblas_datatype_f32_r,
       rocblas_gemm_algo_standard,
       0,
-      flag));
+      flag)));
 #else
   cudaDeviceProp* prop = at::cuda::getCurrentDeviceProperties();
   if (prop->major >= 5) {
@@ -499,10 +565,10 @@ void gemm<at::BFloat16>(CUDABLAS_GEMM_ARGTYPES(at::BFloat16)) {
   float fbeta = beta;
   _cublasAdjustLdLevel3(transa, transb, m, n, k, &lda, &ldb, &ldc);
   GEMM_CHECK_ARGVALUES(at::BFloat16);
-  TORCH_CUDABLAS_CHECK(rocblas_gemm_ex(
-      handle,
-      opa,
-      opb,
+  TORCH_CUDABLAS_CHECK(rocBLASStatusToHIPStatus(rocblas_gemm_ex(
+      (rocblas_handle)handle,
+      hipOperationToRocOperation(opa),
+      hipOperationToRocOperation(opb),
       m,
       n,
       k,
@@ -523,7 +589,7 @@ void gemm<at::BFloat16>(CUDABLAS_GEMM_ARGTYPES(at::BFloat16)) {
       rocblas_datatype_f32_r,
       rocblas_gemm_algo_standard,
       0,
-      0));
+      0)));
 }
 #endif
 
@@ -1106,14 +1172,14 @@ void dot<at::Half>(CUDABLAS_DOT_ARGTYPES(at::Half)) {
       CUDA_R_16F,
       CUDA_R_32F));
 #elif defined(ROCM_VERSION) && ROCM_VERSION >= 21000
-  TORCH_CUDABLAS_CHECK(rocblas_hdot(
-      handle,
+  TORCH_CUDABLAS_CHECK(rocBLASStatusToHIPStatus(rocblas_hdot(
+      (rocblas_handle)handle,
       n,
       reinterpret_cast<const rocblas_half*>(x),
       incx,
       reinterpret_cast<const rocblas_half*>(y),
       incy,
-      reinterpret_cast<rocblas_half*>(result)));
+      reinterpret_cast<rocblas_half*>(result))));
 #else
   AT_ERROR("Cublas_Hdot requires CUDA 8.0+");
 #endif
@@ -1135,14 +1201,14 @@ void dot<at::BFloat16>(CUDABLAS_DOT_ARGTYPES(at::BFloat16)) {
       CUDA_R_16BF,
       CUDA_R_32F));
 #elif defined(ROCM_VERSION) && ROCM_VERSION >= 21000
-  TORCH_CUDABLAS_CHECK(rocblas_bfdot(
-      handle,
+  TORCH_CUDABLAS_CHECK(rocBLASStatusToHIPStatus(rocblas_bfdot(
+      (rocblas_handle)handle,
       n,
       reinterpret_cast<const rocblas_bfloat16*>(x),
       incx,
       reinterpret_cast<const rocblas_bfloat16*>(y),
       incy,
-      reinterpret_cast<rocblas_bfloat16*>(result)));
+      reinterpret_cast<rocblas_bfloat16*>(result))));
 #else
   AT_ERROR("Cublas_bfdot requires CUDA 11.0+");
 #endif

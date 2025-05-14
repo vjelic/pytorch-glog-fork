@@ -685,10 +685,7 @@ resize_out(out, sizes, strides, options);
             proxy_field = f"std::array<c10::optional<c10::ExclusivelyOwned<Tensor>>, {len(f.func.returns)}> proxy_outputs_;"
 
         if self.backend_index.dispatch_key == DispatchKey.CUDA:
-            if self.rocm:
-                guard_field = "c10::hip::OptionalHIPGuardMasqueradingAsCUDA guard_;"
-            else:
-                guard_field = "c10::cuda::OptionalCUDAGuard guard_;"
+            guard_field = "c10::cuda::OptionalCUDAGuard guard_;"
         elif (
             self.backend_index.dispatch_key
             == DispatchKey.CompositeExplicitAutogradNonFunctional
