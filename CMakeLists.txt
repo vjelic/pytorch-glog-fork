@@ -15,6 +15,8 @@ cmake_policy(SET CMP0092 NEW)
 
 set(FIND_CUDA_MODULE_DEPRECATED ON)
 
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+
 # ---[ Project and semantic versioning.
 project(Torch CXX C)
 

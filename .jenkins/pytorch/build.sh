@@ -61,14 +61,8 @@ fi
 # TODO: Don't run this...
 pip_install -r requirements.txt || true
 
-# Enable LLVM dependency for TensorExpr testing
-if [[ "$BUILD_ENVIRONMENT" == *rocm* ]]; then
-  export USE_LLVM=/opt/rocm/llvm
-  export LLVM_DIR=/opt/rocm/llvm/lib/cmake/llvm
-else
-  export USE_LLVM=/opt/llvm
-  export LLVM_DIR=/opt/llvm/lib/cmake/llvm
-fi
+export USE_LLVM=/opt/llvm
+export LLVM_DIR=/opt/llvm/lib/cmake/llvm
 
 # TODO: Don't install this here
 if ! which conda; then
@@ -84,6 +78,8 @@ if ! which conda; then
 else
   export CMAKE_PREFIX_PATH=/opt/conda
 fi
+export USE_MKLDNN=0
+export CMAKE_POLICY_VERSION_MINIMUM=3.5
 
 if [[ "$BUILD_ENVIRONMENT" == *libtorch* ]]; then
   POSSIBLE_JAVA_HOMES=()
