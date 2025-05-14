@@ -127,8 +127,18 @@ template <int vec_size, typename func_t, typename array_t>
 C10_LAUNCH_BOUNDS_1(num_threads())
 __global__ void vectorized_elementwise_kernel(int N, func_t f, array_t data) {
   using traits = function_traits<func_t>;
+<<<<<<< HEAD
   constexpr auto io_size = calc_io_size<func_t>();
   int remaining = N - io_block_work_size<io_size>() * blockIdx.x;
+=======
+#if defined(USE_ROCM) && defined(__gfx942__)
+    constexpr int tws = 8;
+#else
+    constexpr int tws = thread_work_size();
+#endif
+  constexpr int bws = tws * num_threads();
+  int remaining = N - bws * blockIdx.x;
+>>>>>>> fd3c6c8529 ([ROCm] Improve in-place vectorized elemwise kernel performance on MI300 (#2111))
 
   if (remaining < io_block_work_size<io_size>()) { // if this block handles the reminder,
                                        // just do a naive unrolled loop
@@ -189,8 +199,21 @@ static inline void launch_vectorized_kernel(
     array_t data) {
   TORCH_INTERNAL_ASSERT(N > 0 && N <= std::numeric_limits<int32_t>::max());
   using traits = function_traits<func_t>;
+<<<<<<< HEAD
   constexpr auto io_size = calc_io_size<func_t>();
   int64_t grid = (N + io_block_work_size<io_size>() - 1) / io_block_work_size<io_size>();
+=======
+  int vec_size = memory::can_vectorize_up_to<func_t>(data);
+#ifdef USE_ROCM
+  c10::DeviceIndex curDevice = -1;
+  AT_CUDA_CHECK(c10::cuda::GetDevice(&curDevice));
+  int tws = at::detail::getCUDAHooks().isGPUArch(curDevice, {"gfx942"}) ? 8 : thread_work_size();
+#else
+  int tws = thread_work_size();
+#endif
+  int bws = tws * num_threads();
+  int64_t grid = (N + bws - 1) / bws;
+>>>>>>> fd3c6c8529 ([ROCm] Improve in-place vectorized elemwise kernel performance on MI300 (#2111))
   auto stream = at::cuda::getCurrentCUDAStream();
   int vec_size = memory::can_vectorize_up_to<func_t>(data);
 
