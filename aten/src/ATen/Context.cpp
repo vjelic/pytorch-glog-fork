@@ -323,8 +323,13 @@ at::BlasBackend Context::blasPreferredBackend() {
   if (blas_preferred_backend == at::BlasBackend::Cublaslt) {
     static const bool hipblaslt_unsupported = []() {
       static const std::vector<std::string> archs = {
-          "gfx90a", "gfx940", "gfx941", "gfx942"
-      };
+          "gfx90a", "gfx942",
+#if ROCM_VERSION >= 60300
+          "gfx1200", "gfx1201",
+#endif
+#if ROCM_VERSION >= 60500
+          "gfx950"
+#endif
       for (auto index: c10::irange(getNumGPUs())) {
         if (!detail::getCUDAHooks().isGPUArch(index, archs)) {
           TORCH_WARN_ONCE(
