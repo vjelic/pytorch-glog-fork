@@ -190,7 +190,19 @@ static bool getDisableAddmmCudaLt() {
 static bool isSupportedHipLtROCmArch(int index) {
     hipDeviceProp_t* prop = at::cuda::getDeviceProperties(index);
     std::string device_arch = prop->gcnArchName;
+<<<<<<< HEAD
     static const std::vector<std::string> archs = {"gfx90a", "gfx940", "gfx941", "gfx942"};
+=======
+    static const std::vector<std::string> archs = {
+        "gfx90a", "gfx942"
+#if ROCM_VERSION >= 60300
+        , "gfx1200", "gfx1201"
+#endif
+#if ROCM_VERSION >= 60500
+        , "gfx950"
+#endif
+    };
+>>>>>>> 5de86ce8b6 ([release/2.6] Change gfx110x BLAS preferred backend (Take 2) (#2158))
     for (std::string arch : archs) {
         size_t substring = device_arch.find(arch);
         if (substring != std::string::npos) {
