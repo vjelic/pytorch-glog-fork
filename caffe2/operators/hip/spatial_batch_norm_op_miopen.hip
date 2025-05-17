@@ -17,19 +17,19 @@
 #include <cfloat>
 #include "caffe2/core/hip/context_gpu.h"
 #include "caffe2/core/hip/miopen_wrapper.h"
-#include "caffe2/operators/spatial_batch_norm_op.h"
+#include "caffe2/operators/hip/spatial_batch_norm_op.h"
 #include "caffe2/operators/hip/spatial_batch_norm_op_impl.cuh"
-#include "caffe2/utils/math.h"
+#include "caffe2/utils/hip/math.h"
 
 const double MIOPEN_BN_MIN_EPSILON = 1e-6;
 
 namespace caffe2 {
 
-class MIOpenSpatialBNOp final : public SpatialBNOp<HIPContext> {
+class MIOpenSpatialBNOp final : public SpatialBNOp<CUDAContext> {
  public:
-  USE_OPERATOR_FUNCTIONS(HIPContext);
+  USE_OPERATOR_FUNCTIONS(CUDAContext);
   MIOpenSpatialBNOp(const OperatorDef& operator_def, Workspace* ws)
-      : SpatialBNOp<HIPContext>(operator_def, ws),
+      : SpatialBNOp<CUDAContext>(operator_def, ws),
         miopen_wrapper_(&context_),
         alpha_(OperatorBase::GetSingleArgument<float>("alpha", 1.0)),
         beta_(OperatorBase::GetSingleArgument<float>("beta", 0.0)),
@@ -63,11 +63,11 @@ class MIOpenSpatialBNOp final : public SpatialBNOp<HIPContext> {
   miopenBatchNormMode_t mode_;
 };
 
-class MIOpenSpatialBNGradientOp final : public SpatialBNGradientOp<HIPContext> {
+class MIOpenSpatialBNGradientOp final : public SpatialBNGradientOp<CUDAContext> {
  public:
-  USE_OPERATOR_FUNCTIONS(HIPContext);
+  USE_OPERATOR_FUNCTIONS(CUDAContext);
   MIOpenSpatialBNGradientOp(const OperatorDef& operator_def, Workspace* ws)
-      : SpatialBNGradientOp<HIPContext>(operator_def, ws),
+      : SpatialBNGradientOp<CUDAContext>(operator_def, ws),
         miopen_wrapper_(&context_),
         alpha_(OperatorBase::GetSingleArgument<float>("alpha", 1.0)),
         beta_(OperatorBase::GetSingleArgument<float>("beta", 0.0)),
@@ -196,8 +196,8 @@ bool MIOpenSpatialBNOp::DoRunWithType() {
       // This has a caveat that if miopen does not deal with 0*NaN cases we
       // will be having an issue. Thus we choose a safe path by explicitly
       // setting zero.
-      math::Set<BNParamType, HIPContext>(C, 0, running_mean_data, &context_);
-      math::Set<BNParamType, HIPContext>(C, 0, running_var_data, &context_);
+      math::Set<BNParamType, CUDAContext>(C, 0, running_mean_data, &context_);
+      math::Set<BNParamType, CUDAContext>(C, 0, running_var_data, &context_);
     } else {
       // Does not need to do initialization.
       CAFFE_ENFORCE_EQ(running_mean->ndim(), 1);
@@ -217,9 +217,9 @@ bool MIOpenSpatialBNOp::DoRunWithType() {
 
     if (N == 0) {
       // set empty batch's mean / var output to zeros
-      math::Set<BNParamType, HIPContext>(
+      math::Set<BNParamType, CUDAContext>(
           C, 0, (BNParamType*)save_mean_data, &context_);
-      math::Set<BNParamType, HIPContext>(
+      math::Set<BNParamType, CUDAContext>(
           C, 0, (BNParamType*)save_var_data, &context_);
       return true;
     }
@@ -245,9 +245,9 @@ bool MIOpenSpatialBNOp::DoRunWithType() {
   return true;
 }
 bool MIOpenSpatialBNOp::RunOnDevice() {
-  // Fall back to HIP for multi batch spatial BNorm and NHWC layout
+  // Fall back to CUDA for multi batch spatial BNorm and NHWC layout
   if (num_batches_ > 1 || order_ == StorageOrder::NHWC) {
-    return SpatialBNOp<HIPContext>::RunOnDevice();
+    return SpatialBNOp<CUDAContext>::RunOnDevice();
   }
   if (Input(0).IsType<float>()) {
     return DoRunWithType<float, float>();
@@ -304,8 +304,8 @@ bool MIOpenSpatialBNGradientOp::DoRunWithType() {
 
   if (N == 0) {
     // set gradients to zeros
-    math::Set<BNParamType, HIPContext>(C, 0, dScale_data, &context_);
-    math::Set<BNParamType, HIPContext>(C, 0, dBias_data, &context_);
+    math::Set<BNParamType, CUDAContext>(C, 0, dScale_data, &context_);
+    math::Set<BNParamType, CUDAContext>(C, 0, dBias_data, &context_);
     return true;
   }
 
@@ -332,9 +332,9 @@ bool MIOpenSpatialBNGradientOp::DoRunWithType() {
   return true;
 }
 bool MIOpenSpatialBNGradientOp::RunOnDevice() {
-  // Fall back to HIP for multi batch spatial BNorm and NHWC layout
+  // Fall back to CUDA for multi batch spatial BNorm and NHWC layout
   if (num_batches_ > 1 || order_ == StorageOrder::NHWC) {
-    return SpatialBNGradientOp<HIPContext>::RunOnDevice();
+    return SpatialBNGradientOp<CUDAContext>::RunOnDevice();
   }
   if (Input(0).IsType<float>()) {
     return DoRunWithType<float, float>();

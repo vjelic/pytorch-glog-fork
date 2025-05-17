@@ -1,4 +1,4 @@
-#include "caffe2/operators/relu_op.h"
+#include "caffe2/operators/hip/relu_op.h"
 
 #include "caffe2/operators/hip/activation_ops_miopen.h"
 

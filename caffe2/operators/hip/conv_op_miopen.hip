@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include "caffe2/operators/conv_pool_op_base.h"
+#include "caffe2/operators/hip/conv_pool_op_base.h"
 
 #include "caffe2/core/hip/context_gpu.h"
 #include "caffe2/core/hip/miopen_wrapper.h"
-#include "caffe2/operators/conv_op.h"
-#include "caffe2/utils/math.h"
+#include "caffe2/operators/hip/conv_op.h"
+#include "caffe2/utils/hip/math.h"
 
 namespace caffe2 {
 
@@ -28,10 +28,10 @@ namespace caffe2 {
 // something very beneficial to more recent CNN models.
 static constexpr size_t kCONV_MIOPEN_WORKSPACE_LIMIT_BYTES = 64 * 1024 * 1024;
 
-class MIOPENConvOpBase : public ConvPoolOpBase<HIPContext> {
+class MIOPENConvOpBase : public ConvPoolOpBase<CUDAContext> {
  public:
   MIOPENConvOpBase(const OperatorDef& operator_def, Workspace* ws)
-      : ConvPoolOpBase<HIPContext>(operator_def, ws),
+      : ConvPoolOpBase<CUDAContext>(operator_def, ws),
         miopen_wrapper_(&context_),
         miopen_state_(
             OperatorBase::GetSingleArgument<size_t>("miopen_state", 0)),
@@ -216,7 +216,7 @@ bool MIOPENConvOp::DoRunWithType() {
       "Conv op with MIOpen engine is supported only for 2D and 3D convolutions");
 
   const int M = Weight.dim32(0);
-  auto sizes = ConvPoolOpBase<HIPContext>::GetOutputSize(X, M);
+  auto sizes = ConvPoolOpBase<CUDAContext>::GetOutputSize(X, M);
   auto* Y = Output(0, sizes, at::dtype<T_Y>());
 
   int N = X.dim32(0);
@@ -310,7 +310,7 @@ bool MIOPENConvOp::DoRunWithType() {
           top_desc_,
           &fwdConvWsSize_));
       if ((fwdConvWsSize_ > 0) && (fwdConvWs_ == nullptr)) {
-        HIP_CHECK(hipMalloc(&fwdConvWs_, fwdConvWsSize_));
+        CUDA_CHECK(hipMalloc(&fwdConvWs_, fwdConvWsSize_));
       }
 
       miopen_wrapper_.with_miopen_state(miopen_state_, [&](MIOPENState* state) {
@@ -450,12 +450,12 @@ bool MIOPENConvGradientOp::DoRunWithType() {
   bool weight_changed = (Weight.sizes() != mio_weight_dims_);
 
   if (N == 0) {
-    math::Set<T_DW, HIPContext>(
+    math::Set<T_DW, CUDAContext>(
         dW->numel(), T_DW(0), dW->template mutable_data<T_DW>(), &context_);
     if (!no_bias_) {
       auto* dbias = Output(BIAS_OR_INPUT_GRAD);
       dbias->Resize(M);
-      math::Set<T_DB, HIPContext>(
+      math::Set<T_DB, CUDAContext>(
           dbias->numel(),
           T_DB(0),
           dbias->template mutable_data<T_DB>(),
@@ -528,7 +528,7 @@ bool MIOPENConvGradientOp::DoRunWithType() {
           bottom_desc_,
           &bwdDataWsSize_));
       if ((bwdDataWsSize_ > 0) && (bwdDataWs_ == nullptr)) {
-        HIP_CHECK(hipMalloc(&bwdDataWs_, bwdDataWsSize_));
+        CUDA_CHECK(hipMalloc(&bwdDataWs_, bwdDataWsSize_));
       }
 
       miopen_wrapper_.with_miopen_state(miopen_state_, [&](MIOPENState* state) {
@@ -564,7 +564,7 @@ bool MIOPENConvGradientOp::DoRunWithType() {
           weight_desc_,
           &bwdWeightWsSize_));
       if ((bwdWeightWsSize_ > 0) && (bwdWeightWs_ == nullptr)) {
-        HIP_CHECK(hipMalloc(&bwdWeightWs_, bwdWeightWsSize_));
+        CUDA_CHECK(hipMalloc(&bwdWeightWs_, bwdWeightWsSize_));
       }
 
       miopen_wrapper_.with_miopen_state(miopen_state_, [&](MIOPENState* state) {

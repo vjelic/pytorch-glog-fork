@@ -1,15 +1,15 @@
 #include "caffe2/core/hip/context_gpu.h"
 #include "caffe2/core/hip/miopen_wrapper.h"
-#include "caffe2/operators/conv_transpose_op.h"
+#include "caffe2/operators/hip/conv_transpose_op.h"
 
 namespace caffe2 {
 
 static constexpr size_t kCONV_MIOPEN_WORKSPACE_LIMIT_BYTES = 64 * 1024 * 1024;
 
-class MIOPENConvTransposeOpBase : public ConvTransposeUnpoolBase<HIPContext> {
+class MIOPENConvTransposeOpBase : public ConvTransposeUnpoolBase<CUDAContext> {
  public:
   MIOPENConvTransposeOpBase(const OperatorDef& operator_def, Workspace* ws)
-      : ConvTransposeUnpoolBase<HIPContext>(operator_def, ws),
+      : ConvTransposeUnpoolBase<CUDAContext>(operator_def, ws),
         miopen_wrapper_(&context_),
         miopen_state_(
             OperatorBase::GetSingleArgument<size_t>("miopen_state", 0)),
@@ -165,7 +165,7 @@ bool MIOPENConvTransposeOp<T>::RunOnDevice() {
       "ConvTranspose op with MIOpen engine is supported only for 2D convolutions");
 
   const int C_in = Weight.dim32(1);
-  auto sizes = ConvTransposeUnpoolBase<HIPContext>::GetOutputSize(X, C_in);
+  auto sizes = ConvTransposeUnpoolBase<CUDAContext>::GetOutputSize(X, C_in);
   auto* Y = Output(0, sizes, at::dtype<T>());
 
   int N = X.dim32(0);
@@ -231,7 +231,7 @@ bool MIOPENConvTransposeOp<T>::RunOnDevice() {
           top_desc_,
           &fwdConvWsSize_));
       if ((fwdConvWsSize_ > 0) && (fwdConvWs_ == nullptr)) {
-          HIP_CHECK(hipMalloc(&fwdConvWs_, fwdConvWsSize_));
+          CUDA_CHECK(hipMalloc(&fwdConvWs_, fwdConvWsSize_));
       }
 
       miopen_wrapper_.with_miopen_state(miopen_state_, [&](MIOPENState* state) {
@@ -379,7 +379,7 @@ bool MIOPENConvTransposeGradientOp<T>::RunOnDevice() {
           bottom_desc_,
           &bwdDataWsSize_));
       if ((bwdDataWsSize_ > 0) && (bwdDataWs_ == nullptr)) {
-          HIP_CHECK(hipMalloc(&bwdDataWs_, bwdDataWsSize_));
+          CUDA_CHECK(hipMalloc(&bwdDataWs_, bwdDataWsSize_));
       }
 
       miopen_wrapper_.with_miopen_state(miopen_state_, [&](MIOPENState* state) {
@@ -415,7 +415,7 @@ bool MIOPENConvTransposeGradientOp<T>::RunOnDevice() {
             weight_desc_,
             &bwdWeightWsSize_));
         if ((bwdWeightWsSize_ > 0) && (bwdWeightWs_ == nullptr)) {
-          HIP_CHECK(hipMalloc(&bwdWeightWs_, bwdWeightWsSize_));
+          CUDA_CHECK(hipMalloc(&bwdWeightWs_, bwdWeightWsSize_));
         }
 
         miopen_wrapper_.with_miopen_state(miopen_state_, [&](MIOPENState* state) {

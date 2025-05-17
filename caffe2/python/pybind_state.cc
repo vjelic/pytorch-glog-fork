@@ -8,6 +8,15 @@
 
 #include <c10/macros/Macros.h>
 
+#ifdef ROCM_VERSION
+#include "caffe2/core/hip/blob_serialization.h"
+#include "caffe2/core/hip/blob_stats.h"
+#include "caffe2/core/hip/db.h"
+#include "caffe2/core/hip/numa.h"
+#include "caffe2/core/hip/operator.h"
+#include "caffe2/core/hip/stats.h"
+#include "caffe2/core/hip/transform.h"
+#else
 #include "caffe2/core/blob_serialization.h"
 #include "caffe2/core/blob_stats.h"
 #include "caffe2/core/db.h"
@@ -15,6 +24,7 @@
 #include "caffe2/core/operator.h"
 #include "caffe2/core/stats.h"
 #include "caffe2/core/transform.h"
+#endif
 #include "caffe2/observers/profile_observer.h"
 #include "caffe2/observers/runcnt_observer.h"
 #include "caffe2/observers/time_observer.h"
@@ -33,9 +43,15 @@
 #include "caffe2/predictor/emulator/data_filler.h"
 #include "caffe2/predictor/predictor.h"
 #include "caffe2/python/pybind_state_registry.h"
+#ifdef ROCM_VERSION
+#include "caffe2/utils/hip/cpuid.h"
+#include "caffe2/utils/hip/proto_convert.h"
+#include "caffe2/utils/hip/string_utils.h"
+#else
 #include "caffe2/utils/cpuid.h"
 #include "caffe2/utils/proto_convert.h"
 #include "caffe2/utils/string_utils.h"
+#endif
 #include "torch/csrc/autograd/variable.h"
 #include "torch/csrc/jit/python/module_python.h"
 

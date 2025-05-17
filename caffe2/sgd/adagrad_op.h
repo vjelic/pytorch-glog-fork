@@ -2,7 +2,7 @@
 
 #include "caffe2/core/operator.h"
 #include "caffe2/perfkernels/adagrad.h"
-#if defined(USE_FBGEMM) && !defined(__NVCC__)
+#if defined(USE_FBGEMM) && !defined(__NVCC__) && !defined(__HIPCC__)
 #include "fbgemm/FbgemmEmbedding.h"
 #endif
 
@@ -225,7 +225,7 @@ class SparseAdagradOp final : public Operator<CPUContext> {
         " size of indexes:",
         n);
 
-#if defined(USE_FBGEMM) && !defined(__NVCC__)
+#if defined(USE_FBGEMM) && !defined(__NVCC__) && !defined(__HIPCC__)
     VLOG(1) << "using fbgemm::GenerateSparseAdaGrad in SparseAdagradOp";
 
     if (block_size != last_block_size_) {
@@ -353,7 +353,7 @@ class SparseAdagradOp final : public Operator<CPUContext> {
  protected:
   float epsilon_;
   const float weight_decay_;
-#if defined(USE_FBGEMM) && !defined(__NVCC__)
+#if defined(USE_FBGEMM) && !defined(__NVCC__) && !defined(__HIPCC__)
   fbgemm::SparseAdaGradSignature<std::int32_t>::Type kernel_i32_;
   fbgemm::SparseAdaGradSignature<std::int64_t>::Type kernel_i64_;
   std::int64_t last_block_size_{-1};
@@ -432,7 +432,7 @@ class RowWiseSparseAdagradOp final : public Operator<Context> {
         " size of indexes:",
         n);
 
-#if defined(USE_FBGEMM) && !defined(__NVCC__)
+#if defined(USE_FBGEMM) && !defined(__NVCC__) && !defined(__HIPCC__)
     VLOG(1) << "using fbgemm::GenerateSparseAdaGrad in RowWiseSparseAdagradOp";
 
     if (block_size != last_block_size_) {
@@ -562,7 +562,7 @@ class RowWiseSparseAdagradOp final : public Operator<Context> {
   float epsilon_;
   const float weight_decay_;
   const int64_t counter_halflife_;
-#if defined(USE_FBGEMM) && !defined(__NVCC__)
+#if defined(USE_FBGEMM) && !defined(__NVCC__) && !defined(__HIPCC__)
   fbgemm::SparseAdaGradSignature<std::int32_t>::Type kernel_i32_;
   fbgemm::SparseAdaGradSignature<std::int64_t>::Type kernel_i64_;
   std::int64_t last_block_size_{-1};

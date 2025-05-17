@@ -16,7 +16,7 @@
 
 // Since we are using the macro CAFFE2_USE_CUDNN, we will need to include this
 // file after common.h is included.
-#ifdef CAFFE2_USE_CUDNN
+#if defined(CAFFE2_USE_CUDNN) || defined(USE_ROCM)
 #include "caffe2/core/common_cudnn.h"
 #endif // CAFFE2_USE_CUDNN
 
@@ -120,7 +120,7 @@ class CAFFE2_CUDA_API ThreadLocalCUDAObjects {
     return r;
   }
 
-#ifdef CAFFE2_USE_CUDNN
+#if defined(CAFFE2_USE_CUDNN) || defined(USE_ROCM)
   // Uses the logical stream id from the thread local to pick the stream
   // We're going to migrate all usages to this case API instead of passing the
   // stream id directly
@@ -145,7 +145,7 @@ class CAFFE2_CUDA_API ThreadLocalCUDAObjects {
         CUBLAS_CHECK(cublasDestroy(element.second));
       }
     }
-#ifdef CAFFE2_USE_CUDNN
+#if defined(CAFFE2_USE_CUDNN) || defined(USE_ROCM)
     for (auto element : cudnn_handles_) {
       if (element.second) {
         CUDNN_CHECK(cudnnDestroy(element.second));
@@ -158,7 +158,7 @@ class CAFFE2_CUDA_API ThreadLocalCUDAObjects {
   // same underlying stream ID.
   vector<c10::cuda::CUDAStream> cuda_streams_[C10_COMPILE_TIME_MAX_GPUS];
   std::unordered_map<c10::cuda::CUDAStream, cublasHandle_t> cublas_handles_;
-#ifdef CAFFE2_USE_CUDNN
+#if defined(CAFFE2_USE_CUDNN) || defined(USE_ROCM)
   std::unordered_map<c10::cuda::CUDAStream, cudnnHandle_t> cudnn_handles_;
 #endif // CAFFE2_USE_CUDNN
 };
@@ -217,7 +217,7 @@ class CAFFE2_CUDA_API CUDAContext final : public BaseContext {
     return getCudaObjects().GetHandle(gpu_id_);
   }
 
-#ifdef CAFFE2_USE_CUDNN
+#if defined(CAFFE2_USE_CUDNN) || defined(USE_ROCM)
   cudnnHandle_t cudnn_handle() {
     return getCudaObjects().GetCudnnHandle(gpu_id_);
   }

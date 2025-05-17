@@ -1,4 +1,4 @@
-#include "caffe2/operators/tanh_op.h"
+#include "caffe2/operators/hip/tanh_op.h"
 
 #include "caffe2/operators/hip/activation_ops_miopen.h"
 

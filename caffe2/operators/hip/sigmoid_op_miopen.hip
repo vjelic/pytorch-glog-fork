@@ -1,4 +1,4 @@
-#include "caffe2/operators/sigmoid_op.h"
+#include "caffe2/operators/hip/sigmoid_op.h"
 
 #include "caffe2/operators/hip/activation_ops_miopen.h"
 

@@ -1,7 +1,18 @@
 # ---[ CPU files.
-file(GLOB_RECURSE NOMNI_SRCS *.cc)
-file(GLOB_RECURSE NOMNI_TEST_SRCS *Test.cc)
-exclude(NOMNI_SRCS "${NOMNI_SRCS}" "${NOMNI_TEST_SRCS}")
+set(NOMNI_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/Representations/NeuralNet.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_util.cc
+)
+set(NOMNI_TEST_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/AlgorithmsTest.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/BinaryMatchImplTest.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/GraphTest.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/MatchTest.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/NeuralNetTest.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/SubgraphMatcherTest.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/TarjansImplTest.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/TopoSortTest.cc
+)
 set(NOMNI_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 list(APPEND Caffe2_CPU_SRCS ${NOMNI_SRCS})

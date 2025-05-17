@@ -1,8 +1,14 @@
 #pragma once
 
+#ifdef ROCM_VERSION
+#include "caffe2/core/hip/net.h"
+#include "caffe2/core/hip/observer.h"
+#include "caffe2/core/hip/operator.h"
+#else
 #include "caffe2/core/net.h"
 #include "caffe2/core/observer.h"
 #include "caffe2/core/operator.h"
+#endif
 
 namespace caffe2 {
 

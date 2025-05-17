@@ -1,7 +1,14 @@
+#ifdef ROCM_VERSION
+#include "caffe2/core/hip/common.h"
+#include "caffe2/core/hip/net.h"
+#include "caffe2/core/hip/observer.h"
+#include "caffe2/core/hip/operator.h"
+#else
 #include "caffe2/core/common.h"
 #include "caffe2/core/net.h"
 #include "caffe2/core/observer.h"
 #include "caffe2/core/operator.h"
+#endif
 #include "time_observer.h"
 
 #include <gtest/gtest.h>

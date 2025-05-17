@@ -16,13 +16,13 @@
 
 #include "caffe2/core/hip/context_gpu.h"
 #include "caffe2/core/hip/miopen_wrapper.h"
-#include "caffe2/operators/conv_pool_op_base.h"
+#include "caffe2/operators/hip/conv_pool_op_base.h"
 
 namespace caffe2 {
-class MIOPENPoolOp : public ConvPoolOpBase<HIPContext> {
+class MIOPENPoolOp : public ConvPoolOpBase<CUDAContext> {
  public:
   MIOPENPoolOp(const OperatorDef& operator_def, Workspace* ws)
-      : ConvPoolOpBase<HIPContext>(operator_def, ws),
+      : ConvPoolOpBase<CUDAContext>(operator_def, ws),
         poolWsSize_(0),
         poolWs_(nullptr),
         miopen_wrapper_(&context_),
@@ -65,7 +65,7 @@ class MIOPENPoolOp : public ConvPoolOpBase<HIPContext> {
     C = X.dim32(1);
     H = X.dim32(2);
     W = X.ndim() > 3 ? X.dim32(3) : 1;
-    auto sizes = ConvPoolOpBase<HIPContext>::GetOutputSize(X, C);
+    auto sizes = ConvPoolOpBase<CUDAContext>::GetOutputSize(X, C);
     auto* Y = Output(0, sizes, at::dtype<T>());
 
     N_out = Y->dim32(0);
@@ -162,10 +162,10 @@ class MIOPENPoolOp : public ConvPoolOpBase<HIPContext> {
   const float beta_;
 };
 
-class MIOPENPoolGradientOp : public ConvPoolOpBase<HIPContext> {
+class MIOPENPoolGradientOp : public ConvPoolOpBase<CUDAContext> {
  public:
   MIOPENPoolGradientOp(const OperatorDef& operator_def, Workspace* ws)
-      : ConvPoolOpBase<HIPContext>(operator_def, ws),
+      : ConvPoolOpBase<CUDAContext>(operator_def, ws),
         poolWsSize_(0),
         poolWs_(nullptr),
         miopen_wrapper_(&context_),
@@ -226,7 +226,7 @@ class MIOPENPoolGradientOp : public ConvPoolOpBase<HIPContext> {
     D_out = Y.ndim() > 4 ? Y.dim32(4) : 1;
 
     const std::vector<int> X_HW_dims = GetDims(X);
-    ConvPoolOpBase<HIPContext>::ComputePads(X_HW_dims);
+    ConvPoolOpBase<CUDAContext>::ComputePads(X_HW_dims);
 
 #if TORCH_HIP_VERSION >= 303
     CAFFE_ENFORCE(kernel_.size() == 2 || kernel_.size() == 3, "MIOpen supports only 2D and 3D pooling");
@@ -283,11 +283,11 @@ class MIOPENPoolGradientOp : public ConvPoolOpBase<HIPContext> {
 #endif
 
       if ((poolWsSize_ > 0) && (poolWs_ == nullptr)) {
-        HIP_CHECK(hipMalloc(&poolWs_, poolWsSize_));
+        CUDA_CHECK(hipMalloc(&poolWs_, poolWsSize_));
       }
 
       if (bwdPoolScratch_ == nullptr) {
-        HIP_CHECK(hipMalloc(&bwdPoolScratch_, Y.size() * sizeof(float)));
+        CUDA_CHECK(hipMalloc(&bwdPoolScratch_, Y.size() * sizeof(float)));
       }
 
       MIOPEN_ENFORCE(miopenPoolingForward(

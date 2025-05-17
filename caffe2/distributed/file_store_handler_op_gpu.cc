@@ -8,14 +8,8 @@
 
 namespace caffe2 {
 
-#if !defined(USE_ROCM)
 REGISTER_CUDA_OPERATOR(
     FileStoreHandlerCreate,
     FileStoreHandlerCreateOp<CUDAContext>);
-#else
-REGISTER_HIP_OPERATOR(
-    FileStoreHandlerCreate,
-    FileStoreHandlerCreateOp<HIPContext>);
-#endif
 
 } // namespace caffe2

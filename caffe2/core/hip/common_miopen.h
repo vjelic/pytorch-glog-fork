@@ -19,10 +19,10 @@
 #include <array>
 #include <mutex>
 #include "miopen/miopen.h"
-#include "caffe2/core/common.h"
-#include "caffe2/core/context.h"
-#include "caffe2/core/logging.h"
-#include "caffe2/core/types.h"
+#include "caffe2/core/hip/common.h"
+#include "caffe2/core/hip/context.h"
+#include "caffe2/core/hip/logging.h"
+#include "caffe2/core/hip/types.h"
 #include "caffe2/proto/caffe2_pb.h"
 
 #define MIOPEN_VERSION 1399

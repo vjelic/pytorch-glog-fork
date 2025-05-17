@@ -1,22 +1,22 @@
 #include <gtest/gtest.h>
-#include "caffe2/core/blob.h"
-#include "caffe2/core/context.h"
+#include "caffe2/core/hip/blob.h"
+#include "caffe2/core/hip/context.h"
 #include "caffe2/core/hip/context_gpu.h"
-#include "caffe2/core/tensor.h"
-#include "caffe2/operators/utility_ops.h"
+#include "caffe2/core/hip/tensor.h"
+#include "caffe2/operators/hip/utility_ops.h"
 #include "caffe2/proto/caffe2_pb.h"
-#include "caffe2/utils/conversions.h"
-#include "caffe2/utils/math.h"
+#include "caffe2/utils/hip/conversions.h"
+#include "caffe2/utils/hip/math.h"
 
 namespace caffe2 {
 
 TEST(MathROCBLASTest, GemmNoTransNoTrans) {
-  if (!HasHipGPU())
+  if (!HasCudaGPU())
     return;
   Workspace ws;
   DeviceOption option;
-  option.set_device_type(PROTO_HIP);
-  HIPContext context(option);
+  option.set_device_type(PROTO_CUDA);
+  CUDAContext context(option);
 
   Blob* blobX = ws.CreateBlob("X");
   Blob* blobW = ws.CreateBlob("W");
@@ -26,11 +26,11 @@ TEST(MathROCBLASTest, GemmNoTransNoTrans) {
   vector<int> shapeX{5, 10};
   vector<int> shapeW{10, 6};
   vector<int> shapeY{5, 6};
-  auto* tensorX = BlobGetMutableTensor(blobX, HIP);
+  auto* tensorX = BlobGetMutableTensor(blobX, CUDA);
   tensorX->Resize(shapeX);
-  auto* tensorW = BlobGetMutableTensor(blobW, HIP);
+  auto* tensorW = BlobGetMutableTensor(blobW, CUDA);
   tensorW->Resize(shapeW);
-  auto* tensorY = BlobGetMutableTensor(blobY, HIP);
+  auto* tensorY = BlobGetMutableTensor(blobY, CUDA);
   tensorY->Resize(shapeY);
   auto* tensorY_host = BlobGetMutableTensor(blobY_host, CPU);
   tensorY_host->Resize(shapeY);
@@ -39,15 +39,15 @@ TEST(MathROCBLASTest, GemmNoTransNoTrans) {
   EXPECT_EQ(tensorW->size(), 60);
   EXPECT_EQ(tensorY->size(), 30);
 
-  math::Set<float, HIPContext>(
+  math::Set<float, CUDAContext>(
       tensorX->size(), 1, tensorX->mutable_data<float>(), &context);
-  math::Set<float, HIPContext>(
+  math::Set<float, CUDAContext>(
       tensorW->size(), 1, tensorW->mutable_data<float>(), &context);
 
   const float kOne = 1.0;
   const float kPointFive = 0.5;
   const float kZero = 0.0;
-  math::Gemm<float, HIPContext>(
+  math::Gemm<float, CUDAContext>(
       CblasNoTrans,
       CblasNoTrans,
       5,
@@ -67,7 +67,7 @@ TEST(MathROCBLASTest, GemmNoTransNoTrans) {
   }
 
   // Test Accumulate
-  math::Gemm<float, HIPContext>(
+  math::Gemm<float, CUDAContext>(
       CblasNoTrans,
       CblasNoTrans,
       5,
@@ -87,7 +87,7 @@ TEST(MathROCBLASTest, GemmNoTransNoTrans) {
   }
 
   // Test Accumulate
-  math::Gemm<float, HIPContext>(
+  math::Gemm<float, CUDAContext>(
       CblasNoTrans,
       CblasNoTrans,
       5,
@@ -108,12 +108,12 @@ TEST(MathROCBLASTest, GemmNoTransNoTrans) {
 }
 
 TEST(MathROCBLASTest, GemmNoTransTrans) {
-  if (!HasHipGPU())
+  if (!HasCudaGPU())
     return;
   Workspace ws;
   DeviceOption option;
-  option.set_device_type(PROTO_HIP);
-  HIPContext context(option);
+  option.set_device_type(PROTO_CUDA);
+  CUDAContext context(option);
 
   Blob* blobX = ws.CreateBlob("X");
   Blob* blobW = ws.CreateBlob("W");
@@ -123,11 +123,11 @@ TEST(MathROCBLASTest, GemmNoTransTrans) {
   vector<int> shapeX{5, 10};
   vector<int> shapeW{6, 10};
   vector<int> shapeY{5, 6};
-  auto* tensorX = BlobGetMutableTensor(blobX, HIP);
+  auto* tensorX = BlobGetMutableTensor(blobX, CUDA);
   tensorX->Resize(shapeX);
-  auto* tensorW = BlobGetMutableTensor(blobW, HIP);
+  auto* tensorW = BlobGetMutableTensor(blobW, CUDA);
   tensorW->Resize(shapeW);
-  auto* tensorY = BlobGetMutableTensor(blobY, HIP);
+  auto* tensorY = BlobGetMutableTensor(blobY, CUDA);
   tensorY->Resize(shapeY);
   auto* tensorY_host = BlobGetMutableTensor(blobY_host, CPU);
   tensorY_host->Resize(shapeY);
@@ -136,15 +136,15 @@ TEST(MathROCBLASTest, GemmNoTransTrans) {
   EXPECT_EQ(tensorW->size(), 60);
   EXPECT_EQ(tensorY->size(), 30);
 
-  math::Set<float, HIPContext>(
+  math::Set<float, CUDAContext>(
       tensorX->size(), 1, tensorX->mutable_data<float>(), &context);
-  math::Set<float, HIPContext>(
+  math::Set<float, CUDAContext>(
       tensorW->size(), 1, tensorW->mutable_data<float>(), &context);
 
   const float kOne = 1.0;
   const float kPointFive = 0.5;
   const float kZero = 0.0;
-  math::Gemm<float, HIPContext>(
+  math::Gemm<float, CUDAContext>(
       CblasNoTrans,
       CblasTrans,
       5,
@@ -164,7 +164,7 @@ TEST(MathROCBLASTest, GemmNoTransTrans) {
   }
 
   // Test Accumulate
-  math::Gemm<float, HIPContext>(
+  math::Gemm<float, CUDAContext>(
       CblasNoTrans,
       CblasTrans,
       5,
@@ -183,7 +183,7 @@ TEST(MathROCBLASTest, GemmNoTransTrans) {
     TORCH_CHECK_EQ(tensorY_host->data<float>()[i], 15) << i;
   }
 
-  math::Gemm<float, HIPContext>(
+  math::Gemm<float, CUDAContext>(
       CblasNoTrans,
       CblasTrans,
       5,
@@ -204,12 +204,12 @@ TEST(MathROCBLASTest, GemmNoTransTrans) {
 }
 
 TEST(MathROCBLASTest, GemvNoTrans) {
-  if (!HasHipGPU())
+  if (!HasCudaGPU())
     return;
   Workspace ws;
   DeviceOption option;
-  option.set_device_type(PROTO_HIP);
-  HIPContext context(option);
+  option.set_device_type(PROTO_CUDA);
+  CUDAContext context(option);
 
   Blob* blobA = ws.CreateBlob("A");
   Blob* blobX = ws.CreateBlob("X");
@@ -219,11 +219,11 @@ TEST(MathROCBLASTest, GemvNoTrans) {
   vector<int> shapeA{5, 10};
   vector<int> shapeX{10};
   vector<int> shapeY{5};
-  auto* tensorA = BlobGetMutableTensor(blobA, HIP);
+  auto* tensorA = BlobGetMutableTensor(blobA, CUDA);
   tensorA->Resize(shapeA);
-  auto* tensorX = BlobGetMutableTensor(blobX, HIP);
+  auto* tensorX = BlobGetMutableTensor(blobX, CUDA);
   tensorX->Resize(shapeX);
-  auto* tensorY = BlobGetMutableTensor(blobY, HIP);
+  auto* tensorY = BlobGetMutableTensor(blobY, CUDA);
   tensorY->Resize(shapeY);
   auto* tensorY_host = BlobGetMutableTensor(blobY_host, CPU);
   tensorY_host->Resize(shapeY);
@@ -231,15 +231,15 @@ TEST(MathROCBLASTest, GemvNoTrans) {
   EXPECT_EQ(tensorA->size(), 50);
   EXPECT_EQ(tensorX->size(), 10);
   EXPECT_EQ(tensorY->size(), 5);
-  math::Set<float, HIPContext>(
+  math::Set<float, CUDAContext>(
       tensorA->size(), 1, tensorA->mutable_data<float>(), &context);
-  math::Set<float, HIPContext>(
+  math::Set<float, CUDAContext>(
       tensorX->size(), 1, tensorX->mutable_data<float>(), &context);
 
   const float kOne = 1.0;
   const float kPointFive = 0.5;
   const float kZero = 0.0;
-  math::Gemv<float, HIPContext>(
+  math::Gemv<float, CUDAContext>(
       CblasNoTrans,
       5,
       10,
@@ -256,7 +256,7 @@ TEST(MathROCBLASTest, GemvNoTrans) {
   }
 
   // Test Accumulate
-  math::Gemv<float, HIPContext>(
+  math::Gemv<float, CUDAContext>(
       CblasNoTrans,
       5,
       10,
@@ -273,7 +273,7 @@ TEST(MathROCBLASTest, GemvNoTrans) {
   }
 
   // Test Accumulate
-  math::Gemv<float, HIPContext>(
+  math::Gemv<float, CUDAContext>(
       CblasNoTrans,
       5,
       10,
@@ -291,12 +291,12 @@ TEST(MathROCBLASTest, GemvNoTrans) {
 }
 
 TEST(MathROCBLASTest, GemvTrans) {
-  if (!HasHipGPU())
+  if (!HasCudaGPU())
     return;
   Workspace ws;
   DeviceOption option;
-  option.set_device_type(PROTO_HIP);
-  HIPContext context(option);
+  option.set_device_type(PROTO_CUDA);
+  CUDAContext context(option);
 
   Blob* blobA = ws.CreateBlob("A");
   Blob* blobX = ws.CreateBlob("X");
@@ -306,11 +306,11 @@ TEST(MathROCBLASTest, GemvTrans) {
   vector<int> shapeA{6, 10};
   vector<int> shapeX{6};
   vector<int> shapeY{10};
-  auto* tensorA = BlobGetMutableTensor(blobA, HIP);
+  auto* tensorA = BlobGetMutableTensor(blobA, CUDA);
   tensorA->Resize(shapeA);
-  auto* tensorX = BlobGetMutableTensor(blobX, HIP);
+  auto* tensorX = BlobGetMutableTensor(blobX, CUDA);
   tensorX->Resize(shapeX);
-  auto* tensorY = BlobGetMutableTensor(blobY, HIP);
+  auto* tensorY = BlobGetMutableTensor(blobY, CUDA);
   tensorY->Resize(shapeY);
   auto* tensorY_host = BlobGetMutableTensor(blobY_host, CPU);
   tensorY_host->Resize(shapeY);
@@ -318,15 +318,15 @@ TEST(MathROCBLASTest, GemvTrans) {
   EXPECT_EQ(tensorA->size(), 60);
   EXPECT_EQ(tensorX->size(), 6);
   EXPECT_EQ(tensorY->size(), 10);
-  math::Set<float, HIPContext>(
+  math::Set<float, CUDAContext>(
       tensorA->size(), 1, tensorA->mutable_data<float>(), &context);
-  math::Set<float, HIPContext>(
+  math::Set<float, CUDAContext>(
       tensorX->size(), 1, tensorX->mutable_data<float>(), &context);
 
   const float kOne = 1.0;
   const float kPointFive = 0.5;
   const float kZero = 0.0;
-  math::Gemv<float, HIPContext>(
+  math::Gemv<float, CUDAContext>(
       CblasTrans,
       6,
       10,
@@ -343,7 +343,7 @@ TEST(MathROCBLASTest, GemvTrans) {
   }
 
   // Test Accumulate
-  math::Gemv<float, HIPContext>(
+  math::Gemv<float, CUDAContext>(
       CblasTrans,
       6,
       10,
@@ -360,7 +360,7 @@ TEST(MathROCBLASTest, GemvTrans) {
   }
 
   // Test Accumulate
-  math::Gemv<float, HIPContext>(
+  math::Gemv<float, CUDAContext>(
       CblasTrans,
       6,
       10,

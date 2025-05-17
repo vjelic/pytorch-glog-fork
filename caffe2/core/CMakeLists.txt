@@ -23,7 +23,10 @@ file(GLOB tmp *_test.cc)
 exclude(Caffe2_GPU_SRCS "${Caffe2_GPU_SRCS}" ${tmp})
 
 # ---[ general HIP files
-file(GLOB tmp hip/*.cc)
+file(GLOB tmp hip/*_gpu.cc)
+# remove cudnn files from HIP files
+file(GLOB tmp_cudnn hip/*_cudnn.cc)
+exclude(tmp "${tmp}" ${tmp_cudnn})
 set(Caffe2_HIP_SRCS ${Caffe2_HIP_SRCS} ${tmp})
 # ------[ HIP sources
 file(GLOB tmp hip/*.hip)
@@ -65,4 +68,5 @@ set(Caffe2_GPU_SRCS ${Caffe2_GPU_SRCS} PARENT_SCOPE)
 set(Caffe2_HIP_SRCS ${Caffe2_HIP_SRCS} PARENT_SCOPE)
 set(Caffe2_CPU_TEST_SRCS ${Caffe2_CPU_TEST_SRCS} PARENT_SCOPE)
 set(Caffe2_GPU_TEST_SRCS ${Caffe2_GPU_TEST_SRCS} PARENT_SCOPE)
-set(Caffe2_HIP_TEST_SRCS ${Caffe2_HIP_TEST_SRCS} PARENT_SCOPE)
+# HIP test sources are identical to CUDA test sources
+#set(Caffe2_HIP_TEST_SRCS ${Caffe2_HIP_TEST_SRCS} PARENT_SCOPE)

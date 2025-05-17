@@ -17,6 +17,9 @@ exclude(Caffe2_GPU_SRCS "${Caffe2_GPU_SRCS}" ${tmp})
 # ------[ general HIP
 file(GLOB tmp hip/*.cc)
 set(Caffe2_HIP_SRCS ${Caffe2_HIP_SRCS} ${tmp})
+# remove cudnn files from HIP sources
+file(GLOB tmp hip/*_cudnn.cc)
+exclude(Caffe2_HIP_SRCS "${Caffe2_HIP_SRCS}" ${tmp})
 # ------[ HIP sources
 file(GLOB tmp hip/*.hip)
 set(Caffe2_HIP_SRCS ${Caffe2_HIP_SRCS} ${tmp})

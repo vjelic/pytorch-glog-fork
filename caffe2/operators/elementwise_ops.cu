@@ -135,14 +135,14 @@ void device_reduce<at::Half>(
         context);
   }
 
-  CUBLAS_ENFORCE(rocblas_hdot(
+  CUBLAS_ENFORCE(hipblasHdot(
       context->cublas_handle(),
       N,
-      reinterpret_cast<const rocblas_half*>(in),
+      reinterpret_cast<const hipblasHalf*>(in),
       1,
-      reinterpret_cast<const rocblas_half*>(buffer->data<at::Half>()),
+      reinterpret_cast<const hipblasHalf*>(buffer->data<at::Half>()),
       0,
-      reinterpret_cast<rocblas_half*>(out)));
+      reinterpret_cast<hipblasHalf*>(out)));
 #elif TORCH_HIP_VERSION < 210
    CAFFE_THROW("HIP rocblas doesn't fully support fp16 device_reduce yet.");
 #else

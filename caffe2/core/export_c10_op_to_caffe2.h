@@ -247,17 +247,9 @@ createC10OperatorWrapper(const c10::OperatorName& op_name) {
       Name,                                                    \
       ::caffe2::detail::createC10OperatorWrapper<CUDAContext>( \
           {OperatorName, ""}))
-#define C10_EXPORT_C10_OP_TO_CAFFE2_HIP(                       \
-    OperatorName, Name)                                        \
-  REGISTER_HIP_OPERATOR_CREATOR(                               \
-      Name,                                                    \
-      ::caffe2::detail::createC10OperatorWrapper<HIPContext>(  \
-          {OperatorName, ""}))
 #else
 #define C10_EXPORT_C10_OP_TO_CAFFE2_CPU(                       \
     OperatorName, Name)
 #define C10_EXPORT_C10_OP_TO_CAFFE2_CUDA(                      \
-    OperatorName, Name)
-#define C10_EXPORT_C10_OP_TO_CAFFE2_HIP(                       \
     OperatorName, Name)
 #endif

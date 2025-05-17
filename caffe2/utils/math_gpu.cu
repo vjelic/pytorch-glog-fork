@@ -39,7 +39,7 @@
 #endif // USE_ROCM
 
 #if defined(USE_ROCM)
-using CUBLAS_HALF_TYPE = rocblas_half;
+using CUBLAS_HALF_TYPE = hipblasHalf;
 #else // __HIP_PLATFORM_HCC
 using CUBLAS_HALF_TYPE = __half;
 #endif // __HIP_PLATFORM_HCC
@@ -612,8 +612,8 @@ CAFFE2_CUDA_EXPORT void Gemm<at::Half, CUDAContext>(
     // It has more general rocblas_gemm_ex API which is more close to
     // cublasGemmEx rocblas_gemm_ex does D = alpha*op( A )*op( B ) + beta*C,
     // whereas cublasgemmEx does C = alpha*op( A )*op( B ) + beta*C
-    ROCBLAS_ENFORCE(rocblas_gemm_ex(
-        context->rocblashandle(),
+    CUBLAS_ENFORCE(hipblasGemmEx(
+        context->cublas_handle(),
         cu_trans_B,
         cu_trans_A,
         N,
@@ -621,22 +621,17 @@ CAFFE2_CUDA_EXPORT void Gemm<at::Half, CUDAContext>(
         K,
         &alpha,
         B,
-        rocblas_datatype_f16_r,
+        HIP_R_16F,
         ldb,
         A,
-        rocblas_datatype_f16_r,
+        HIP_R_16F,
         lda,
         &beta,
         C,
-        rocblas_datatype_f16_r,
+        HIP_R_16F,
         N,
-        C, // D
-        rocblas_datatype_f16_r, // D type
-        N, // ldd
-        rocblas_datatype_f32_r, // compute type
-        rocblas_gemm_algo_standard, // rocblas_gemm_algo
-        0,   // solution index, reserved for future use
-        0)); // flags, reserved for future use
+        HIPBLAS_COMPUTE_32F, // compute type
+        HIPBLAS_GEMM_DEFAULT));
 #else
     CUBLAS_ENFORCE(cublasSgemmEx(
         context->cublas_handle(),
@@ -987,8 +982,8 @@ CAFFE2_CUDA_EXPORT void GemmStridedBatched<at::Half, CUDAContext>(
 #if defined(USE_ROCM)
     // D[i*stride_d] = alpha*op(A[i*stride_a])*op(B[i*stride_b]) +
     // beta*C[i*stride_c], for i in [0,batch_count-1]
-    ROCBLAS_ENFORCE(rocblas_gemm_strided_batched_ex(
-        context->rocblashandle(),
+    CUBLAS_ENFORCE(hipblasGemmStridedBatchedEx(
+        context->cublas_handle(),
         cu_trans_B,
         cu_trans_A,
         N,
@@ -996,27 +991,21 @@ CAFFE2_CUDA_EXPORT void GemmStridedBatched<at::Half, CUDAContext>(
         K,
         &alpha,
         B,
-        rocblas_datatype_f16_r,
+        HIP_R_16F,
         ldb,
         B_stride,
         A,
-        rocblas_datatype_f16_r,
+        HIP_R_16F,
         lda,
         A_stride,
         &beta,
         C,
-        rocblas_datatype_f16_r,
+        HIP_R_16F,
         ldc,
         C_stride,
-        C, // D
-        rocblas_datatype_f16_r, // D type
-        ldc, // ldd
-        C_stride, // D stride
         batch_size,
-        rocblas_datatype_f32_r, // compute type
-        rocblas_gemm_algo_standard, // rocblas_gemm_algo
-        0,   // solution index, reserved for future use
-        0)); // flags, reserved for future use
+        HIPBLAS_COMPUTE_32F, // compute type
+        HIPBLAS_GEMM_DEFAULT)); // rocblas_gemm_algo
 #else
     CUBLAS_ENFORCE(cublasGemmStridedBatchedEx(
         context->cublas_handle(),
@@ -1134,31 +1123,26 @@ CAFFE2_CUDA_EXPORT void Gemv<at::Half, CUDAContext>(
     // It has more general rocblas_gemm_ex API which is more close to
     // cublasGemmEx rocblas_gemm_ex does D = alpha*op( A )*op( B ) + beta*C,
     // whereas cublasgemmEx does C = alpha*op( A )*op( B ) + beta*C
-    ROCBLAS_ENFORCE(rocblas_gemm_ex(
-        context->rocblashandle(),
+    CUBLAS_ENFORCE(hipblasGemmEx(
+        context->cublas_handle(),
         cu_trans_A,
-        rocblas_operation_none,
+        HIPBLAS_OP_N,
         m,
         1,
         k,
         &alpha,
         A,
-        rocblas_datatype_f16_r,
+        HIP_R_16F,
         lda,
         x,
-        rocblas_datatype_f16_r,
+        HIP_R_16F,
         k,
         &beta,
         y,
-        rocblas_datatype_f16_r,
+        HIP_R_16F,
         ldc,
-        y, // D
-        rocblas_datatype_f16_r, // D type
-        ldc, // ldd
-        rocblas_datatype_f32_r, // compute type
-        rocblas_gemm_algo_standard, // rocblas_gemm_algo
-        0,   // solution index, reserved for future use
-        0)); // flags, reserved for future use
+        HIPBLAS_COMPUTE_32F, // compute type
+        HIPBLAS_GEMM_DEFAULT)); // rocblas_gemm_algo
 #else
     CUBLAS_ENFORCE(cublasSgemmEx(
         context->cublas_handle(),
@@ -1676,20 +1660,6 @@ CAFFE2_CUDA_EXPORT void Dot<at::Half, CUDAContext>(
     const at::Half* b,
     at::Half* y,
     CUDAContext* context) {
-#if defined(USE_ROCM) && (TORCH_HIP_VERSION < 210)
-  CAFFE_THROW("HIP currently does not support FP16 completely yet.");
-#elif defined(USE_ROCM) && (TORCH_HIP_VERSION >= 210)
-  CUBLAS_ENFORCE(cublasSetPointerMode(
-      context->cublas_handle(), CUBLAS_POINTER_MODE_DEVICE));
-  CUBLAS_ENFORCE(rocblas_hdot(
-      context->cublas_handle(),
-      n,
-      reinterpret_cast<const rocblas_half*>(a),
-      1,
-      reinterpret_cast<const rocblas_half*>(b),
-      1,
-      reinterpret_cast<rocblas_half*>(y)));
-#else
   // execute with 32-bit math
   CUBLAS_ENFORCE(cublasSetPointerMode(
       context->cublas_handle(), CUBLAS_POINTER_MODE_DEVICE));
@@ -1705,7 +1675,6 @@ CAFFE2_CUDA_EXPORT void Dot<at::Half, CUDAContext>(
       y,
       CUDA_R_16F,
       CUDA_R_32F));
-#endif
 }
 
 // A previous version of caffe2 used Thrust but it turns out that thrust

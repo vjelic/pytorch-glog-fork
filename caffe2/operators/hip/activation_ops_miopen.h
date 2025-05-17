@@ -3,18 +3,18 @@
 
 #include "caffe2/core/hip/context_gpu.h"
 #include "caffe2/core/hip/miopen_wrapper.h"
-#include "caffe2/core/operator.h"
-#include "caffe2/core/tensor.h"
-#include "caffe2/core/types.h"
+#include "caffe2/core/hip/operator.h"
+#include "caffe2/core/hip/tensor.h"
+#include "caffe2/core/hip/types.h"
 
 namespace caffe2 {
 
-class MIOPENActivationOpBase : public Operator<HIPContext> {
+class MIOPENActivationOpBase : public Operator<CUDAContext> {
  public:
-  USE_OPERATOR_FUNCTIONS(HIPContext);
+  USE_OPERATOR_FUNCTIONS(CUDAContext);
 
   MIOPENActivationOpBase(const OperatorDef& operator_def, Workspace* ws)
-      : Operator<HIPContext>(operator_def, ws), miopen_wrapper_(&context_) {
+      : Operator<CUDAContext>(operator_def, ws), miopen_wrapper_(&context_) {
     MIOPEN_ENFORCE(miopenCreateTensorDescriptor(&data_desc_));
     MIOPEN_ENFORCE(miopenCreateActivationDescriptor(&act_desc_));
   }
@@ -34,7 +34,7 @@ class MIOPENActivationOpBase : public Operator<HIPContext> {
 template <miopenActivationMode_t kMIOPENActivationMode>
 class MIOPENActivationOp final : public MIOPENActivationOpBase {
  public:
-  USE_OPERATOR_FUNCTIONS(HIPContext);
+  USE_OPERATOR_FUNCTIONS(CUDAContext);
 
   MIOPENActivationOp(const OperatorDef& operator_def, Workspace* ws)
       : MIOPENActivationOpBase(operator_def, ws) {
@@ -89,7 +89,7 @@ class MIOPENActivationOp final : public MIOPENActivationOpBase {
 template <miopenActivationMode_t kMIOPENActivationMode>
 class MIOPENActivationGradientOp final : public MIOPENActivationOpBase {
  public:
-  USE_OPERATOR_FUNCTIONS(HIPContext);
+  USE_OPERATOR_FUNCTIONS(CUDAContext);
 
   MIOPENActivationGradientOp(const OperatorDef& operator_def, Workspace* ws)
       : MIOPENActivationOpBase(operator_def, ws) {

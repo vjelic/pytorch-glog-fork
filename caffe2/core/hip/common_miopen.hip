@@ -16,7 +16,7 @@
 #include "caffe2/core/hip/common_miopen.h"
 #include "caffe2/core/hip/miopen_wrapper.h"
 
-#include "caffe2/core/init.h"
+#include "caffe2/core/hip/init.h"
 
 namespace caffe2 {
 

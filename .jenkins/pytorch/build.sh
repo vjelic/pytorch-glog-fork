@@ -80,6 +80,7 @@ else
 fi
 export USE_MKLDNN=0
 export CMAKE_POLICY_VERSION_MINIMUM=3.5
+export BUILD_CAFFE2=ON
 
 if [[ "$BUILD_ENVIRONMENT" == *libtorch* ]]; then
   POSSIBLE_JAVA_HOMES=()

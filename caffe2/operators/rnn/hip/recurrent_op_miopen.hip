@@ -1,5 +1,5 @@
 #include "caffe2/operators/rnn/hip/recurrent_op_miopen.h"
-#include "caffe2/utils/math.h"
+#include "caffe2/utils/hip/math.h"
 
 #include <map>
 
@@ -37,7 +37,7 @@ template <typename T>
 RecurrentBaseOp<T>::RecurrentBaseOp(
     const OperatorDef& operator_def,
     Workspace* ws)
-    : Operator<HIPContext>(operator_def, ws), miopen_wrapper_(&context_) {
+    : Operator<CUDAContext>(operator_def, ws), miopen_wrapper_(&context_) {
   MIOPEN_ENFORCE(miopenCreateRNNDescriptor(&rnnDesc_));
   MIOPEN_ENFORCE(miopenCreateTensorDescriptor(&wDesc_));
   MIOPEN_ENFORCE(miopenCreateTensorDescriptor(&hxDesc_));
@@ -280,7 +280,7 @@ bool RecurrentGradientOp<T>::RunOnDevice() {
   Output(GRAD_CELL_INPUT)->ResizeLike(Input(CELL_INPUT));
 
   Output(GRAD_WEIGHT)->ResizeLike(Input(WEIGHT));
-  math::Set<T, HIPContext>(
+  math::Set<T, CUDAContext>(
       Output(GRAD_WEIGHT)->size(),
       0.0,
       Output(GRAD_WEIGHT)->template mutable_data<T>(),

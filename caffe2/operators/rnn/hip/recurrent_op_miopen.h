@@ -1,11 +1,11 @@
 #ifndef CAFFE2_OPERATORS_RECURRENT_OP_MIOPEN_H_
 #define CAFFE2_OPERATORS_RECURRENT_OP_MIOPEN_H_
 
-#include "caffe2/core/context.h"
+#include "caffe2/core/hip/context.h"
 #include "caffe2/core/hip/context_gpu.h"
 #include "caffe2/core/hip/miopen_wrapper.h"
-#include "caffe2/core/logging.h"
-#include "caffe2/core/operator.h"
+#include "caffe2/core/hip/logging.h"
+#include "caffe2/core/hip/operator.h"
 
 namespace caffe2 {
 namespace detail {
@@ -31,9 +31,9 @@ class TensorDescriptors {
 } // namespace detail
 
 template <typename T>
-class RecurrentBaseOp : public Operator<HIPContext> {
+class RecurrentBaseOp : public Operator<CUDAContext> {
  public:
-  USE_OPERATOR_FUNCTIONS(HIPContext);
+  USE_OPERATOR_FUNCTIONS(CUDAContext);
   RecurrentBaseOp(const OperatorDef& operator_def, Workspace* ws);
   virtual ~RecurrentBaseOp();
 
@@ -64,7 +64,7 @@ class RecurrentBaseOp : public Operator<HIPContext> {
 };
 
 #define USE_RECURRENT_BASE_FUNCTIONS          \
-  USE_OPERATOR_FUNCTIONS(HIPContext);        \
+  USE_OPERATOR_FUNCTIONS(CUDAContext);        \
   using RecurrentBaseOp<T>::miopen_wrapper_;   \
   using RecurrentBaseOp<T>::rnnDesc_;         \
   using RecurrentBaseOp<T>::wDesc_;           \

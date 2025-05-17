@@ -2,6 +2,18 @@
 
 #include <unordered_map>
 
+#ifdef ROCM_VERSION  // USE_ROCM didn't work
+#include "caffe2/core/hip/context.h"
+#include "caffe2/core/hip/init.h"
+#include "caffe2/core/hip/logging.h"
+#include "caffe2/core/hip/memonger.h"
+#include "caffe2/core/hip/net.h"
+#include "caffe2/core/hip/operator.h"
+#include "caffe2/core/hip/scope_guard.h"
+#include "caffe2/core/hip/tensor.h"
+#include "caffe2/core/hip/types.h"
+#include "caffe2/core/hip/workspace.h"
+#else
 #include "caffe2/core/context.h"
 #include "caffe2/core/init.h"
 #include "caffe2/core/logging.h"
@@ -12,6 +24,7 @@
 #include "caffe2/core/tensor.h"
 #include "caffe2/core/types.h"
 #include "caffe2/core/workspace.h"
+#endif
 #include "caffe2/proto/caffe2_pb.h"
 #include "caffe2/python/pybind_state_dlpack.h"
 

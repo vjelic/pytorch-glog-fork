@@ -195,19 +195,6 @@ const char* cublasGetErrorString(cublasStatus_t error) {
     return "CUBLAS_STATUS_NOT_SUPPORTED";
   case CUBLAS_STATUS_LICENSE_ERROR:
     return "CUBLAS_STATUS_LICENSE_ERROR";
-#else
-  case rocblas_status_invalid_size:
-    return "rocblas_status_invalid_size";
-  case rocblas_status_perf_degraded:
-    return "rocblas_status_perf_degraded";
-  case rocblas_status_size_query_mismatch:
-    return "rocblas_status_size_query_mismatch";
-  case rocblas_status_size_increased:
-    return "rocblas_status_size_increased";
-  case rocblas_status_size_unchanged:
-    return "rocblas_status_size_unchanged";
-  default:
-    return "unrecognized_rocblas_error";
 #endif
   }
   // To suppress compiler warning.

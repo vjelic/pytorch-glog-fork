@@ -64,13 +64,14 @@ if(INTERN_BUILD_ATEN_OPS)
 
   # Generate the headers wrapped by our operator
   file(GLOB_RECURSE torchgen_python "${PROJECT_SOURCE_DIR}/torchgen/*.py")
-  add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/contrib/aten/aten_op.h
+  add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/contrib/aten/gen_aten_op.h
   COMMAND
   "${PYTHON_EXECUTABLE}" ${CMAKE_CURRENT_SOURCE_DIR}/contrib/aten/gen_op.py
     --aten_root=${CMAKE_CURRENT_SOURCE_DIR}/../aten
     --template_dir=${CMAKE_CURRENT_SOURCE_DIR}/contrib/aten
     --yaml_dir=${CMAKE_CURRENT_BINARY_DIR}/../aten/src/ATen
     --install_dir=${CMAKE_CURRENT_BINARY_DIR}/contrib/aten
+    --output_prefix=gen_
   DEPENDS
   ${torchgen_python}
   ${CMAKE_BINARY_DIR}/aten/src/ATen/Declarations.yaml
@@ -78,7 +79,7 @@ if(INTERN_BUILD_ATEN_OPS)
   ${CMAKE_CURRENT_SOURCE_DIR}/contrib/aten/aten_op_template.h)
 
   add_custom_target(__aten_op_header_gen
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/contrib/aten/aten_op.h)
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/contrib/aten/gen_aten_op.h)
   add_library(aten_op_header_gen INTERFACE)
   add_dependencies(aten_op_header_gen __aten_op_header_gen)
 

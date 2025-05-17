@@ -1,4 +1,4 @@
-#include "caffe2/operators/elu_op.h"
+#include "caffe2/operators/hip/elu_op.h"
 
 #include "caffe2/operators/hip/activation_ops_miopen.h"
 
@@ -8,7 +8,7 @@ template <>
 class MIOPENActivationOp<miopenActivationELU> final
     : public MIOPENActivationOpBase {
  public:
-  USE_OPERATOR_FUNCTIONS(HIPContext);
+  USE_OPERATOR_FUNCTIONS(CUDAContext);
 
   MIOPENActivationOp(const OperatorDef& operator_def, Workspace* ws)
       : MIOPENActivationOpBase(operator_def, ws),
@@ -71,7 +71,7 @@ template <>
 class MIOPENActivationGradientOp<miopenActivationELU> final
     : public MIOPENActivationOpBase {
  public:
-  USE_OPERATOR_FUNCTIONS(HIPContext);
+  USE_OPERATOR_FUNCTIONS(CUDAContext);
 
   MIOPENActivationGradientOp(const OperatorDef& operator_def, Workspace* ws)
       : MIOPENActivationOpBase(operator_def, ws),

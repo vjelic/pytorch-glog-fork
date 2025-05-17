@@ -15,17 +15,17 @@
  */
 #include "caffe2/core/hip/context_gpu.h"
 #include "caffe2/core/hip/miopen_wrapper.h"
-#include "caffe2/core/operator.h"
-#include "caffe2/core/types.h"
+#include "caffe2/core/hip/operator.h"
+#include "caffe2/core/hip/types.h"
 
 namespace caffe2 {
 
-class MIOPEN_LRNOP final : public Operator<HIPContext> {
+class MIOPEN_LRNOP final : public Operator<CUDAContext> {
  public:
-  USE_OPERATOR_FUNCTIONS(HIPContext);
+  USE_OPERATOR_FUNCTIONS(CUDAContext);
 
   MIOPEN_LRNOP(const OperatorDef& operator_def, Workspace* ws)
-      : Operator<HIPContext>(operator_def, ws),
+      : Operator<CUDAContext>(operator_def, ws),
         miopen_wrapper_(&context_),
         mode_(miopenLRNCrossChannel),
         size_(OperatorBase::GetSingleArgument<int>("size", 0)),
@@ -60,11 +60,11 @@ class MIOPEN_LRNOP final : public Operator<HIPContext> {
   // Input: X, Output: Y
 };
 
-class MIOPENLRNGradientOp final : public Operator<HIPContext> {
+class MIOPENLRNGradientOp final : public Operator<CUDAContext> {
  public:
-  USE_OPERATOR_FUNCTIONS(HIPContext);
+  USE_OPERATOR_FUNCTIONS(CUDAContext);
   MIOPENLRNGradientOp(const OperatorDef& operator_def, Workspace* ws)
-      : Operator<HIPContext>(operator_def, ws),
+      : Operator<CUDAContext>(operator_def, ws),
         miopen_wrapper_(&context_),
         mode_(miopenLRNCrossChannel),
         size_(OperatorBase::GetSingleArgument<int>("size", 0)),
@@ -188,12 +188,12 @@ bool MIOPENLRNGradientOp::DoRunWithType() {
   size_t ws_size = 0;
   MIOPEN_ENFORCE(miopenLRNGetWorkSpaceSize(data_desc_, &ws_size));
   if (bwdLRNWs_ == nullptr) {
-    HIP_CHECK(hipMalloc(&bwdLRNWs_, ws_size));
+    CUDA_CHECK(hipMalloc(&bwdLRNWs_, ws_size));
   }
 
   // Run fwd pass to populate workspace
   if (bwdLRNScratch_ == nullptr) {
-    HIP_CHECK(hipMalloc(&bwdLRNScratch_, X.size() * sizeof(float)));
+    CUDA_CHECK(hipMalloc(&bwdLRNScratch_, X.size() * sizeof(float)));
   }
   MIOPEN_ENFORCE(miopenLRNForward(
       miopen_wrapper_.inline_miopen_handle(),

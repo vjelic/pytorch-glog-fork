@@ -4,9 +4,15 @@
 #include <ATen/ATen.h>
 #include <c10/macros/Macros.h>
 #include <c10/util/irange.h>
+#ifdef USE_ROCM
+#include <caffe2/core/hip/context.h>
+#include <caffe2/core/hip/operator.h>
+#include <caffe2/utils/hip/math.h>
+#else
 #include <caffe2/core/context.h>
 #include <caffe2/core/operator.h>
 #include <caffe2/utils/math.h>
+#endif
 #include <iostream>
 
 // a map from descriptor strings (see [DESCRIPTORS])
@@ -64,11 +70,6 @@ private:
 
   at::TensorOptions optionsFor(const Tensor& ten) {
     at::Device device = ten.GetDevice();
-#if defined(USE_ROCM)
-    if (backend() == at::Backend::HIP) {
-      device = at::Device(kCUDA, device.index());
-    }
-#endif
     return at::TensorOptions(device).dtype(ten.dtype());
   }
 
@@ -108,11 +109,6 @@ private:
     auto at_sizes = src.sizes();
     caffe2::TypeMeta type_meta = typeMetaFor(src);
     at::Device device = src.device();
-#if defined(USE_ROCM)
-    if (device.is_cuda()) {
-      device = at::Device(at::DeviceType::HIP, device.index());
-    }
-#endif
     at::TensorImpl* src_impl = src.unsafeReleaseTensorImpl();
     std::vector<int64_t> dims(at_sizes.begin(), at_sizes.end());
     dst->Resize(dims);

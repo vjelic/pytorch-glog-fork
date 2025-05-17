@@ -8,14 +8,8 @@
 
 namespace caffe2 {
 
-#if !defined(USE_ROCM)
 REGISTER_CUDA_OPERATOR(
     RedisStoreHandlerCreate,
     RedisStoreHandlerCreateOp<CUDAContext>);
-#else
-REGISTER_HIP_OPERATOR(
-    RedisStoreHandlerCreate,
-    RedisStoreHandlerCreateOp<HIPContext>);
-#endif
 
 } // namespace caffe2

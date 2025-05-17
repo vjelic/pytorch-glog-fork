@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(__AVX__) && !defined(__NVCC__) && \
+#if defined(__AVX__) && !defined(__NVCC__) && !defined(__HIPCC__) && \
     (defined(__x86_64__) || defined(_M_X64) || defined(__i386__))
 #define CAFFE2_PERFKERNELS_ADAGRAD_H_USE_INTRINSIC
 #include <immintrin.h>
