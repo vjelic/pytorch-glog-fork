@@ -1410,30 +1410,10 @@ C10_DECLARE_REGISTRY(
 #define REGISTER_CUDNN_OPERATOR(name, ...) \
   REGISTER_CUDA_OPERATOR_WITH_ENGINE(name, CUDNN, __VA_ARGS__)
 
-// Macros for HIP operators
-C10_DECLARE_REGISTRY(
-    HIPOperatorRegistry,
-    OperatorBase,
-    const OperatorDef&,
-    Workspace*);
-#define REGISTER_HIP_OPERATOR_CREATOR(key, ...) \
-  C10_REGISTER_CREATOR(HIPOperatorRegistry, key, __VA_ARGS__)
-#define REGISTER_HIP_OPERATOR(name, ...)                                   \
-  IMPORT_IF_NOT_MSVC void CAFFE2_PLEASE_ADD_OPERATOR_SCHEMA_FOR_##name();  \
-  static void CAFFE2_UNUSED CAFFE_ANONYMOUS_VARIABLE_HIP##name() {         \
-    CAFFE2_PLEASE_ADD_OPERATOR_SCHEMA_FOR_##name();                        \
-  }                                                                        \
-  C10_REGISTER_CLASS(HIPOperatorRegistry, name, __VA_ARGS__)
-#define REGISTER_HIP_OPERATOR_STR(str_name, ...) \
-  C10_REGISTER_TYPED_CLASS(HIPOperatorRegistry, str_name, __VA_ARGS__)
-
-#define REGISTER_HIP_OPERATOR_WITH_ENGINE(name, engine, ...) \
-  C10_REGISTER_CLASS(HIPOperatorRegistry, name##_ENGINE_##engine, __VA_ARGS__)
-
 #define REGISTER_MIOPEN_OPERATOR(name, ...)                    \
-  REGISTER_HIP_OPERATOR_WITH_ENGINE(name, MIOPEN, __VA_ARGS__) \
-  REGISTER_HIP_OPERATOR_WITH_ENGINE(                           \
-      name, CUDNN, __VA_ARGS__) // Make CUDNN an alias of MIOPEN for HIP ops
+  REGISTER_CUDA_OPERATOR_WITH_ENGINE(name, MIOPEN, __VA_ARGS__) \
+  REGISTER_CUDA_OPERATOR_WITH_ENGINE(                           \
+      name, CUDNN, __VA_ARGS__) // Make CUDNN an alias of MIOPEN for CUDA ops
 
 // StaticLinkingProtector is a helper class that ensures that the Caffe2
 // library is linked correctly with whole archives (in the case of static

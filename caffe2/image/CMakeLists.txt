@@ -13,7 +13,7 @@ if(USE_OPENCV AND OpenCV_FOUND)
 
   # ---[ HIP files
   # ------[ general HIP
-  file(GLOB tmp hip/*.cc)
+  file(GLOB tmp hip/*_gpu.cc)
   set(Caffe2_HIP_SRCS ${Caffe2_HIP_SRCS} ${tmp})
   # ------[ HIP sources
   file(GLOB tmp hip/*.hip)

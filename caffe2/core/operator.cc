@@ -155,7 +155,7 @@ PerOpEnginePrefType& g_per_op_engine_pref() {
 
 GlobalEnginePrefType& g_global_engine_pref() {
   static auto* g_global_engine_pref_ =
-      new GlobalEnginePrefType{{CUDA, {"CUDNN"}}, {HIP, {"MIOPEN"}}};
+      new GlobalEnginePrefType{{CUDA, {"CUDNN"}}, {CUDA, {"MIOPEN"}}};
   return *g_global_engine_pref_;
 }
 
@@ -405,13 +405,6 @@ C10_DEFINE_REGISTRY(
     const OperatorDef&,
     Workspace*);
 CAFFE_REGISTER_DEVICE_TYPE(CUDA, CUDAOperatorRegistry);
-
-C10_DEFINE_REGISTRY(
-    HIPOperatorRegistry,
-    OperatorBase,
-    const OperatorDef&,
-    Workspace*);
-CAFFE_REGISTER_DEVICE_TYPE(HIP, HIPOperatorRegistry);
 
 C10_DEFINE_REGISTRY(
     GradientRegistry,
@@ -781,8 +774,7 @@ std::map<string, std::pair<DeviceOption, DeviceOption>> ValidateTensorDevices(
           // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
           const_cast<Blob&>(blob).GetRaw(), &_capacity, &blob_device);
 
-      if ((blob_device.device_type() == PROTO_CUDA ||
-           blob_device.device_type() == PROTO_HIP) &&
+      if (blob_device.device_type() == PROTO_CUDA &&
           blob_device.device_id() != op_device.device_id()) {
         mismatches[blob_name] = std::make_pair(op_device, blob_device);
       }
@@ -808,11 +800,6 @@ std::set<std::string> GetRegisteredOperators() {
   }
   // CUDA operators
   for (const auto& name : CUDAOperatorRegistry()->Keys()) {
-    all_keys.emplace(name);
-  }
-
-  // HIP operators
-  for (const auto& name : HIPOperatorRegistry()->Keys()) {
     all_keys.emplace(name);
   }
 
