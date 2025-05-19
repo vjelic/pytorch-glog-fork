@@ -87,14 +87,14 @@
     path = third_party/fmt
     url = https://github.com/fmtlib/fmt.git
 [submodule "third_party/cudnn_frontend"]
-	path = third_party/cudnn_frontend
-	url = https://github.com/NVIDIA/cudnn-frontend.git
+    path = third_party/cudnn_frontend
+    url = https://github.com/NVIDIA/cudnn-frontend.git
 [submodule "third_party/kineto"]
     path = third_party/kineto
-    url = https://github.com/ROCm/kineto.git
+    url = https://github.com/pytorch/kineto
 [submodule "third_party/pocketfft"]
-	path = third_party/pocketfft
-	url = https://github.com/mreineck/pocketfft
+    path = third_party/pocketfft
+    url = https://github.com/mreineck/pocketfft
 [submodule "third_party/ittapi"]
 	path = third_party/ittapi
 	url = https://github.com/intel/ittapi.git
