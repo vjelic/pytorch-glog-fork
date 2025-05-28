@@ -193,7 +193,8 @@ __device__ inline void bitonicSortKeys(
 // dimension as the innermost dim, such that we can get the particular slice for
 // a Tensor via its linear block dimension * the slice size.
 template <typename T, unsigned int Power2Size>
-#if defined(CUDA_VERSION) && CUDA_VERSION >= 11070
+// CUDA 11.7: RuntimeError: CUDA error: too many resources requested for launch
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 11070 && !defined(USE_ROCM)
 __launch_bounds__(1024, 1)
 #endif
 __global__ void compute_mode(

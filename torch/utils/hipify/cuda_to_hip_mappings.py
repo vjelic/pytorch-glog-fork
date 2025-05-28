@@ -8456,7 +8456,6 @@ PYTORCH_SPECIFIC_MAPPINGS = collections.OrderedDict(
         ("USE_CUDA", ("USE_ROCM", API_PYTORCH)),
         ("TORCH_CUDA_CPP_API", ("TORCH_HIP_CPP_API", API_PYTORCH)),
         ("TORCH_CUDA_CU_API", ("TORCH_HIP_API", API_PYTORCH)),
-        ("CUDA_VERSION", ("TORCH_HIP_VERSION", API_PYTORCH)),
         ("cudaHostAllocator", ("hipHostAllocator", API_PYTORCH)),
         ("cudaDeviceAllocator", ("hipDeviceAllocator", API_PYTORCH)),
         ("define MAX_NUM_BLOCKS 200", ("define MAX_NUM_BLOCKS 64", API_PYTORCH)),
@@ -8676,7 +8675,6 @@ CAFFE2_SPECIFIC_MAPPINGS = collections.OrderedDict(
         # the ordered dict guarantees this pattern will match first, before "CUDA"
         ("CUDA_KERNEL_ASSERT", ("CUDA_KERNEL_ASSERT", API_CAFFE2)),
         ("lazyInitCUDA", ("lazyInitCUDA", API_CAFFE2)),
-        ("CUDA_VERSION", ("TORCH_HIP_VERSION", API_CAFFE2)),
         ("CUDA", ("HIP", API_CAFFE2)),
         ("Cuda", ("Hip", API_CAFFE2)),
         ("cuda_", ("hip_", API_CAFFE2)),
@@ -8706,7 +8704,6 @@ CAFFE2_SPECIFIC_MAPPINGS = collections.OrderedDict(
 # put it as API_CAFFE2
 C10_MAPPINGS = collections.OrderedDict(
     [
-        ("CUDA_VERSION", ("TORCH_HIP_VERSION", API_PYTORCH)),
         ("CUDA_LAUNCH_BLOCKING=1", ("AMD_SERIALIZE_KERNEL=3", API_C10)),
         ("CUDA_LAUNCH_BLOCKING", ("AMD_SERIALIZE_KERNEL", API_C10)),
         ("cuda::compat::", ("hip::compat::", API_C10)),

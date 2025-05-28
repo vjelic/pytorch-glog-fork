@@ -382,7 +382,7 @@ Tensor& addmm_out_cuda_impl(Tensor& result, const Tensor& self, const Tensor& ma
            scalar_type == at::ScalarType::Half ||
            scalar_type == at::ScalarType::BFloat16) &&
 #endif
-#if (defined(CUDA_VERSION) && CUDA_VERSION >= 12010 || defined(USE_ROCM))
+#if (defined(CUDA_VERSION) && CUDA_VERSION >= 12010) || defined(USE_ROCM)
           mat2_sizes[0] > 1 && mat2_sizes[1] > 1;
 #else
           mat2_sizes[0] > 1 && mat2_sizes[1] > 1 &&
@@ -495,7 +495,7 @@ Tensor& addmm_out_cuda_impl(Tensor& result, const Tensor& self, const Tensor& ma
     }
 #else
     auto activation_epilogue = activation_to_gemm_and_blas_arg(activation);
-#if (defined(CUDA_VERSION) && (CUDA_VERSION < 11080))
+#if defined(CUDA_VERSION) && CUDA_VERSION < 11080 && !defined(USE_ROCM)
     // GELU is not supported (and does not compile!) prior
     // to CUDA 11.4. Have observed accuracy issues with
     // GELU epilogue in 11.4; disabling the GELU epilogue
@@ -646,7 +646,7 @@ Tensor& addmm_out_cuda_impl(Tensor& result, const Tensor& self, const Tensor& ma
 // gating activation_to_gemm_and_blas_arg above; here we are manually
 // performing a post-GELU because we weren't able to use the GELU
 // epilogue above.
-#if !(defined(CUDA_VERSION) && CUDA_VERSION >= 11080) && !defined(USE_ROCM)
+#if !(defined(CUDA_VERSION) && CUDA_VERSION < 11080 && !defined(USE_ROCM))
   if (useLtInterface && activation == Activation::GELU) {
     at::gelu_(const_cast<Tensor&>(*args.result), "tanh");
   }
@@ -1017,7 +1017,7 @@ Tensor& _int_mm_out_cuda(const Tensor& self, const Tensor& mat2, Tensor& result)
 
   TORCH_CHECK(result.is_contiguous(), "Expected result to be contiguous.");
 
-#if (defined(CUDA_VERSION) && (CUDA_VERSION >= 11070)) || defined(USE_ROCM)
+#if (defined(CUDA_VERSION) && CUDA_VERSION >= 11070) || defined(USE_ROCM)
   cublasCommonArgs args(self, mat2, result);
 
   at::cuda::blas::int8_gemm(

@@ -9,7 +9,7 @@
 #include <ATen/native/cuda/Sort.h>
 #include <ATen/native/StridedRandomAccessor.h>
 
-#define HAS_WARP_MERGE_SORT() (CUDA_VERSION >= 110600)
+#define HAS_WARP_MERGE_SORT() (CUDA_VERSION >= 110600 || defined(USE_ROCM))
 
 
 namespace at::native {

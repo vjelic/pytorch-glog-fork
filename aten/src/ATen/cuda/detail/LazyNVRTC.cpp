@@ -146,7 +146,7 @@ nvrtcResult nvrtcCreateProgram(nvrtcProgram *prog,
 NVRTC_STUB1(nvrtcDestroyProgram, nvrtcProgram *)
 NVRTC_STUB2(nvrtcGetPTXSize, nvrtcProgram, size_t *)
 NVRTC_STUB2(nvrtcGetPTX, nvrtcProgram, char *)
-#if defined(CUDA_VERSION) && CUDA_VERSION >= 11010
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 11010 && !defined(USE_ROCM)
 NVRTC_STUB2(nvrtcGetCUBINSize, nvrtcProgram, size_t *)
 NVRTC_STUB2(nvrtcGetCUBIN, nvrtcProgram, char *)
 #endif
@@ -176,7 +176,7 @@ CUDA_STUB3(cuFuncGetAttribute, int*, CUfunction_attribute, CUfunction)
 CUDA_STUB3(cuPointerGetAttribute, void*, CUpointer_attribute, CUdeviceptr)
 
 
-#if defined(CUDA_VERSION) && CUDA_VERSION >= 12000
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 12000 && !defined(USE_ROCM)
 CUresult CUDAAPI
 cuTensorMapEncodeTiled(
     CUtensorMap* tensorMap,

@@ -12,7 +12,7 @@
 #if defined(__CUDA_BF16_TYPES_EXIST__)
 #define HAS_NCCL_BF16_DATATYPE \
   ((NCCL_MAJOR > 2) || (NCCL_MAJOR == 2) && (NCCL_MINOR >= 10))
-#elif defined(USE_ROCM) && (TORCH_HIP_VERSION >= 301)
+#elif defined(USE_ROCM)
 #define HAS_NCCL_BF16_DATATYPE 1
 #else
 #define HAS_NCCL_BF16_DATATYPE 0

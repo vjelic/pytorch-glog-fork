@@ -36,7 +36,7 @@
   _(cuStreamWriteValue32)           \
   _(cuGetErrorString)
 
-#if defined(CUDA_VERSION) && (CUDA_VERSION >= 12030)
+#if defined(CUDA_VERSION) && (CUDA_VERSION >= 12030) && !defined(USE_ROCM)
 #define C10_LIBCUDA_DRIVER_API_12030(_) \
   _(cuMulticastAddDevice)               \
   _(cuMulticastBindMem)                 \

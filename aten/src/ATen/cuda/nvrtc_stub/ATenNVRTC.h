@@ -67,7 +67,7 @@ namespace at::cuda {
   _(cuDeviceGet)                        \
 
 
-#if defined(CUDA_VERSION) && CUDA_VERSION >= 12000
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 12000 && !defined(USE_ROCM)
 #define AT_FORALL_NVRTC_EXTENDED(_)              \
   AT_FORALL_NVRTC_BASE(_)                        \
   _(cuTensorMapEncodeTiled)
@@ -76,7 +76,7 @@ namespace at::cuda {
   AT_FORALL_NVRTC_BASE(_)
 #endif
 
-#if defined(CUDA_VERSION) && CUDA_VERSION >= 11010
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 11010 && !defined(USE_ROCM)
 #define AT_FORALL_NVRTC(_) \
   AT_FORALL_NVRTC_EXTENDED(_)  \
   _(nvrtcGetCUBINSize)     \
@@ -110,24 +110,39 @@ namespace at::cuda {
 #endif
 
 #define AT_FORALL_NVRTC(_)                        \
-  _(nvrtcVersion)                                 \
-  _(nvrtcCreateProgram)                           \
-  _(nvrtcAddNameExpression)                       \
-  _(nvrtcDestroyProgram)                          \
-  _(nvrtcGetPTXSize)                              \
-  _(nvrtcGetPTX)                                  \
-  _(cuModuleLoadData)                             \
-  _(cuModuleGetFunction)                          \
-  _(HIPOCCUPANCYMAXACTIVEBLOCKSPERMULTIPROCESSOR) \
-  _(nvrtcGetErrorString)                          \
-  _(nvrtcGetProgramLogSize)                       \
-  _(nvrtcGetProgramLog)                           \
-  _(cuLaunchKernel)                               \
-  _(nvrtcCompileProgram)                          \
-  _(cuCtxGetCurrent)                              \
-  _(nvrtcGetLoweredName)                          \
-  _(cuModuleUnload)                               \
-  _(cuDevicePrimaryCtxGetState)
+  _(nvrtcVersion)                                \
+  _(nvrtcAddNameExpression)                      \
+  _(nvrtcCreateProgram)                          \
+  _(nvrtcDestroyProgram)                         \
+  _(nvrtcGetPTXSize)                             \
+  _(nvrtcGetPTX)                                 \
+  _(nvrtcCompileProgram)                         \
+  _(nvrtcGetErrorString)                         \
+  _(nvrtcGetProgramLogSize)                      \
+  _(nvrtcGetProgramLog)                          \
+  _(nvrtcGetLoweredName)                         \
+  _(cuModuleLoad)                                \
+  _(cuModuleLoadData)                            \
+  _(cuModuleLoadDataEx)                          \
+  _(cuModuleGetFunction)                         \
+  _(cuOccupancyMaxActiveBlocksPerMultiprocessor) \
+  _(cuGetErrorString)                            \
+  _(cuLaunchKernel)                              \
+  _(cuLaunchCooperativeKernel)                   \
+  _(cuCtxGetCurrent)                             \
+  _(cuCtxSetCurrent)                             \
+  _(cuModuleUnload)                              \
+  _(cuDevicePrimaryCtxGetState)                  \
+  _(cuDevicePrimaryCtxRetain)                    \
+  _(cuLinkCreate)                                \
+  _(cuLinkAddData)                               \
+  _(cuLinkComplete)                              \
+  _(cuFuncSetAttribute)                          \
+  _(cuFuncGetAttribute)                          \
+  _(cuPointerGetAttribute)                       \
+  _(cuFuncSetCacheConfig)                        \
+  _(cuDeviceGetAttribute)                        \
+  _(cuDeviceGet)                        \
 
 #endif
 
