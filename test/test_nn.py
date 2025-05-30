@@ -5145,8 +5145,8 @@ tensor(..., device='meta', size=(1,), requires_grad=True)""")
     @parametrize_test("mode", ["train", "inference"], name_fn=lambda x: x)
     @parametrize_test(
         # test verifies cudnn/miopen batchnorm with the reference backend or memory format
-        # memory_format - one of ("NCHW", NHWC")
-        # ref_backend - one of ("cpu", "native", "NCHW", "NHWC")
+        # memory_format - one of ("NCHW", "NHWC", "NHWC3D", "NCHW3D")
+        # ref_backend - one of ("cpu", "native", "NCHW", "NHWC", "NHWC3D", "NCHW3D")
         #   "cpu"    - cpu backend with the same memory_format will be used as reference
         #   "native" - native backend (`with torch.backends.cudnn.flags(enabled=False)`)
         #              with the same memory_format will be used
@@ -5175,6 +5175,14 @@ tensor(..., device='meta', size=(1,), requires_grad=True)""")
             ("NHWC", "NCHW", False, torch.float),
             ("NHWC", "NCHW", True, torch.half),
             ("NHWC", "NCHW", True, torch.bfloat16),
+
+            ("NHWC3D", "native", False, torch.float),
+            ("NHWC3D", "native", True, torch.half),
+            ("NHWC3D", "native", True, torch.bfloat16),
+
+            ("NCHW3D", "native", False, torch.float),
+            ("NCHW3D", "native", True, torch.half),
+            ("NCHW3D", "native", True, torch.bfloat16),
         ],
         name_fn=lambda f, b, m, t: f"{f}_vs_{b}{'_mixed' if m else ''}_{dtype_name(t)}"
     )
@@ -5186,7 +5194,7 @@ tensor(..., device='meta', size=(1,), requires_grad=True)""")
 
         def _get_ref_device(backend: str , device: str):
             # If 'backend' specifies the memory format, return 'device' arg, otherwise return a device matches the backend
-            if backend in ("NHWC", "NCHW"):
+            if backend in ("NHWC", "NHWC3D", "NHWC3D", "NCHW"):
                 return device
             if backend == "native":
                 return "cuda"
@@ -5199,9 +5207,11 @@ tensor(..., device='meta', size=(1,), requires_grad=True)""")
             # If 'backend' specifies the memory format, return it, otherwise look at 'memory_format' arg
             if backend == "NHWC":
                 return torch.channels_last
-            if backend == "NCHW":
+            if backend == "NHWC3D":
+                return torch.channels_last_3d
+            if backend in ("NCHW", "NCHW3D"):
                 return torch.contiguous_format
-            if memory_format in (torch.contiguous_format, torch.channels_last):
+            if memory_format in (torch.contiguous_format, torch.channels_last, torch.channels_last_3d):
                 return memory_format
             raise ValueError("Unable to detect memory format for backend={backend} and memory_format={memory_format}")
 
@@ -5210,10 +5220,24 @@ tensor(..., device='meta', size=(1,), requires_grad=True)""")
                 return torch.contiguous_format
             if t.is_contiguous(memory_format=torch.channels_last):
                 return torch.channels_last
+            if t.is_contiguous(memory_format=torch.channels_last_3d):
+                return torch.channels_last_3d
+            return ValueError("Unsupported memory_format")
+
+        def _get_memory_format_from_name(memory_format_name: str) -> torch.memory_format:
+            if memory_format_name == "NHWC":
+                return torch.channels_last
+            elif memory_format_name == "NHWC3D":
+                return torch.channels_last_3d
+            elif memory_format_name in ("NCHW", "NCHW3D"):
+                return torch.contiguous_format
             return ValueError("Unsupported memory_format")
 
         def _create_backend(inp: torch.Tensor, mixed: bool = False):
-            mod = nn.BatchNorm2d(inp.size(1), device=inp.device, dtype=torch.float if mixed else inp.dtype)
+
+            mod = nn.BatchNorm2d(inp.size(1), device=inp.device, dtype=torch.float if mixed else inp.dtype) \
+                if inp.dim() == 4 else \
+                    nn.BatchNorm3d(inp.size(1), device=inp.device, dtype=torch.float if mixed else inp.dtype)
             return mod
 
         def _test_batchnorm_train(inp, grad, mixed, ref_inp, ref_grad, ref_backend):
@@ -5240,12 +5264,13 @@ tensor(..., device='meta', size=(1,), requires_grad=True)""")
             self.assertEqual(mod.running_var, ref_mod.running_var)
             self.assertEqual(inp.grad, ref_inp.grad)
 
-        def _train(memory_format, ref_backend, mixed, dtype):
-            memory_format = torch.contiguous_format if memory_format == "NCHW" else torch.channels_last
+        def _train(memory_format_name, ref_backend, mixed, dtype):
+            memory_format = _get_memory_format_from_name(memory_format_name)
+
             ref_memory_format = _get_backend_memory_format(ref_backend, memory_format)
             ref_device = _get_ref_device(ref_backend, device="cuda")
 
-            size = (4, 8, 2, 2)
+            size = (4, 8, 2, 2, 2) if memory_format_name in ("NCHW3D", "NHWC3D") else (4, 8, 2, 2)
             inp = _create_tensor(size, memory_format, dtype, device="cuda").detach().requires_grad_()
             grad = _create_tensor(size, memory_format, dtype, device="cuda")
             ref_inp = inp.detach().clone(memory_format=ref_memory_format).to(device=ref_device).requires_grad_()
@@ -5273,12 +5298,12 @@ tensor(..., device='meta', size=(1,), requires_grad=True)""")
             # _test_batchnorm_train(input=input, grad=grad, mixed=mixed,
             #                       ref_input=ref_input, ref_grad=ref_grad, ref_backend=ref_backend)
 
-        def _inference(memory_format, ref_backend, mixed, dtype):
-            memory_format = torch.contiguous_format if memory_format == "NCHW" else torch.channels_last
+        def _inference(memory_format_name, ref_backend, mixed, dtype):
+            memory_format = _get_memory_format_from_name(memory_format_name)
             ref_memory_format = _get_backend_memory_format(ref_backend, memory_format)
             ref_device = _get_ref_device(ref_backend, device="cuda")
 
-            size = (2, 64, 50, 50)
+            size = (2, 64, 50, 50, 50) if memory_format == torch.channels_last_3d else (2, 64, 50, 50)
             inp = _create_tensor(size, memory_format, dtype, device="cuda")
             ref_inp = inp.detach().clone(memory_format=ref_memory_format).to(device=ref_device)
             mod = _create_backend(inp, mixed).eval()
