@@ -68,10 +68,12 @@ CUSPARSE_SPMM_COMPLEX128_SUPPORTED = (
 ) or (not IS_WINDOWS and not TEST_WITH_ROCM)
 
 HIPSPARSE_SPMM_COMPLEX128_SUPPORTED = torch.version.hip and version.parse(torch.version.hip.split("-")[0]) >= version.parse("6.0")
+HIPSPARSE_FP16_SUPPORTED = torch.version.hip and version.parse(torch.version.hip.split("-")[0]) >= version.parse("7.0")
+HIPSPARSE_BF16_SUPPORTED = torch.version.hip and version.parse(torch.version.hip.split("-")[0]) >= version.parse("7.1")
 
 sparse_complex128_supported = CUSPARSE_SPMM_COMPLEX128_SUPPORTED or HIPSPARSE_SPMM_COMPLEX128_SUPPORTED
-sparse_float16_supported = SM53OrLater and torch.version.cuda or not TEST_WITH_ROCM
-sparse_bfloat16_supported = SM80OrLater and torch.version.cuda or not TEST_WITH_ROCM
+sparse_float16_supported = (SM53OrLater and torch.version.cuda) or (HIPSPARSE_FP16_SUPPORTED)
+sparse_bfloat16_supported = (SM80OrLater and torch.version.cuda) or (HIPSPARSE_BF16_SUPPORTED)
 
 def all_sparse_layouts(test_name='layout', include_strided=False):
     return parametrize(test_name, [
