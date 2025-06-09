@@ -39,24 +39,10 @@ def name2bpe(name):
         8: ['double', 'long int'],
         4: ['float', 'scalar'],
         2: ['c10::half', 'c10::bfloat16'],
-        1: ['c10::float8_e4m3fnuz', 'unsigned char'],
+        1: ['c10::float8_e4m3fnuz', 'unsigned char', 'fp8'],
     }
     dict_dtype2bpe = {dtype: bpe for bpe, dtypes in dict_bpe2dtype.items() for dtype in dtypes}
     return dict_dtype2bpe.get(name.lower(), None)
-
-def is_tensortype(dtype):
-    """
-    This function checks if a data type is a tensor type.
-    Args:
-        dtype (str): The name of the data type.
-    Returns:
-        bool: True if the data type is a tensor type, False if not. If the data type is not recognized, None is returned.
-    """
-    if dtype.lower() in ['float', 'double', 'c10::half', 'c10::bfloat16', 'c10::float8_e4m3fnuz']:
-        return True
-    elif dtype.lower() in ['long int', 'scalar']:
-        return False
-
 
 def torch_dtype_map(dtype):
     """
@@ -71,7 +57,9 @@ def torch_dtype_map(dtype):
         'double': 'fp64',
         'c10::half': 'fp16',
         'c10::bfloat16': 'bf16',
-        'c10::float8_e4m3fnuz': 'fp8'
+        'c10::float8_e4m3fnuz': 'fp8',
+        'unsigned char': 'fp8',
+        'fp8': 'fp8',
     }
     return dict_dtype2gemmologist.get(dtype.lower(), None)
 
@@ -518,6 +506,43 @@ class tex_ts_te_gemm_ts(GEMM):
     def bytes_bwd(self, bytes_per_element):
         raise NotImplementedError("Backward pass for tex_ts::te_gemm_ts is not defined.")
 
+class tev2_pseudo_gemm(GEMM):
+    # TODO: need to cleanup and reuse perf models better
+    @staticmethod
+    def get_param_details(event):
+        input_dims = event['args']['Input Dims']
+        A_shape, B_shape = input_dims[0], input_dims[1]
+        M = A_shape[0]
+        N = B_shape[1]
+        K = A_shape[1]
+
+        dtype_A_B = tuple(event['args']['Input type'][:2])
+        try:
+            stride_A = tuple(event['args']['Input Strides'][0])
+            stride_B = tuple(event['args']['Input Strides'][1])
+        except KeyError:
+            stride_A = stride_B = None
+
+        return {"M": M, "N": N, "K": K, "bias": False,
+                "stride_A": stride_A, "stride_B": stride_B,
+                "dtype_A_B": dtype_A_B}
+
+    def bytes(self):
+        dtype_A_B = self.param_details['dtype_A_B']
+        if dtype_A_B[0] != dtype_A_B[1]:
+            raise ValueError(f"Data types of A and B are different: {dtype_A_B}")
+        self.bpe_in = name2bpe(dtype_A_B[0])
+
+        # irrespective of the input dtype, the output dtype is always fp16/bf16
+        self.bpe_out = 2 
+        return super().bytes(bpe_mat1=self.bpe_in, bpe_mat2=self.bpe_in,
+                             bpe_bias=self.bpe_in, # does not matter
+                             bpe_output=self.bpe_out) # out dtype is not always provided. #TODO: use out dtype if provided
+    def flops_bwd(self):
+        raise NotImplementedError("Backward pass for tev2_pseudo_gemm is not defined.")
+    def bytes_bwd(self, bytes_per_element):
+        raise NotImplementedError("Backward pass for tev2_pseudo_gemm is not defined.")
+
 
 # 2. Convolution
 class CONV:
@@ -805,13 +830,17 @@ class flash_attention(SDPA):
     @staticmethod
     def get_param_details(event):
         input_dims = event['args']['Input Dims']
-        q_shape, k_shape, v_shape = input_dims[0], input_dims[1], input_dims[2]
+        q_idx, k_idx, v_idx = 0, 1, 2
+        q_shape, k_shape, v_shape = input_dims[q_idx], input_dims[k_idx], input_dims[v_idx]
+        strides = event['args']['Input Strides']
+        q_stride, k_stride, v_stride = tuple(strides[q_idx]), tuple(strides[k_idx]), tuple(strides[v_idx])
         B, N_Q, H_Q, d_h = q_shape
         assert k_shape == v_shape, f"Key and value shapes are different: {k_shape} != {v_shape}"
         _, N_KV, H_KV, _ = input_dims[1]
         dropout = float(event['args']['Concrete Inputs'][3])
         causal = eval(event['args']['Concrete Inputs'][5])
         return {"B": B, "N_Q": N_Q, "H_Q": H_Q, "N_KV": N_KV, "H_KV": H_KV, "d_h": d_h,
+                "q_stride": q_stride, "k_stride": k_stride, "v_stride": v_stride,
                 "dropout": dropout, "causal": causal, "flash_impl": True}
 
 class flash_attention_backward(flash_attention):
@@ -858,6 +887,41 @@ class aten__scaled_dot_product_cudnn_attention(SDPA):
 
         return {"B": B, "N_Q": N_Q, "H_Q": H_Q, "N_KV": N_KV, "H_KV": H_KV, "d_h": d_h,
                 "dropout": dropout_p, "causal": is_causal, "flash_impl": False}    
+
+class aten__scaled_dot_product_efficient_attention(SDPA):
+    # Seems to have the exact same signature as aten::_scaled_dot_product_cudnn_attention
+    # Tensor query, 
+    # Tensor key, 
+    # Tensor value, 
+    # Tensor? attn_bias, 
+    # bool compute_log_sumexp, 
+    # float dropout_p=0., 
+    # bool is_causal=False, 
+    # *, 
+    # float? scale=None
+
+    @staticmethod
+    def get_param_details(event):
+        input_dims = event['args']['Input Dims']
+        concrete_inputs = event['args']['Concrete Inputs']
+        q_shape, k_shape, v_shape = input_dims[0], input_dims[1], input_dims[2]
+        B, H_Q, N_Q, d_h = q_shape
+        assert k_shape == v_shape, f"Key and value shapes are different: {k_shape} != {v_shape}"
+        _, H_KV, N_KV, _ = input_dims[1]
+
+        dropout_p = 0.0
+        if concrete_inputs[5] not in ('', 'None'):
+            try:
+                dropout_p = float(concrete_inputs[5])
+            except (ValueError, TypeError):
+                pass
+
+        is_causal = concrete_inputs[6].lower() == 'true' if concrete_inputs[6] not in ('', 'None') else False
+        # scale = float(concrete_inputs[7]) if concrete_inputs[7] not in ('', 'None') else None
+
+        return {"B": B, "N_Q": N_Q, "H_Q": H_Q, "N_KV": N_KV, "H_KV": H_KV, "d_h": d_h,
+                "dropout": dropout_p, "causal": is_causal, "flash_impl": False}    
+
 class UnaryElementwise:
 
     def __init__(self, event, arch=None):
@@ -925,7 +989,9 @@ class BinaryElementwise:
         if dtype_out is not None:
             self.bpe_out = name2bpe(dtype_out)
         elif self.bpe_in1 and self.bpe_in2:
-            if is_tensortype(dtype_in1) and is_tensortype(dtype_in2):
+            in1_is_tensor = self.param_details['shape_in1'] != ()
+            in2_is_tensor = self.param_details['shape_in2'] != ()
+            if in1_is_tensor and in2_is_tensor:
                 # cast to higher precision if both are tensors
                 self.bpe_out = max(self.bpe_in1, self.bpe_in2)
             else:

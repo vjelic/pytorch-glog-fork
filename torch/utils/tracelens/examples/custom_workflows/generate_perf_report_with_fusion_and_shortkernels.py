@@ -35,7 +35,22 @@ def get_next_host_op(perf_analyzer, host_op):
 
 
 def get_df_fusion_opportunity(perf_analyzer, fusion_op_names):
+    """
+    Identifies fusion opportunities from performance data and returns a grouped DataFrame summarizing them.
 
+    Parameters:
+        perf_analyzer (TreePerfAnalyzer): An instance of TreePerfAnalyzer containing performance data.
+        fusion_op_names (list of str): A list of operation names to consider as fusion candidates.
+
+    Returns:
+        pandas.DataFrame: A DataFrame summarizing fusion opportunities. Key columns include:
+            - 'combo': Combination of fusion candidate and post-fusion operation.
+            - 'first kernel by fusion post op duration_mean': Mean duration of the first kernel after fusion.
+            - 'first kernel by fusion post op duration_std': Standard deviation of the duration.
+            - 'first kernel by fusion post op duration_sum': Total duration of the first kernel.
+            - 'first kernel by fusion post op duration_count': Count of occurrences.
+            - 'estimated saved time percent': Estimated percentage of time saved by fusion.
+    """
     fusion_candidates = [e for e in perf_analyzer.tree.events if e['name'] in fusion_op_names]
 
     list_dicts_info = []
@@ -92,6 +107,21 @@ def get_df_fusion_opportunity(perf_analyzer, fusion_op_names):
     return df_fusion_study_grouped
 
 def get_dfs_short_kernels(perf_analyzer, short_kernel_threshold_us=10, histogram_bins=100, topk=None):
+    """
+    Analyze short kernel events from the performance data and return two DataFrames:
+    a histogram of short kernel durations and a summary of top short kernels.
+
+    Args:
+        perf_analyzer (TreePerfAnalyzer): The performance analyzer object containing kernel data.
+        short_kernel_threshold_us (int, optional): Threshold in microseconds to classify a kernel as "short". Defaults to 10.
+        histogram_bins (int, optional): Number of bins for the histogram of short kernel durations. Defaults to 100.
+        topk (int, optional): Number of top short kernels to include in the summary. If None, include all. Defaults to None.
+
+    Returns:
+        tuple: A tuple containing:
+            - pd.DataFrame: Histogram of short kernel durations with columns ['bin_start', 'bin_end', 'count'].
+            - pd.DataFrame: Summary of top short kernels with detailed statistics and percentage contribution to total time.
+    """
     df_kernels = perf_analyzer.get_df_kernels()
     df_filtered = df_kernels[df_kernels['Kernel duration (µs)'] < short_kernel_threshold_us]
 
@@ -108,7 +138,7 @@ def get_dfs_short_kernels(perf_analyzer, short_kernel_threshold_us=10, histogram
     agg_dict = {
         'Kernel duration (µs)': ['sum', 'count', 'mean'],
     }
-    df_grouped = df_filtered.groupby(['Parent cpu_op', 'Input dims', 'Input strides', 'Concrete Inputs', 'Kernel name']).agg(agg_dict)
+    df_grouped = df_filtered.groupby(['Parent cpu_op', 'Input dims', 'Input strides', 'Concrete Inputs', 'Kernel name'], sort=False).agg(agg_dict)
 
     # Flatten multi-level column names
     df_grouped.columns = ['_'.join(col).strip() for col in df_grouped.columns]
@@ -134,6 +164,14 @@ def get_dfs_short_kernels(perf_analyzer, short_kernel_threshold_us=10, histogram
 
 
 def main():
+
+    # check openpyxl is installed
+    try:
+        import openpyxl
+    except ImportError:
+        raise ImportError("openpyxl is required to write Excel files for perf report gen. Please install it using 'pip install openpyxl'.")
+
+
     parser = argparse.ArgumentParser(description='Process a JSON trace profile and generate performance report tables.')
     parser.add_argument('--profile_json_path', type=str, required=True, help='Path to the profile.json file')
     parser.add_argument('--output_xlsx_path', type=str, required=True, help='Path to the output Excel file')
