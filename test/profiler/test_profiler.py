@@ -1390,8 +1390,10 @@ class TestProfiler(TestCase):
                 with open(fname) as f:
                     j = json.load(f)
                     cats = {e.get("cat", None) for e in j["traceEvents"]}
+                    names = {e.get("name", None) for e in j["traceEvents"]}
+
             self.assertTrue(
-                "cuda_sync" in cats,
+                "cuda_sync" in cats or "hipDeviceSynchronize" in names,
                 "Expected to find cuda_sync event" f" found = {cats}",
             )
 
