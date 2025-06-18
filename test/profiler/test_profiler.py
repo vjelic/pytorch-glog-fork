@@ -168,6 +168,8 @@ class TestProfilerCUDA(TestCase):
                 "-c",
                 """
 import os
+import tempfile
+os.chdir(tempfile.gettempdir())
 import torch
 from torch.profiler import ProfilerActivity, profile
 
