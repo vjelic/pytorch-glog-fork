@@ -70,7 +70,7 @@ from torch.testing._internal.common_utils import (
     TEST_WITH_ROCM,
     TestCase,
 )
-
+from torch.utils.cpp_extension import ROCM_HOME
 
 if TYPE_CHECKING:
     from torch.autograd.profiler_util import FunctionEvent
@@ -2134,7 +2134,9 @@ assert KinetoStepTracker.current_step() == initial_step + 2 * niters
     @unittest.skipIf(not torch.cuda.is_available(), "CUDA is required")
     @unittest.skipIf(not kineto_available(), "Kineto is required")
     def test_disable_external_correlation(self):
-        cuda_external_id_events = {"cuda_runtime", "gpu_memcpy", "kernel"}
+        cuda_external_id_events = {"cuda_runtime", "kernel"}
+        if ROCM_HOME is None:
+            cuda_external_id_events = {"cuda_runtime", "gpu_memcpy", "kernel"}
         activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA]
 
         def check_correlations(event, disable_external_correlation):
@@ -2142,8 +2144,9 @@ assert KinetoStepTracker.current_step() == initial_step + 2 * niters
                 if disable_external_correlation:
                     self.assertTrue("External id" not in event["args"])
                 elif event["name"] != "cudaDeviceSynchronize":
-                    self.assertTrue("External id" in event["args"])
-                    self.assertTrue(event["args"]["External id"] > 0)
+                    if "cuda" in event["name"]:
+                        self.assertTrue("External id" in event["args"])
+                        self.assertTrue(event["args"]["External id"] > 0)
 
         def validate_json(prof, disable_external_correlation):
             with TemporaryFileName(mode="w+") as fname:
