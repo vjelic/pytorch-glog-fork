@@ -78,8 +78,6 @@ if(NOT __MAGMA_INCLUDED)
 
     message(STATUS "MAGMA full URL=" ${__MAGMA_URL})
 
-
-
     message(STATUS  "Installing MAGMA from wheel file to ${__MAGMA_INSTALL_DIR}\n"
                     "MAGMA headers in ${__MAGMA_INSTALL_DIR}/include/magma")
 
@@ -96,7 +94,6 @@ if(NOT __MAGMA_INCLUDED)
     )
     add_dependencies(__rocm_magma magma_external)
 
-
   else()
     message(STATUS "No MAGMA installation found. Installing MAGMA from source.")
 
@@ -104,46 +101,24 @@ if(NOT __MAGMA_INCLUDED)
     set(MAGMA_REPOSITORY "https://github.com/ROCm/utk-magma.git")
     set(MAGMA_GIT_TAG "883b14194120a021c802e886c456e86ae2aba164")
 
-    # Find ROCm install 
-    if(DEFINED ENV{ROCM_PATH})
-      set(ROCM_PATH $ENV{ROCM_PATH})
-      set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${ROCM_PATH})
-      list(APPEND CMAKE_MODULE_PATH "${ROCM_PATH}/hip/cmake" "${ROCM_PATH}/lib/cmake/hip") 
-    else()
-      message(ERROR "No ROCm installation detected. Please install ROCm and set ROCM_PATH before building for ROCm.")
-    endif()
-
     # Install MKL if not installed
     if(DEFINED $ENV{MKLROOT})
-    
         set(MKLROOT $ENV{MKLROOT})
         message(STATUS "Attempting to install MAGMA using MKL found in $ENV{MKLROOT}.")
-        
     else()
-        set(MKLROOT "/opt/intel")
-        set(MKL_VERSION "2024.2.0")
-        message(STATUS "No MKL installation detected. Attempting to install MKL version ${MKL_VERSION} to ${MKLROOT}.")
-        
-        find_package(Python3 REQUIRED COMPONENTS Interpreter)
-        file(MAKE_DIRECTORY ${MKLROOT})
-        execute_process(COMMAND ${Python3_EXECUTABLE} -mpip install wheel)
-        execute_process(COMMAND ${Python3_EXECUTABLE} -mpip download -d . mkl-static==${MKL_VERSION})
-        execute_process(COMMAND ${Python3_EXECUTABLE} -m wheel unpack mkl_static-${MKL_VERSION}-py2.py3-none-manylinux1_x86_64.whl)
-        execute_process(COMMAND ${Python3_EXECUTABLE} -m wheel unpack mkl_include-${MKL_VERSION}-py2.py3-none-manylinux1_x86_64.whl)
-        execute_process(COMMAND mv mkl_static-${MKL_VERSION}/mkl_static-${MKL_VERSION}.data/data/lib ${MKLROOT})
-        execute_process(COMMAND mv mkl_include-${MKL_VERSION}/mkl_include-${MKL_VERSION}.data/data/include ${MKLROOT})
-            
+        message(FATAL_ERROR "MAGMA install from source: No MKL installation detected. \n"
+                      "Please install MKL using 'pip install mkl-static mkl-include' \n"
+                      "and build again, or set USE_MAGMA=OFF.")
     endif()
-
 
     set(__MAGMA_EXTERN_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/magma")
     set(__MAGMA_INSTALL_DIR "${PROJECT_SOURCE_DIR}/torch")
 
     set(target_gpus $ENV{PYTORCH_ROCM_ARCH})
+    string(REPLACE " " ";" semicolon_separated_string "${target_gpus}")
     message(STATUS "MAGMA building for GPU_TARGETS=${target_gpus}")
 
     cmake_host_system_information(RESULT N_LOGICAL_CORES QUERY NUMBER_OF_LOGICAL_CORES)
-
 
     ExternalProject_Add(magma_external
         SOURCE_DIR        ${CMAKE_CURRENT_BINARY_DIR}/magma_src
@@ -165,7 +140,6 @@ if(NOT __MAGMA_INCLUDED)
         BUILD_BYPRODUCTS <INSTALL_DIR>/include/magma
     )
     add_dependencies(__rocm_magma magma_external)
-    
     
   endif()
   target_link_libraries(__rocm_magma INTERFACE ${__MAGMA_INSTALL_DIR}/lib/libmagma.so)
