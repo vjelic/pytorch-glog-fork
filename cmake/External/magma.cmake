@@ -115,7 +115,7 @@ if(NOT __MAGMA_INCLUDED)
     set(__MAGMA_INSTALL_DIR "${PROJECT_SOURCE_DIR}/torch")
 
     set(target_gpus $ENV{PYTORCH_ROCM_ARCH})
-    string(REPLACE " " ";" semicolon_separated_string "${target_gpus}")
+    string(REPLACE " " ";" target_gpus "${target_gpus}")
     message(STATUS "MAGMA building for GPU_TARGETS=${target_gpus}")
 
     cmake_host_system_information(RESULT N_LOGICAL_CORES QUERY NUMBER_OF_LOGICAL_CORES)
