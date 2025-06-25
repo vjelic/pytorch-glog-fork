@@ -28,6 +28,7 @@ ARG ANACONDA_PYTHON_VERSION
 ARG BUILD_ENVIRONMENT
 ENV ANACONDA_PYTHON_VERSION=$ANACONDA_PYTHON_VERSION
 ENV PATH /opt/conda/envs/py_$ANACONDA_PYTHON_VERSION/bin:/opt/conda/bin:$PATH
+ENV MKLROOT=/opt/conda/envs/py_$ANACONDA_PYTHON_VERSION
 ARG CONDA_CMAKE
 COPY requirements-ci.txt /opt/conda/requirements-ci.txt
 COPY ./common/install_conda.sh install_conda.sh
