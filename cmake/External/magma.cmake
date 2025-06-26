@@ -102,7 +102,7 @@ if(NOT __MAGMA_INCLUDED)
     set(MAGMA_GIT_TAG "883b14194120a021c802e886c456e86ae2aba164")
 
     # Install MKL if not installed
-    if(DEFINED $ENV{MKLROOT})
+    if(DEFINED ENV{MKLROOT})
         set(MKLROOT $ENV{MKLROOT})
         message(STATUS "Attempting to install MAGMA using MKL found in $ENV{MKLROOT}.")
     else()
