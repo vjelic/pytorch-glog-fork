@@ -114,8 +114,6 @@ if(NOT __MAGMA_INCLUDED)
     set(__MAGMA_EXTERN_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/magma")
     set(__MAGMA_INSTALL_DIR "${PROJECT_SOURCE_DIR}/torch")
 
-    message(STATUS "MAGMA building for GPU_TARGETS=$ENV{PYTORCH_ROCM_ARCH}")
-
     cmake_host_system_information(RESULT N_LOGICAL_CORES QUERY NUMBER_OF_LOGICAL_CORES)
 
     ExternalProject_Add(magma_external
@@ -127,9 +125,10 @@ if(NOT __MAGMA_INCLUDED)
         CONFIGURE_COMMAND  ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/make.inc-examples/make.inc.hip-gcc-mkl <SOURCE_DIR>/make.inc
         COMMAND            ${CMAKE_COMMAND} -E chdir <SOURCE_DIR> make -f make.gen.hipMAGMA -j ${N_LOGICAL_CORES}
         BUILD_COMMAND ${CMAKE_COMMAND} -E env MKLROOT=${MKLROOT}
-                      ${CMAKE_COMMAND} -E chdir <SOURCE_DIR> make lib/libmagma.so -j ${N_LOGICAL_CORES} MKLROOT=${MKLROOT} GPU_TARGET="$ENV{PYTORCH_ROCM_ARCH}"
+                      ${CMAKE_COMMAND} -E chdir <SOURCE_DIR> make lib/libmagma.so -j ${N_LOGICAL_CORES} MKLROOT=${MKLROOT} GPU_TARGET=$ENV{PYTORCH_ROCM_ARCH}
         INSTALL_COMMAND  ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/lib/libmagma.so <INSTALL_DIR>/lib/
         COMMAND          ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>/include <INSTALL_DIR>/include/magma
+        LIST_SEPARATOR ";"  # Helps to avoid cmake splitting ENV{PYTORCH_ROCM_ARCH} in to spaces. Can be anything except spaces.
         USES_TERMINAL_DOWNLOAD TRUE
         USES_TERMINAL_CONFIGURE TRUE
         USES_TERMINAL_BUILD TRUE
