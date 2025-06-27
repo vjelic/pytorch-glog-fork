@@ -99,7 +99,7 @@ if(NOT __MAGMA_INCLUDED)
 
     set(MAGMA_VERSION "2.9.0")
     set(MAGMA_REPOSITORY "https://github.com/ROCm/utk-magma.git")
-    set(MAGMA_GIT_TAG "883b14194120a021c802e886c456e86ae2aba164")
+    set(MAGMA_GIT_TAG "05caf6482768e8ec1445dba4765d5d174c2aa531")
 
     # Install MKL if not installed
     if(DEFINED ENV{MKLROOT})
@@ -108,14 +108,14 @@ if(NOT __MAGMA_INCLUDED)
     else()
         message(FATAL_ERROR "MAGMA install from source: No MKL installation detected. \n"
                       "Please install MKL using 'pip install mkl-static mkl-include' \n"
-                      "and build again, or set USE_MAGMA=OFF.")
+                      "And set MKLROOT appropriately (Usually to your env location).' \n"
+                      "Or set USE_MAGMA=OFF to build without MAGMA.")
     endif()
 
     set(__MAGMA_EXTERN_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/magma")
     set(__MAGMA_INSTALL_DIR "${PROJECT_SOURCE_DIR}/torch")
     
-    set(MAGMA_GFX_ARCH $ENV{PYTORCH_ROCM_ARCH})
-    string(REPLACE ";" " " MAGMA_GFX_ARCH $ENV{PYTORCH_ROCM_ARCH})
+    string(REPLACE ";" "" MAGMA_GFX_ARCH $ENV{PYTORCH_ROCM_ARCH}) # We avoid using lists due to cmake adding spaces between list items in the cmake command
     message("Building MAGMA for gfx architectures: ${MAGMA_GFX_ARCH}")
     
     cmake_host_system_information(RESULT N_LOGICAL_CORES QUERY NUMBER_OF_LOGICAL_CORES)
@@ -132,7 +132,6 @@ if(NOT __MAGMA_INCLUDED)
                       ${CMAKE_COMMAND} -E chdir <SOURCE_DIR> make lib/libmagma.so -j ${N_LOGICAL_CORES} MKLROOT=${MKLROOT} GPU_TARGET=${MAGMA_GFX_ARCH}
         INSTALL_COMMAND  ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/lib/libmagma.so <INSTALL_DIR>/lib/
         COMMAND          ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>/include <INSTALL_DIR>/include/magma
-        LIST_SEPARATOR ";"  # Helps to avoid cmake splitting ENV{PYTORCH_ROCM_ARCH} in to spaces. Can be anything except spaces.
         USES_TERMINAL_DOWNLOAD TRUE
         USES_TERMINAL_CONFIGURE TRUE
         USES_TERMINAL_BUILD TRUE
