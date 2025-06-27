@@ -113,7 +113,8 @@ if(NOT __MAGMA_INCLUDED)
 
     set(__MAGMA_EXTERN_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/magma")
     set(__MAGMA_INSTALL_DIR "${PROJECT_SOURCE_DIR}/torch")
-
+    
+    set(MAGMA_GFX_ARCH $ENV{PYTORCH_ROCM_ARCH})
     string(REPLACE ";" " " MAGMA_GFX_ARCH $ENV{PYTORCH_ROCM_ARCH})
     message("Building MAGMA for gfx architectures: ${MAGMA_GFX_ARCH}")
     
