@@ -25,6 +25,7 @@ import math
 import os
 import re
 import subprocess
+import warnings
 from .kernel_name_parser import gemm_name_parser
 
 def name2bpe(name):
@@ -70,34 +71,27 @@ class GEMM:
     If you want to add a new GEMM operation, you should inherit from this class.
     """
     cache_gemm_results = {}  # This is used to cache gemm results
-    def __init__(self, event, arch=None):
+    def __init__(self, event, arch=None, python_path=None):
         self.event = event
         # parse kernel info (e.g. transpose) before kernel params since it can be needed
         self.parsed_kernel_info = None
+        self.arch = arch
+        self.python_path = python_path
+
         for kernel_name in event['kernel_names']:
             # TODO: think you really wanna pass around dicts instead of objects?
             self.parsed_kernel_info = gemm_name_parser(kernel_name)
             if self.parsed_kernel_info is not None:
                 break
         self.param_details = self.get_param_details(event)
+        if not hasattr(self.param_details, 'B'):
+            self.param_details['B'] = 1
 
         if self.parsed_kernel_info is not None:
             self.param_details['transpose'] = self.parsed_kernel_info['transpose']
 
-        self.M, self.N, self.K = self.param_details['M'], self.param_details['N'], self.param_details['K']
+        self.B, self.M, self.N, self.K = self.param_details['B'], self.param_details['M'], self.param_details['N'], self.param_details['K']
         self.bias = self.param_details['bias']
-
-        if arch is not None:
-            if os.environ.get('GEMMOLOGIST_PATH') is not None:
-                if not os.path.exists(os.environ.get('GEMMOLOGIST_PATH')):
-                    raise ValueError(f"GEMMOLOGIST_PATH does not exist: {os.environ.get('GEMMOLOGIST_PATH')}")
-                dtype = self.param_details.get("gemmologist_dtype")
-                if dtype is None:
-                    dtype = torch_dtype_map(self.param_details['dtype_A_B'][0])
-                self.gemmologist_time, self.gemmologist_cmd = GEMM.get_gemmologist_time(arch, self.M, self.N, self.K, dtype)
-            else:
-                # TODO: use naive roofline model
-                pass
 
     @staticmethod
     def get_param_details(event):
@@ -149,7 +143,7 @@ class GEMM:
         return bytes_input_grad + bytes_weight_grad + bytes_bias_grad
 
     @staticmethod
-    def get_gemmologist_time(arch, M, N, K, dtype):
+    def get_gemmologist_time(arch, M, N, K, B, dtype, python_path=None, force_to_l1=False, num_cus=None):
         missing_inputs = []
         if M is None:
             missing_inputs.append("M")
@@ -157,6 +151,8 @@ class GEMM:
             missing_inputs.append("N")
         if K is None:
             missing_inputs.append("K")
+        if B is None:
+            B = 1
         if dtype is None:
             missing_inputs.append("dtype")
         if "name" not in arch:
@@ -164,19 +160,41 @@ class GEMM:
         assert not missing_inputs, f"Invalid inputs: {', '.join(missing_inputs)} are missing or None"
         # assume that gemmologist path is given in the environment variable GEMMOLOGIST_PATH
         gemmologist_path = os.environ.get('GEMMOLOGIST_PATH')
+    
         cmd = [
             "./bin/gemmologist.py",
+            "-b", str(B),
             "-m", str(M),
             "-n", str(N),
             "-k", str(K),
             "--dtype", dtype,
             "-d", "1",
-            "-a", arch["name"],
-            "--topn", "1"
+            "-a", arch["name"]
         ]
+
+        # Windows does need a python executable for running gemmologist
+        if not python_path and os.name == 'nt':
+            raise AssertionError("Python executable path need to be specified in Windows for running Gemmologist.")
+        # Add the python executable path if it is given
+        if python_path:
+            cmd.insert(0, python_path)
+
         if "freq_mhz" in arch:
             cmd.append("--freq_mhz")
             cmd.append(str(arch["freq_mhz"]))
+
+        if num_cus:
+            cmd.append("--cus")
+            cmd.append(str(num_cus))
+
+        if "mem_bw_gbps" in arch:
+            cmd.append("--hbm_bw")
+            # In case of flash attention when everything happens in cache, we change the
+            # memory bw to l1 bandwidth so as to simulate the same
+            mem_bw = arch["mem_bw_gbps"] if not force_to_l1 else arch["l1_bw_gbps"]
+            if num_cus and num_cus != arch['num_cus']:
+                mem_bw = round(mem_bw / arch['num_cus'] * num_cus)
+            cmd.append(str(mem_bw))
 
         # Check if the result is already in the cache
         cache_key = tuple(cmd)
@@ -195,6 +213,23 @@ class GEMM:
             return gemmologist_time, " ".join(cmd)
         else:
             raise AssertionError("Not able to simulate in gemmologist", cmd, stdout, stderr)
+
+    def get_simulation_time(self):
+        simulation_time = None
+        if self.arch is not None:
+            if os.environ.get('GEMMOLOGIST_PATH') is not None:
+                if not os.path.exists(os.environ.get('GEMMOLOGIST_PATH')):
+                    raise ValueError(f"GEMMOLOGIST_PATH does not exist: {os.environ.get('GEMMOLOGIST_PATH')}")
+                dtype = self.param_details.get("gemmologist_dtype")
+                if dtype is None:
+                    dtype = torch_dtype_map(self.param_details['dtype_A_B'][0])
+                simulation_time, self.gemmologist_cmd = GEMM.get_gemmologist_time(self.arch, self.M, self.N, self.K, self.B,
+                                                                                  dtype, self.python_path)
+            else:
+                # TODO: use naive roofline model
+                pass
+        return simulation_time
+
 
 class aten_mm(GEMM):
     """
@@ -223,7 +258,8 @@ class aten_mm(GEMM):
     def bytes(self):
         dtype_A_B = self.param_details['dtype_A_B']
         if dtype_A_B[0] != dtype_A_B[1]:
-            raise ValueError(f"Data types of A and B are different: {dtype_A_B}")
+            # raise ValueError(f"Data types of A and B are different: {dtype_A_B}")
+            warnings.warn(f"Data types of A and B are different: {dtype_A_B} for aten_mm. ")
         self.bpe = name2bpe(dtype_A_B[0])
         return super().bytes(bpe_mat1=self.bpe, bpe_mat2=self.bpe,
                              bpe_bias=self.bpe, # does not matter
@@ -260,7 +296,8 @@ class aten_addmm(GEMM):
     def bytes(self):
         dtype_A_B = self.param_details['dtype_A_B']
         if dtype_A_B[0] != dtype_A_B[1]:
-            raise ValueError(f"Data types of A and B are different: {dtype_A_B}")
+            # raise ValueError(f"Data types of A and B are different: {dtype_A_B}")
+            warnings.warn(f"Data types of A and B are different: {dtype_A_B} for aten_addmm. ")
         self.bpe = name2bpe(dtype_A_B[0])
         # setting bias bpe to be the same as the input matrices is not totally correct
         # TODO: correct later
@@ -302,7 +339,8 @@ class aten_scaled_mm(GEMM):
     def bytes(self):
         dtype_A_B = self.param_details['dtype_A_B']
         if dtype_A_B[0] != dtype_A_B[1]:
-            raise ValueError(f"Data types of A and B are different: {dtype_A_B}")
+            # raise ValueError(f"Data types of A and B are different: {dtype_A_B}")
+            warnings.warn(f"Data types of A and B are different: {dtype_A_B} for aten_scaled_mm. ")
         self.bpe = name2bpe(dtype_A_B[0])
         # assumption:
         # for fp8 the output dtype is fp16
@@ -365,7 +403,8 @@ class aten_bmm(GEMM):
         """Total DRAM traffic for the entire batch (read+write)."""
         dtype_A_B = self.param_details['dtype_A_B']
         if dtype_A_B[0] != dtype_A_B[1]:
-            raise ValueError(f"Data types of A and B are different: {dtype_A_B}")
+            # raise ValueError(f"Data types of A and B are different: {dtype_A_B}")
+            warnings.warn(f"Data types of A and B are different: {dtype_A_B} for aten_bmm. ")
 
         bpe = name2bpe(dtype_A_B[0])
         per_batch = super().bytes(bpe_mat1=bpe, bpe_mat2=bpe,
@@ -420,7 +459,8 @@ class aten_baddbmm(GEMM):
         """Total DRAM traffic for the entire batch (read+write)."""
         dtype_A_B = self.param_details['dtype_A_B']
         if dtype_A_B[0] != dtype_A_B[1]:
-            raise ValueError(f"Data types of A and B are different: {dtype_A_B}")
+            # raise ValueError(f"Data types of A and B are different: {dtype_A_B}")
+            warnings.warn(f"Data types of A and B are different: {dtype_A_B} for aten_baddbmm. ")
 
         bpe = name2bpe(dtype_A_B[0])
         per_batch = super().bytes(bpe_mat1=bpe, bpe_mat2=bpe,
@@ -443,7 +483,7 @@ class tex_ts_te_gemm_ts(GEMM):
 
     """
 
-    def __init__(self, event, arch=None):
+    def __init__(self, event, arch=None, python_path=None):
         super().__init__(event, arch)
 
     def get_param_details(self, event):
@@ -548,7 +588,7 @@ class tev2_pseudo_gemm(GEMM):
 class CONV:
     # Conv perf model is based on: https://github.com/pytorch/pytorch/blob/main/torch/utils/flop_counter.py
     # we will make stuff reusiable across conv1d, conv2d, and conv3d
-    def __init__(self, event, arch=None):
+    def __init__(self, event, arch=None, python_path=None):
         self.event = event
         self.param_details = self.get_param_details(event)
         self.x_shape, self.w_shape = self.param_details['input_shape'], self.param_details['filter_shape']
@@ -733,23 +773,85 @@ class aten_conv_bwd(aten_conv):
 
     def bytes(self, bytes_per_element):
         return self.bytes_bwd(bytes_per_element)
+
+class Softmax:
+    """
+    Softmax operation
+    """
+
+    @staticmethod
+    def flops_func(M, N, B=1):
+        # softmax is O(N) for each element, so total is O(N^2)
+        # 3 ops : Exponent, Division and Addition
+        # Let's assume for now exponent and division are implement by LUT and hence
+        # take 1 cycle
+        return B * M * (3 * N)
+
+    @staticmethod
+    def bytes_func(M, N, bytes_per_element, B=1):
+        # Input and output sizes are same
+        return 2 * B * M * N * bytes_per_element
+
+    @staticmethod
+    def flops(M, N, B=1):
+        return Softmax.flops_func(M, N, B)
+
+    @staticmethod
+    def bytes(M, N, bytes_per_element, B=1):
+        return Softmax.bytes_func(M, N, bytes_per_element, B)
+
+    @staticmethod
+    def flops_bwd(M, N, B=1):
+        # Forward pass of softmax is recomputed for backward
+        return 2 * Softmax.flops_func(M, N, B)
+
+    @staticmethod
+    def bytes_bwd(M, N, bytes_per_element, B=1):
+        # Forward pass of softmax is recomputed for backward
+        return 2 * Softmax.bytes_func(M, N, bytes_per_element, B)
+
+    @staticmethod
+    def get_time(arch, M, N, bytes_per_element, B=1, force_to_l1=False, bwd=False, num_cus=None):
+        flops = Softmax.flops(M, N, B) if not bwd else Softmax.flops_bwd(M, N, B)
+        bytes_moved = Softmax.bytes(M, N, bytes_per_element, B) if not bwd else Softmax.bytes_bwd(M, N, bytes_per_element, B)
+        ew_ops_per_cycle_simd = 256
+
+        if not arch:
+            raise ValueError("Architecture information is required.")
+
+        if not num_cus:
+            num_cus = arch['num_cus']
+
+        compute_time = flops / ( num_cus * arch['gemm_units_per_cu'] *\
+                                        ew_ops_per_cycle_simd) / \
+                                        arch['freq_mhz']
+        # This is in case of flash attention
+        if force_to_l1:
+            memory_time = bytes_moved / (arch['l1_bw_gbps'] * 1000)
+        else:
+            memory_time = bytes_moved / (arch['mem_bw_gbps'] * 1000)
+        return max(compute_time, memory_time)
+
 class SDPA:
 
-    def __init__(self, event, arch=None):
+    def __init__(self, event, arch=None, python_path=None):
         # S = QK^T
         # P = softmax(S)
         # O = PV
         self.event = event
         self.param_details = self.get_param_details(event)
+        self.arch = arch
+        self.python_path = python_path
         # get useful stuff from the param_details
         # self.B, self.N_Q, self.H, self.d_k, self.N_K = (self.param_details[key] for key in ['B', 'N_Q', 'H', 'd_k', 'N_K'])
         self.B, self.N_Q, self.H_Q, self.N_KV, self.H_KV, self.d_h = (self.param_details[key] for key in ['B', 'N_Q', 'H_Q', 'N_KV', 'H_KV', 'd_h'])
+
     def get_param_details(event):
         # to be implemented in the child class
         raise NotImplementedError
 
     @staticmethod
-    def flops_func(B, N_Q, H_Q, N_KV, H_KV, d_h, dropout, causal):
+    def flops_func(B, N_Q, H_Q, N_KV, H_KV, d_h, causal):
         # ref: https://github.com/Dao-AILab/flash-attention/blob/main/benchmarks/benchmark_flash_attention.py#L29
         flops_qk = B * H_Q * (2 * N_Q * N_KV * d_h)
         # not including softmax for now as flops are order of d_k smaller
@@ -763,12 +865,10 @@ class SDPA:
         return total_flops
     def flops(self):
         return self.flops_func(self.B, self.N_Q, self.H_Q, self.N_KV, self.H_KV, self.d_h,
-                                self.param_details['dropout'], self.param_details['causal'])
+                                self.param_details['causal'])
 
     @staticmethod
-    def bytes_func(B, N_Q, H_Q, N_KV, H_KV, d_h, dropout, causal, bytes_per_element):
-        if dropout != 0.0:
-            raise ValueError(f"Not implemented for dropout={dropout}")
+    def bytes_func(B, N_Q, H_Q, N_KV, H_KV, d_h, causal, bytes_per_element):
         elems_q_read = B * N_Q * H_Q * d_h
         elems_kv_read = 2 * B * N_KV * H_KV * d_h
         elems_out_write = B * N_Q * H_Q * d_h
@@ -777,12 +877,10 @@ class SDPA:
     #TODO make bytes_per_element based on profile info
     def bytes(self, bytes_per_element=2):
         return self.bytes_func(self.B, self.N_Q, self.H_Q, self.N_KV, self.H_KV, self.d_h,
-                                self.param_details['dropout'], self.param_details['causal'], bytes_per_element)
+                                self.param_details['causal'], bytes_per_element)
 
     @staticmethod
-    def flops_bwd_func(B, N_Q, H_Q, N_KV, H_KV, d_h, dropout, causal, flash_impl):
-        if dropout != 0.0:
-            raise ValueError(f"Not implemented for dropout={dropout}")
+    def flops_bwd_func(B, N_Q, H_Q, N_KV, H_KV, d_h, causal, flash_impl):
         total_flops = 0
         if flash_impl:
             # 0. recompute qk
@@ -814,16 +912,189 @@ class SDPA:
                 raise ValueError(f"causal=True but N_Q != N_K: {N_Q} != {N_KV}")
         return total_flops
 
+    @staticmethod
+    def bytes_bwd_func(B, N_Q, H_Q, N_KV, H_KV, d_h, causal, bytes_per_element):
+        # This will be done for recompute in flash attention
+        elems_q_read = B * N_Q * H_Q * d_h
+        elems_kv_read = 2 * B * N_KV * H_KV * d_h
+
+        elems_o_grad_read = B * N_Q * H_Q * d_h
+        # grad for q, k and v
+        elems_q_grad_write = B * N_Q * H_Q * d_h
+        elems_kv_grad_write = 2 * B * N_KV * H_KV * d_h
+
+        total_elems_moved = (elems_q_read + elems_kv_read + elems_o_grad_read +
+                             elems_q_grad_write + elems_kv_grad_write)
+        return total_elems_moved * bytes_per_element
+
     def flops_bwd(self):
         return self.flops_bwd_func(self.B, self.N_Q, self.H_Q, self.N_KV, self.H_KV, self.d_h,
-                                    self.param_details['dropout'], self.param_details['causal'],
+                                    self.param_details['causal'],
                                     self.param_details['flash_impl'])
 
     # @staticmethod
     # def bytes_bwd_func(B, N_Q, H, d_k, N_K, dropout, causal, flash_impl, bytes_per_element):
     def bytes_bwd(self, bytes_per_element=2):
-        # not implemented for now
-        return None
+        # Same as forward for now
+        return self.bytes_bwd_func(self.B, self.N_Q, self.H_Q, self.N_KV, self.H_KV, self.d_h,
+                                   self.param_details['causal'], bytes_per_element)
+
+    
+    def get_simulation_time(self):
+        simulated_time = None
+        if self.arch is not None:
+            if os.environ.get('GEMMOLOGIST_PATH') is not None:
+                if not os.path.exists(os.environ.get('GEMMOLOGIST_PATH')):
+                    raise ValueError(f"GEMMOLOGIST_PATH does not exist: {os.environ.get('GEMMOLOGIST_PATH')}")
+                dtype = self.param_details.get("gemmologist_dtype")
+                if dtype is None:
+                    dtype = torch_dtype_map(self.param_details['dtype_A_B'][0])
+
+                force_to_l1 = False
+                block_N_Q = self.N_Q
+                block_N_KV = self.N_KV
+                if type(self).__name__ == "flash_attention":
+                    force_to_l1 = True
+                    # Every Q tile block goes through full K and V, so we keep block_N_KV same
+                    # and Q tile size is 128 for all the cases observed
+                    block_N_Q = min(128, self.N_Q)
+                    #block_N_KV = min(self.N_KV, self.N_KV)
+
+                num_blocks_N_Q = math.ceil(self.N_Q / block_N_Q)
+                #num_blocks_N_KV = math.ceil(self.N_KV / block_N_KV)
+                total_num_blocks = num_blocks_N_Q * self.B * self.H_Q
+                num_waves = math.ceil(total_num_blocks / self.arch['num_cus'])
+
+                # B = B * H_Q, M = N_Q, N = N_KV, K = d_H
+                qkt_time, _ = GEMM.get_gemmologist_time(self.arch, M=block_N_Q, K=self.d_h, N=block_N_KV,
+                                                            B=1, dtype=dtype,
+                                                            python_path=self.python_path, force_to_l1=force_to_l1, num_cus=1)
+
+                qkt_time = num_waves * qkt_time
+
+                softmax_time = num_waves * Softmax.get_time(self.arch, block_N_Q, block_N_KV,
+                                                                                   name2bpe(
+                                                                                       self.param_details['dtype_A_B'][
+                                                                                           0]),
+                                                                                   1,
+                                                                                   force_to_l1=force_to_l1, num_cus=1)
+                # B = B * H_Q, M = N_Q, N = d_H, K = N_KV
+                pv_time, _ = GEMM.get_gemmologist_time(self.arch, M=block_N_Q, K=block_N_KV, N=self.d_h,
+                                                           B=1, dtype=dtype,
+                                                           python_path=self.python_path, force_to_l1=force_to_l1, num_cus=1)
+                pv_time = num_waves * pv_time
+                # We have to read the first block and write the last block
+                mem_time = self.bytes(name2bpe(self.param_details['dtype_A_B'][0])) / self.N_Q / self.N_KV * block_N_Q * block_N_KV /\
+                            (self.arch['mem_bw_gbps'] * 1000) * num_waves
+                simulated_time = qkt_time + softmax_time + pv_time + mem_time
+            else:
+                # TODO: use naive roofline model
+                pass
+        return simulated_time
+
+    def get_simulation_time_bwd(self):
+        simulated_time = None
+        if self.arch is not None:
+            if os.environ.get('GEMMOLOGIST_PATH') is not None:
+                if not os.path.exists(os.environ.get('GEMMOLOGIST_PATH')):
+                    raise ValueError(f"GEMMOLOGIST_PATH does not exist: {os.environ.get('GEMMOLOGIST_PATH')}")
+                dtype = self.param_details.get("gemmologist_dtype")
+                if dtype is None:
+                    dtype = torch_dtype_map(self.param_details['dtype_A_B'][0])
+
+                force_to_l1 = False
+                block_N_Q = self.N_Q
+                block_N_KV = self.N_KV
+                qkt_time = 0
+                pv_time = 0
+                if type(self).__name__ == "flash_attention":
+                    force_to_l1 = True
+                    # ∇Q is tiled — but it is not partitioned exclusively across thread blocks the same way ∇K and ∇V are.
+                    # Instead, multiple thread blocks may contribute to the same ∇Q tile, which is why atomics are needed on ∇Q
+                    block_N_Q = min(self.N_Q, self.N_Q)
+                    block_N_KV = min(128, self.N_KV)
+
+                num_blocks_N_Q = math.ceil(self.N_Q / block_N_Q)
+                num_blocks_N_KV = math.ceil(self.N_KV / block_N_KV)
+                # Partition happens on ∇K and ∇V and not ∇Q
+                total_num_blocks = num_blocks_N_KV * self.B * self.H_Q
+                num_waves = math.ceil(total_num_blocks / self.arch['num_cus'])
+
+
+                qkt_fwd_time, _ = GEMM.get_gemmologist_time(self.arch, M=block_N_Q, K=self.d_h, N=block_N_KV,
+                                                        B=1,
+                                                        dtype=dtype,
+                                                        python_path=self.python_path, force_to_l1=force_to_l1, num_cus=1)
+
+                qkt_fwd_time = num_waves * qkt_fwd_time
+
+
+                # B = B * H_Q, M = N_Q, N = d_H, K = N_KV
+                pv_fwd_time, _ = GEMM.get_gemmologist_time(self.arch, M=block_N_Q, K=block_N_KV, N=self.d_h,
+                                                        B=1, dtype=dtype,
+                                                        python_path=self.python_path, force_to_l1=force_to_l1, num_cus=1)
+                pv_fwd_time = num_waves * pv_fwd_time
+                #pv_fwd_time, _ =  math.ceil(self.N_Q / 512) * math.ceil(self.N_KV / 512) * GEMM.get_gemmologist_time(self.arch, M=512, K=512, N=self.d_h,
+                #                                       B=self.B * self.H_Q, dtype=dtype,
+                #                                       python_path=self.python_path, force_to_l1=force_to_l1)
+
+                if type(self).__name__ == "flash_attention":
+                    # In case of flash attention we have to recompute
+                    # B = B * H_Q, M = N_Q, N = N_KV, K = d_H
+                    qkt_time = qkt_fwd_time
+                    pv_time = pv_fwd_time
+
+                # We don't need to go to gemmologist to calculate these,
+                # as we already have the times
+                p_grad_time = qkt_fwd_time
+                v_grad_time = pv_fwd_time
+                q_grad_time = pv_fwd_time
+                k_grad_time = pv_fwd_time
+
+                #p_grad_time = pv_fwd_time
+                #v_grad_time = qkt_fwd_time
+                #q_grad_time = qkt_fwd_time
+                #k_grad_time = qkt_fwd_time
+
+                softmax_time = num_waves * Softmax.get_time(self.arch, block_N_Q, block_N_KV,
+                                                name2bpe(self.param_details['dtype_A_B'][0]),
+                                                1, force_to_l1=force_to_l1, num_cus=1)
+
+                # We assume that we use atomics for adding up the gradients together
+                atomic_latency_global_ns = 400 #ns for global memory
+                atomic_latency_local_ns = 40 #ns for shared memory/ L1
+                # This is the tile size for ∇K. For every tile of ∇Q, we need to accumulate the conntributions
+                # from all the ∇K blocks
+                k_tile = block_N_KV
+                warp_size = 64
+
+                # Shared-memory tile reduction:
+                # Each block uses atomics only once per (k_tile × d)
+                # This optimization won't be there for now possibly?
+                num_k_tiles = math.ceil(block_N_KV / k_tile)
+
+                # Warp-level reduction:
+                # Each warp atomics once per d vector
+                #warps_per_block = (block_N_Q * self.d_h) // warp_size
+                warp_reduction_updates_per_block_global = math.ceil(num_k_tiles * math.ceil(self.d_h / warp_size))
+                total_updates_global = warp_reduction_updates_per_block_global * num_waves
+
+                warp_reduction_updates_per_block_local = math.ceil(k_tile * math.ceil(self.d_h / warp_size))
+                total_updates_local = warp_reduction_updates_per_block_local * num_waves
+
+                # Total atomic time (serialized across all blocks)
+                total_atomic_time_us = (atomic_latency_global_ns * total_updates_global +
+                                        atomic_latency_local_ns * total_updates_local) / 1e3
+
+                # We have to read the first block and write the last block
+                mem_time = self.bytes_bwd(name2bpe(self.param_details['dtype_A_B'][0])) / self.N_Q / self.N_KV * block_N_Q * block_N_KV /\
+                            (self.arch['mem_bw_gbps'] * 1000) * num_waves
+                simulated_time = qkt_time + pv_time + p_grad_time + v_grad_time + q_grad_time + k_grad_time + softmax_time + total_atomic_time_us + mem_time
+            else:
+                # TODO: use naive roofline model
+                pass
+        return simulated_time
+
 
 class flash_attention(SDPA):
 
@@ -832,6 +1103,7 @@ class flash_attention(SDPA):
         input_dims = event['args']['Input Dims']
         q_idx, k_idx, v_idx = 0, 1, 2
         q_shape, k_shape, v_shape = input_dims[q_idx], input_dims[k_idx], input_dims[v_idx]
+        dtype_A_B = tuple(event['args']['Input type'][:2])
         strides = event['args']['Input Strides']
         q_stride, k_stride, v_stride = tuple(strides[q_idx]), tuple(strides[k_idx]), tuple(strides[v_idx])
         B, N_Q, H_Q, d_h = q_shape
@@ -841,7 +1113,7 @@ class flash_attention(SDPA):
         causal = eval(event['args']['Concrete Inputs'][5])
         return {"B": B, "N_Q": N_Q, "H_Q": H_Q, "N_KV": N_KV, "H_KV": H_KV, "d_h": d_h,
                 "q_stride": q_stride, "k_stride": k_stride, "v_stride": v_stride,
-                "dropout": dropout, "causal": causal, "flash_impl": True}
+                "dropout": dropout, "causal": causal, "flash_impl": True, "dtype_A_B": dtype_A_B}
 
 class flash_attention_backward(flash_attention):
 
@@ -922,9 +1194,40 @@ class aten__scaled_dot_product_efficient_attention(SDPA):
         return {"B": B, "N_Q": N_Q, "H_Q": H_Q, "N_KV": N_KV, "H_KV": H_KV, "d_h": d_h,
                 "dropout": dropout_p, "causal": is_causal, "flash_impl": False}    
 
+class aten__scaled_dot_product_flash_attention(SDPA):
+
+    @staticmethod
+    def get_param_details(event):
+        # the order of arguments for aten::_scaled_dot_product_flash_attention is:
+        # query: Tensor
+        # key: Tensor
+        # value: Tensor
+        # dropout_p: float
+        # is_causal: bool
+        # return_debug_mask: bool
+        # *
+        # scale: Optional[float]
+        input_dims = event['args']['Input Dims']
+        concrete_inputs = event['args']['Concrete Inputs']
+        q_shape, k_shape, v_shape = input_dims[0], input_dims[1], input_dims[2]
+        B, H_Q, N_Q, d_h = q_shape
+        assert k_shape == v_shape, f"Key and value shapes are different: {k_shape} != {v_shape}"
+        _, H_KV, N_KV, _ = input_dims[1]
+        dropout_p = 0.0
+        if concrete_inputs[3] not in ('', 'None'):
+            try:
+                dropout_p = float(concrete_inputs[3])
+            except (ValueError, TypeError):
+                pass
+        is_causal = concrete_inputs[4].lower() == 'true' if concrete_inputs[4] not in ('', 'None') else False
+        # scale = float(concrete_inputs[5]) if concrete_inputs[5] not in ('', 'None') else None
+
+        return {"B": B, "N_Q": N_Q, "H_Q": H_Q, "N_KV": N_KV, "H_KV": H_KV, "d_h": d_h,
+                "dropout": dropout_p, "causal": is_causal, "flash_impl": True}
+
 class UnaryElementwise:
 
-    def __init__(self, event, arch=None):
+    def __init__(self, event, arch=None, python_path=None):
         self.event = event
         self.param_details = self.get_param_details(event)
         self.nelems = prod(self.param_details['op_shape'])
@@ -971,7 +1274,7 @@ class aten_unary_elementwise(UnaryElementwise):
                 "stride_input": stride_input, "stride_output": stride_output}
 class BinaryElementwise:
 
-    def __init__(self, event, arch=None):
+    def __init__(self, event, arch=None, python_path=None):
         self.event = event
         self.param_details = self.get_param_details(event)
         broadcast_shape = self.get_broadcast_shape(self.param_details['shape_in1'], self.param_details['shape_in2'])
