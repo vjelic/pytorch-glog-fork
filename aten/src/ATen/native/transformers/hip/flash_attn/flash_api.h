@@ -273,39 +273,6 @@ mha_fwd(
     const float softcap,
     const bool return_softmax,
     std::optional<at::Generator> gen_) {
-#if defined(USE_CK_FLASH_ATTENTION)
-  if (at::globalContext().getROCmFAPreferredBackend() ==
-      at::ROCmFABackend::Ck) {
-    std::optional<at::Tensor> dummy_attn_bias = std::nullopt;
-    return mha_fwd_ck(
-        q,
-        k,
-        v,
-        out_,
-        p_dropout,
-        softmax_scale,
-        is_causal,
-        window_size_left,
-        window_size_right,
-        return_softmax,
-        gen_,
-        dummy_attn_bias); // Not used in flash attention
-  } else {
-    return mha_fwd_aot(
-        q,
-        k,
-        v,
-        out_,
-        alibi_slopes_,
-        p_dropout,
-        softmax_scale,
-        is_causal,
-        window_size_left,
-        window_size_right,
-        return_softmax,
-        gen_);
-  }
-#else
   return mha_fwd_aot(
       q,
       k,
@@ -319,7 +286,6 @@ mha_fwd(
       window_size_right,
       return_softmax,
       gen_);
-#endif
 }
 
 inline std::tuple<
@@ -359,52 +325,6 @@ mha_varlen_fwd(
     const float softcap,
     const bool return_softmax,
     std::optional<at::Generator> gen_) {
-#if defined(USE_CK_FLASH_ATTENTION)
-  if (at::globalContext().getROCmFAPreferredBackend() ==
-      at::ROCmFABackend::Ck) {
-    std::optional<at::Tensor> dummy_attn_bias = std::nullopt;
-    return mha_varlen_fwd_ck(
-        q,
-        k,
-        v,
-        out_,
-        cu_seqlens_q,
-        cu_seqlens_k,
-        seqused_k,
-        max_seqlen_q,
-        max_seqlen_k,
-        p_dropout,
-        softmax_scale,
-        zero_tensors,
-        is_causal,
-        window_size_left,
-        window_size_right,
-        return_softmax,
-        gen_,
-        dummy_attn_bias); // Not used in flash attention
-  } else {
-    return mha_varlen_fwd_aot(
-        q,
-        k,
-        v,
-        out_,
-        cu_seqlens_q,
-        cu_seqlens_k,
-        seqused_k,
-        block_table_,
-        alibi_slopes_,
-        max_seqlen_q,
-        max_seqlen_k,
-        p_dropout,
-        softmax_scale,
-        zero_tensors,
-        is_causal,
-        window_size_left,
-        window_size_right,
-        return_softmax,
-        gen_);
-  }
-#else
   return mha_varlen_fwd_aot(
       q,
       k,
@@ -425,7 +345,6 @@ mha_varlen_fwd(
       window_size_right,
       return_softmax,
       gen_);
-#endif
 }
 
 inline std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> mha_bwd(
@@ -452,63 +371,6 @@ inline std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> mha_bwd(
     const bool deterministic,
     const at::Tensor philox_seed,
     const at::Tensor philox_offset) {
-#if defined(USE_CK_FLASH_ATTENTION)
-  if (at::globalContext().getROCmFAPreferredBackend() ==
-      at::ROCmFABackend::Ck) {
-    std::optional<at::Tensor> non_null_dbias = std::nullopt;
-    auto[dQuery,
-         dKey,
-         dValue,
-         dSoftmax,
-         dBias] = mha_bwd_ck(
-                             dout,
-                             q,
-                             k,
-                             v,
-                             out,
-                             softmax_lse,
-                             dq_,
-                             dk_,
-                             dv_,
-                             alibi_slopes_,
-                             false,              // bias_requires_grad
-                             non_null_dbias,
-                             p_dropout,
-                             softmax_scale,
-                             is_causal,
-                             window_size_left,
-                             window_size_right,
-                             deterministic,
-                             philox_seed,
-                             philox_offset);
-    // for FA return [dQ, dV, dK, dSoftmax]
-    return std::make_tuple(std::move(dQuery), std::move(dKey), std::move(dValue), std::move(dSoftmax));
-  } else {
-    return mha_bwd_aot(
-        dout,
-        q,
-        k,
-        v,
-        out,
-        softmax_lse,
-        dq_,
-        dk_,
-        dv_,
-        alibi_slopes_,
-        p_dropout,
-        softmax_scale,
-        is_causal,
-        window_size_left,
-        window_size_right,
-        deterministic,
-        philox_seed,
-        philox_offset);
-  }
-#else
-  if(at::globalContext().getROCmFAPreferredBackend() ==
-    at::ROCmFABackend::Ck) {
-    TORCH_WARN_ONCE("Warning! You have opted to use CK flash attention backend in a build that was not compiled using USE_CK_FLASH_ATTENTION=1. Please set this variable and try again. Defaulting to use aotriton backend...");
-  }
   return mha_bwd_aot(
       dout,
       q,
@@ -528,7 +390,6 @@ inline std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> mha_bwd(
       deterministic,
       philox_seed,
       philox_offset);
-#endif
 }
 
 inline std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> mha_varlen_bwd(
@@ -562,69 +423,6 @@ inline std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> mha_varlen_bwd
     const bool deterministic,
     const at::Tensor philox_seed,
     const at::Tensor philox_offset) {
-#if defined(USE_CK_FLASH_ATTENTION)
-  if (at::globalContext().getROCmFAPreferredBackend() ==
-      at::ROCmFABackend::Ck) {
-    std::optional<at::Tensor> non_null_dbias = std::nullopt;
-    auto[dQuery,
-         dKey,
-         dValue,
-         dSoftmax,
-         dBias] = mha_varlen_bwd_ck(
-                                    dout,
-                                    q,
-                                    k,
-                                    v,
-                                    out,
-                                    softmax_lse,
-                                    dq_,
-                                    dk_,
-                                    dv_,
-                                    cu_seqlens_q,
-                                    cu_seqlens_k,
-                                    alibi_slopes_,
-                                    false,          // bias_requires_grad
-                                    non_null_dbias,
-                                    max_seqlen_q,
-                                    max_seqlen_k,
-                                    p_dropout,
-                                    softmax_scale,
-                                    zero_tensors,
-                                    is_causal,
-                                    window_size_left,
-                                    window_size_right,
-                                    deterministic,
-                                    philox_seed,
-                                    philox_offset);
-    // for FA return [dQ, dV, dK, dSoftmax]
-    return std::make_tuple(std::move(dQuery), std::move(dKey), std::move(dValue), std::move(dSoftmax));
-  } else {
-    return mha_varlen_bwd_aot(
-        dout,
-        q,
-        k,
-        v,
-        out,
-        softmax_lse,
-        dq_,
-        dk_,
-        dv_,
-        cu_seqlens_q,
-        cu_seqlens_k,
-        alibi_slopes_,
-        max_seqlen_q,
-        max_seqlen_k,
-        p_dropout,
-        softmax_scale,
-        zero_tensors,
-        is_causal,
-        window_size_left,
-        window_size_right,
-        deterministic,
-        philox_seed,
-        philox_offset);
-  }
-#else
   return mha_varlen_bwd_aot(
       dout,
       q,
@@ -649,7 +447,6 @@ inline std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> mha_varlen_bwd
       deterministic,
       philox_seed,
       philox_offset);
-#endif
 }
 
 } // namespace pytorch_flash
