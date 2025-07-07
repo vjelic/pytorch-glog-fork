@@ -52,6 +52,8 @@ fi
 
 if [[ "$image" == *-jammy* ]]; then
   UBUNTU_VERSION=22.04
+elif [[ "$image" == *-noble* ]]; then
+  UBUNTU_VERSION=24.04
 elif [[ "$image" == *ubuntu* ]]; then
   extract_version_from_image_name ubuntu UBUNTU_VERSION
 fi
@@ -242,6 +244,19 @@ case "$tag" in
     UCC_COMMIT=${_UCC_COMMIT}
     INDUCTOR_BENCHMARKS=yes
     ;;
+  "pytorch-linux-noble-rocm-n+1-py3")
+    ANACONDA_PYTHON_VERSION=3.12
+    GCC_VERSION=11
+    VISION=yes
+    ROCM_VERSION=6.4
+    ROCM_PATH="/rocm_venv/lib/python3.12/site-packages/_rocm_sdk_devel"
+    NINJA_VERSION=1.9.0
+    TRITON=yes
+    KATEX=yes
+    UCX_COMMIT=${_UCX_COMMIT}
+    UCC_COMMIT=${_UCC_COMMIT}
+    INDUCTOR_BENCHMARKS=yes
+    ;;
   pytorch-linux-jammy-xpu-2025.0-py3)
     ANACONDA_PYTHON_VERSION=3.9
     GCC_VERSION=11
@@ -414,7 +429,8 @@ docker build \
        --build-arg "NINJA_VERSION=${NINJA_VERSION:-}" \
        --build-arg "KATEX=${KATEX:-}" \
        --build-arg "ROCM_VERSION=${ROCM_VERSION:-}" \
-       --build-arg "PYTORCH_ROCM_ARCH=${PYTORCH_ROCM_ARCH:-gfx90a;gfx942}" \
+       --build-arg "ROCM_PATH=${ROCM_PATH:-/opt/rocm}" \
+       --build-arg "PYTORCH_ROCM_ARCH=${PYTORCH_ROCM_ARCH:-gfx90a;gfx942;gfx950}" \
        --build-arg "IMAGE_NAME=${IMAGE_NAME}" \
        --build-arg "UCX_COMMIT=${UCX_COMMIT}" \
        --build-arg "UCC_COMMIT=${UCC_COMMIT}" \

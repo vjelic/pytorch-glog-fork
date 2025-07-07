@@ -121,23 +121,23 @@ if [ -n "$ROCM_VERSION" ]; then
     chmod a+x "$OLDCOMP"
   }
 
-  if [[ -e "/opt/rocm/hcc/bin/hcc" ]]; then
+  if [[ -e "${ROCM_PATH}/hcc/bin/hcc" ]]; then
     # ROCm 3.3 or earlier.
-    mkdir /opt/rocm/hcc/bin/original
-    write_sccache_stub_rocm /opt/rocm/hcc/bin/hcc
-    write_sccache_stub_rocm /opt/rocm/hcc/bin/clang
-    write_sccache_stub_rocm /opt/rocm/hcc/bin/clang++
+    mkdir ${ROCM_PATH}/hcc/bin/original
+    write_sccache_stub_rocm ${ROCM_PATH}/hcc/bin/hcc
+    write_sccache_stub_rocm ${ROCM_PATH}/hcc/bin/clang
+    write_sccache_stub_rocm ${ROCM_PATH}/hcc/bin/clang++
     # Fix last link in symlink chain, clang points to versioned clang in prior dir
-    pushd /opt/rocm/hcc/bin/original
+    pushd ${ROCM_PATH}/hcc/bin/original
     ln -s ../$(readlink clang)
     popd
-  elif [[ -e "/opt/rocm/llvm/bin/clang" ]]; then
+  elif [[ -e "${ROCM_PATH}/llvm/bin/clang" ]]; then
     # ROCm 3.5 and beyond.
-    mkdir /opt/rocm/llvm/bin/original
-    write_sccache_stub_rocm /opt/rocm/llvm/bin/clang
-    write_sccache_stub_rocm /opt/rocm/llvm/bin/clang++
+    mkdir ${ROCM_PATH}/llvm/bin/original
+    write_sccache_stub_rocm ${ROCM_PATH}/llvm/bin/clang
+    write_sccache_stub_rocm ${ROCM_PATH}/llvm/bin/clang++
     # Fix last link in symlink chain, clang points to versioned clang in prior dir
-    pushd /opt/rocm/llvm/bin/original
+    pushd ${ROCM_PATH}/llvm/bin/original
     ln -s ../$(readlink clang)
     popd
   else

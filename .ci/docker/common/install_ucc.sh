@@ -8,8 +8,8 @@ else
   with_cuda=no
 fi
 
-if [[ -d "/opt/rocm" ]]; then
-  with_rocm=/opt/rocm
+if [[ -d "${ROCM_PATH:-/opt/rocm}" ]]; then
+  with_rocm="${ROCM_PATH:-/opt/rocm}"
 else
   with_rocm=no
 fi

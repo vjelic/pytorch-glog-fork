@@ -11,7 +11,7 @@ function do_install() {
     MAGMA_VERSION=a1625ff4d9bc362906bd01f805dbbe12612953f6
     magma_archive="magma-rocm${rocm_version_nodot}-${MAGMA_VERSION}-1.tar.bz2"
 
-    rocm_dir="/opt/rocm"
+    rocm_dir=${ROCM_PATH}
     (
         set -x
         tmp_dir=$(mktemp -d)

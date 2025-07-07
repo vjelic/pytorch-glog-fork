@@ -54,6 +54,9 @@ ARG ROCM_VERSION
 COPY ./common/install_rocm.sh install_rocm.sh
 RUN bash ./install_rocm.sh
 RUN rm install_rocm.sh
+ARG ROCM_PATH
+ENV ROCM_PATH=${ROCM_PATH}
+ENV HIP_DEVICE_LIB_PATH=${ROCM_PATH}/llvm/amdgcn/bitcode
 COPY ./common/install_rocm_magma.sh install_rocm_magma.sh
 RUN bash ./install_rocm_magma.sh ${ROCM_VERSION}
 RUN rm install_rocm_magma.sh
@@ -61,13 +64,13 @@ ADD ./common/install_miopen.sh install_miopen.sh
 RUN bash ./install_miopen.sh ${ROCM_VERSION} && rm install_miopen.sh
 ADD ./common/rocm/patch_rocprim_headers.sh patch_rocmprim_headers.sh
 RUN bash ./patch_rocmprim_headers.sh && rm patch_rocmprim_headers.sh
-ENV ROCM_PATH /opt/rocm
 ENV PATH /opt/rocm/bin:$PATH
 ENV PATH /opt/rocm/hcc/bin:$PATH
 ENV PATH /opt/rocm/hip/bin:$PATH
 ENV PATH /opt/rocm/opencl/bin:$PATH
 ENV PATH /opt/rocm/llvm/bin:$PATH
-ENV MAGMA_HOME /opt/rocm/magma
+ENV PATH /rocm_venv/bin:$PATH
+ENV MAGMA_HOME ${ROCM_PATH}/magma
 ENV LANG C.UTF-8
 ENV LC_ALL C.UTF-8
 

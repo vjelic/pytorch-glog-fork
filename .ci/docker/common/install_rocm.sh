@@ -159,6 +159,71 @@ install_centos() {
   rm -rf /var/lib/yum/history
 }
 
+install_therock() {
+  apt-get update
+  if [[ $UBUNTU_VERSION == 20.04 ]]; then
+    # gpg-agent is not available by default on 20.04
+    apt-get install -y --no-install-recommends gpg-agent
+  fi
+  apt-get install -y kmod
+  apt-get install -y wget
+  apt-get install -y gnupg
+
+  # Need the libc++1 and libc++abi1 libraries to allow torch._C to load at runtime
+  apt-get install -y libc++1
+  apt-get install -y libc++abi1
+
+  # Make sure rocm packages from repo.radeon.com have highest priority
+  cat << EOF > /etc/apt/preferences.d/rocm-pin-600
+Package: *
+Pin: release o=repo.radeon.com
+Pin-Priority: 600
+EOF
+
+  # Add amdgpu repository
+  UBUNTU_VERSION_NAME=`cat /etc/os-release | grep UBUNTU_CODENAME | awk -F= '{print $2}'`
+  echo "deb [arch=amd64] https://repo.radeon.com/amdgpu/${ROCM_VERSION}/ubuntu ${UBUNTU_VERSION_NAME} main" > /etc/apt/sources.list.d/amdgpu.list
+
+  # Add rocm repository
+  wget -qO - http://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
+  local rocm_baseurl="http://repo.radeon.com/rocm/apt/${ROCM_VERSION}"
+  echo "deb [arch=amd64] ${rocm_baseurl} ${UBUNTU_VERSION_NAME} main" > /etc/apt/sources.list.d/rocm.list
+  apt-get update --allow-insecure-repositories
+
+  DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-unauthenticated \
+                  amd-smi-lib
+  apt-get update
+
+  DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    gfortran \
+    git \
+    git-lfs \
+    ninja-build \
+    cmake \
+    g++ \
+    pkg-config \
+    xxd \
+    patchelf \
+    automake \
+    libtool \
+    python3-venv \
+    python3-dev \
+    libegl1-mesa-dev
+
+  python3.12 -m venv rocm_venv
+  source rocm_venv/bin/activate
+  pip install \
+    --index-url https://d2awnip2yjpvqn.cloudfront.net/v2/gfx950-dcgpu/ \
+    rocm[libraries,devel]
+  python3.12 -m rocm_sdk path --root
+}
+
+# Check for gfx950 architecture
+if [[ "$PYTORCH_ROCM_ARCH" == "gfx950" ]]; then
+  install_therock
+  exit 0
+fi
+
 # Install Python packages depending on the base OS
 ID=$(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"')
 case "$ID" in
