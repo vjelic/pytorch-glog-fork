@@ -255,7 +255,6 @@ mha_varlen_fwd_aot(const at::Tensor &q,  // total_q x num_heads x head_size, tot
                const at::Tensor &cu_seqlens_q,  // b+1
                const at::Tensor &cu_seqlens_k,  // b+1
                std::optional<at::Tensor> &seqused_k, // b. If given, only this many elements of each batch element's keys are used.
-               std::optional<at::Tensor> &block_table_, // batch_size x max_num_blocks_per_seq
                std::optional<at::Tensor> &alibi_slopes_, // num_heads or b x num_heads
                int max_seqlen_q,
                const int max_seqlen_k,
@@ -268,8 +267,6 @@ mha_varlen_fwd_aot(const at::Tensor &q,  // total_q x num_heads x head_size, tot
                const bool return_softmax,
                const std::optional<at::Generator>& gen_) {
   TORCH_CHECK(!seqused_k.has_value(), "[ROCm] mha_varlen_fwd: seqused_k must be nullopt");
-  const bool paged_KV = block_table_.has_value();
-  TORCH_CHECK(!paged_KV, "[ROCm] mha_varlen_fwd: block_table_ must be nullopt");
   TORCH_CHECK(!alibi_slopes_.has_value(), "[ROCm] mha_varlen_fwd: alibi_slopes_ must be nullopt");
 
   at::hip::HIPGuardMasqueradingAsCUDA device_guard{(char)q.get_device()};
@@ -299,7 +296,7 @@ mha_varlen_fwd_aot(const at::Tensor &q,  // total_q x num_heads x head_size, tot
   const int batch_size = cu_seqlens_q.numel() - 1;
   int num_heads = sizes[1];
   const int head_size_og = sizes[2];
-  const int num_heads_k = paged_KV ? k.size(2) : k.size(1);
+  const int num_heads_k = k.size(1);
 
   if (max_seqlen_q == 1 && !alibi_slopes_.has_value()) {
     is_causal = false;

@@ -57,7 +57,6 @@ mha_varlen_fwd_aot(
     std::optional<at::Tensor>&
         seqused_k, // b. If given, only this many elements of each batch
                    // element's keys are used.
-    std::optional<at::Tensor>& block_table_,
     std::optional<at::Tensor>& alibi_slopes_, // num_heads or b x num_heads
     int max_seqlen_q,
     const int max_seqlen_k,
@@ -270,7 +269,6 @@ mha_fwd(
     bool is_causal,
     int window_size_left,
     int window_size_right,
-    const float softcap,
     const bool return_softmax,
     std::optional<at::Generator> gen_) {
   return mha_fwd_aot(
@@ -311,8 +309,6 @@ mha_varlen_fwd(
     std::optional<at::Tensor>&
         seqused_k, // b. If given, only this many elements of each batch
                    // element's keys are used.
-    std::optional<at::Tensor>&
-        block_table_, // Not used on ROCm. Keeping for parity with CUDA
     std::optional<at::Tensor>& alibi_slopes_, // num_heads or b x num_heads
     int max_seqlen_q,
     const int max_seqlen_k,
@@ -322,7 +318,6 @@ mha_varlen_fwd(
     bool is_causal,
     int window_size_left,
     int window_size_right,
-    const float softcap,
     const bool return_softmax,
     std::optional<at::Generator> gen_) {
   return mha_varlen_fwd_aot(
@@ -333,7 +328,6 @@ mha_varlen_fwd(
       cu_seqlens_q,
       cu_seqlens_k,
       seqused_k,
-      block_table_,
       alibi_slopes_,
       max_seqlen_q,
       max_seqlen_k,
@@ -367,7 +361,6 @@ inline std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> mha_bwd(
     const bool is_causal,
     int window_size_left,
     int window_size_right,
-    const float softcap,
     const bool deterministic,
     const at::Tensor philox_seed,
     const at::Tensor philox_offset) {
@@ -419,7 +412,6 @@ inline std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> mha_varlen_bwd
     const bool is_causal,
     int window_size_left,
     int window_size_right,
-    const float softcap,
     const bool deterministic,
     const at::Tensor philox_seed,
     const at::Tensor philox_offset) {
