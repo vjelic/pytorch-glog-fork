@@ -210,12 +210,13 @@ EOF
     python3-dev \
     libegl1-mesa-dev
 
-  python3.12 -m venv rocm_venv
+  python3 -m venv rocm_venv
   source rocm_venv/bin/activate
+  pip install 'cmake<4'
   pip install \
     --index-url https://d2awnip2yjpvqn.cloudfront.net/v2/gfx950-dcgpu/ \
     rocm[libraries,devel]
-  python3.12 -m rocm_sdk path --root
+  python3 -m rocm_sdk path --root
 }
 
 # Check for gfx950 architecture
