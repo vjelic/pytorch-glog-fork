@@ -62,8 +62,6 @@ RUN bash ./install_rocm_magma.sh ${ROCM_VERSION}
 RUN rm install_rocm_magma.sh
 ADD ./common/install_miopen.sh install_miopen.sh
 RUN bash ./install_miopen.sh ${ROCM_VERSION} && rm install_miopen.sh
-ADD ./common/rocm/patch_rocprim_headers.sh patch_rocmprim_headers.sh
-RUN bash ./patch_rocmprim_headers.sh && rm patch_rocmprim_headers.sh
 ENV PATH /opt/rocm/bin:$PATH
 ENV PATH /opt/rocm/hcc/bin:$PATH
 ENV PATH /opt/rocm/hip/bin:$PATH
