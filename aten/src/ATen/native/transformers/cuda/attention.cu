@@ -1114,6 +1114,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, c10::SymInt, c10::SymInt> _efficient_
   }
 
   using aotriton::v2::flash::attn_fwd;
+  using aotriton::v2::flash::attn_fwd_compact_varlen;
   using sdp::aotriton_adapter::mk_aotensor;
   using sdp::aotriton_adapter::mk_aoscalartensor;
   using sdp::aotriton_adapter::mk_philoxtensor;
