@@ -1047,7 +1047,11 @@ class TestPatternMatcher(TestPatternMatcherBase):
     @skipIfNoDynamoSupport
     @skipIfNoONEDNNBF16
     @skipIfNoONEDNN
+<<<<<<< HEAD
     @skipIfRocmArch(MI300_ARCH)
+=======
+    @skipIfRocm
+>>>>>>> 4ca33638af ([release/2.6][SWDEV-523736] Skip&Fix some testcases for archs without SDPA or Navi4x (#2213))
     def test_qconv2d_int8_mixed_bf16(self):
         r"""
         This testcase will quantize a single Conv2d module with int8_mixed_bf16 quantization.
