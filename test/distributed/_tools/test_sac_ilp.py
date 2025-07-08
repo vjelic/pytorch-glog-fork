@@ -19,22 +19,13 @@ from torch.distributed._tools.sac_ilp import (
 )
 from torch.testing._internal.common_cuda import TEST_CUDA
 from torch.testing._internal.common_utils import (
-<<<<<<< HEAD
     MI300_ARCH,
-    run_tests,
-    skipIfRocmArch,
-    skipIfTorchDynamo,
-    TestCase,
-)
-=======
-    run_tests,
-    skipIfTorchDynamo,
-    TestCase,
-    skipIfRocmArch,
     NAVI4_ARCH,
+    run_tests,
+    skipIfRocmArch,
+    skipIfTorchDynamo,
+    TestCase,
 )
-
->>>>>>> 4ca33638af ([release/2.6][SWDEV-523736] Skip&Fix some testcases for archs without SDPA or Navi4x (#2213))
 from torch.testing._internal.distributed._tensor.common_dtensor import (
     ModelArgs,
     Transformer,
@@ -146,11 +137,8 @@ class TestSACILP(TestCase):
 
     @skipIfTorchDynamo("https://github.com/pytorch/pytorch/issues/115653")
     @unittest.skipIf(not TEST_CUDA, "CUDA not available")
-<<<<<<< HEAD
     @skipIfRocmArch(MI300_ARCH)
-=======
     @skipIfRocmArch(NAVI4_ARCH)
->>>>>>> 4ca33638af ([release/2.6][SWDEV-523736] Skip&Fix some testcases for archs without SDPA or Navi4x (#2213))
     def test_sac_ilp_case1(self):
         """
         This is a case where the memory budget is either binding or too tight,

@@ -3,13 +3,8 @@
 
 import functools
 from collections import namedtuple
-<<<<<<< HEAD
 from typing import Callable, Optional, Union
-from unittest import expectedFailure, skipUnless
-=======
-from typing import Callable, Optional, Tuple, Union
-from unittest import expectedFailure, skipUnless, skipIf
->>>>>>> 4ca33638af ([release/2.6][SWDEV-523736] Skip&Fix some testcases for archs without SDPA or Navi4x (#2213))
+from unittest import expectedFailure, skipIf, skipUnless
 from unittest.mock import patch
 
 import torch
