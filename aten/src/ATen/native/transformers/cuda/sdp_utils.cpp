@@ -88,7 +88,7 @@ int64_t minimum_gemm_alignment(sdp_params const& params) {
 }
 
 bool check_head_dim_size_flash(sdp_params const& params, bool debug) {
-#if USE_ROCM_ATTENTION && AOTRITON_VERSION_MINOR >= 9
+#if USE_AOTRITON && AOTRITON_VERSION_MINOR >= 9
   // AOTriton 0.9+ supports head_dim up to 512
   const auto max_size = c10::SymInt(512);
 #else
