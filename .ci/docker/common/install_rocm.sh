@@ -161,10 +161,6 @@ install_centos() {
 
 install_therock() {
   apt-get update
-  if [[ $UBUNTU_VERSION == 20.04 ]]; then
-    # gpg-agent is not available by default on 20.04
-    apt-get install -y --no-install-recommends gpg-agent
-  fi
   apt-get install -y kmod
   apt-get install -y wget
   apt-get install -y gnupg
@@ -212,7 +208,6 @@ EOF
 
   python3 -m venv rocm_venv
   source rocm_venv/bin/activate
-  pip install 'cmake<4'
   pip install \
     --index-url https://d2awnip2yjpvqn.cloudfront.net/v2/gfx950-dcgpu/ \
     rocm[libraries,devel]
