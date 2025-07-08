@@ -244,7 +244,7 @@ case "$tag" in
     UCC_COMMIT=${_UCC_COMMIT}
     INDUCTOR_BENCHMARKS=yes
     ;;
-  "pytorch-linux-noble-rocm-n+1-py3")
+  pytorch-linux-noble-rocm-n.1-py3.12)
     ANACONDA_PYTHON_VERSION=3.12
     GCC_VERSION=11
     VISION=yes
