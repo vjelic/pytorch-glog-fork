@@ -138,7 +138,7 @@ if [ -n "$ROCM_VERSION" ]; then
     write_sccache_stub_rocm ${ROCM_PATH}/llvm/bin/clang++
     # Fix last link in symlink chain, clang points to versioned clang in prior dir
     pushd ${ROCM_PATH}/llvm/bin/original
-    ln -s ../$(readlink clang)
+    ln -sf ../$(readlink clang)
     popd
   else
     echo "Cannot find ROCm compiler."
