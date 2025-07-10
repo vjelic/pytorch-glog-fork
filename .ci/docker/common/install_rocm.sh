@@ -207,10 +207,10 @@ EOF
     python3-venv \
     python3-dev \
     libegl1-mesa-dev
-
+  
   pip_install \
     --index-url https://d2awnip2yjpvqn.cloudfront.net/v2/gfx950-dcgpu/ \
-    rocm[libraries,devel]
+    'rocm[libraries,devel]'
   conda_run python -m rocm_sdk path --root
 }
 
