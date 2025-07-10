@@ -509,7 +509,8 @@ if [ -n "$KATEX" ]; then
   fi
 fi
 
-HAS_TRITON=$(drun python -c "import triton" > /dev/null 2>&1 && echo "yes" || echo "no")
+drun pip freeze
+HAS_TRITON=$(drun python -c "import triton" && echo "yes" || echo "no")
 if [[ -n "$TRITON" || -n "$TRITON_CPU" ]]; then
   if [ "$HAS_TRITON" = "no" ]; then
     echo "expecting triton to be installed, but it is not"
