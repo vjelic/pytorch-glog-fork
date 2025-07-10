@@ -63,12 +63,11 @@ RUN bash ./install_rocm_magma.sh ${ROCM_VERSION}
 RUN rm install_rocm_magma.sh
 ADD ./common/install_miopen.sh install_miopen.sh
 RUN bash ./install_miopen.sh ${ROCM_VERSION} && rm install_miopen.sh
-ENV PATH /opt/rocm/bin:$PATH
-ENV PATH /opt/rocm/hcc/bin:$PATH
-ENV PATH /opt/rocm/hip/bin:$PATH
-ENV PATH /opt/rocm/opencl/bin:$PATH
-ENV PATH /opt/rocm/llvm/bin:$PATH
-# ENV PATH /rocm_venv/bin:$PATH
+ENV PATH ${ROCM_PATH}/bin:$PATH
+ENV PATH ${ROCM_PATH}/hcc/bin:$PATH
+ENV PATH ${ROCM_PATH}/hip/bin:$PATH
+ENV PATH ${ROCM_PATH}/opencl/bin:$PATH
+ENV PATH ${ROCM_PATH}/llvm/bin:$PATH
 ENV MAGMA_HOME ${ROCM_PATH}/magma
 ENV LANG C.UTF-8
 ENV LC_ALL C.UTF-8

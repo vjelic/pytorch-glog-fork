@@ -249,7 +249,7 @@ case "$tag" in
     GCC_VERSION=11
     VISION=yes
     ROCM_VERSION=6.4
-    ROCM_PATH="/rocm_venv/lib/python3.12/site-packages/_rocm_sdk_devel"
+    ROCM_PATH="/opt/conda/envs/py_3.12/lib/python3.12/site-packages/_rocm_sdk_devel"
     NINJA_VERSION=1.9.0
     TRITON=yes
     KATEX=yes
