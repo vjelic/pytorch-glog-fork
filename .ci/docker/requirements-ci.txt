@@ -377,5 +377,5 @@ dataclasses_json==0.6.7
 #Pinned versions: 0.6.7
 #test that import:
 
-cmake==4.0.0
+cmake==3.28.3
 #Description: required for building
