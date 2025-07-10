@@ -2,6 +2,8 @@
 
 set -ex
 
+source "$(dirname "${BASH_SOURCE[0]}")/common_utils.sh"
+
 ver() {
     printf "%3d%03d%03d%03d" $(echo "$1" | tr '.' ' ');
 }
@@ -206,12 +208,10 @@ EOF
     python3-dev \
     libegl1-mesa-dev
 
-  python3 -m venv rocm_venv
-  source rocm_venv/bin/activate
-  pip install \
+  pip_install \
     --index-url https://d2awnip2yjpvqn.cloudfront.net/v2/gfx950-dcgpu/ \
     rocm[libraries,devel]
-  python3 -m rocm_sdk path --root
+  conda_run python -m rocm_sdk path --root
 }
 
 # Check for gfx950 architecture
