@@ -52,8 +52,9 @@ ENV INSTALLED_VISION ${VISION}
 # Install rocm
 ARG ROCM_VERSION
 COPY ./common/install_rocm.sh install_rocm.sh
+COPY ./common/common_utils.sh common_utils.sh
 RUN bash ./install_rocm.sh
-RUN rm install_rocm.sh
+RUN rm install_rocm.sh common_utils.sh
 ARG ROCM_PATH
 ENV ROCM_PATH=${ROCM_PATH}
 ENV HIP_DEVICE_LIB_PATH=${ROCM_PATH}/llvm/amdgcn/bitcode
