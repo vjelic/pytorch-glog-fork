@@ -509,7 +509,7 @@ if [ -n "$KATEX" ]; then
   fi
 fi
 
-drun pip freeze
+drun python -m pip freeze
 HAS_TRITON=$(drun python -c "import triton" && echo "yes" || echo "no")
 if [[ -n "$TRITON" || -n "$TRITON_CPU" ]]; then
   if [ "$HAS_TRITON" = "no" ]; then
