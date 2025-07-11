@@ -592,10 +592,10 @@ class ProcessGroupNCCLGroupTest(MultiProcessTestCase):
         # Rank 0 takes a snapshot before collective -- this snapshot should have
         # included rank 0's own context.
         if self.rank == 0:
-            # Adding sleep statement (for Navi arch) before collectives as init_process_group 
-            # has an extra process which is taking time to finish on navi. Without sleep statement 
-            # before collectives, the torch.cuda.mem_get_info after collectives results in high 
-            # memory usage resulting in test_extra_cuda_context test to fail. 
+            # We need this extra sleep for NAVI_ARCH because rccl_init inside init_process_group 
+            # is happening in a separate process and it is taking longer to finish on NAVI_ARCH. 
+            # Sleeping here ensures that the init is competed successfully and mem_get_info can 
+            # get stable numbers.
             if is_arch(NAVI_ARCH):
                 time.sleep(5)
             free, total = torch.cuda.mem_get_info(device)
