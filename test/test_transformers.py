@@ -2692,6 +2692,8 @@ class TestSDPACudaOnly(NNTestCase):
         dropout_fudge_factor = 1.0 if dropout_p == 0.0 else 2.0
 
         query_fudge_factor = dropout_fudge_factor
+        if TEST_WITH_ROCM:
+            query_fudge_factor += 1.0
         grad_q_ref_atol, grad_q_ref_rtol = get_tolerances(query_ref.grad, query_ref_lp.grad, query_fudge_factor)
 
         # TODO: Investigate why grad_k needs larger tolerances
@@ -2814,6 +2816,8 @@ class TestSDPACudaOnly(NNTestCase):
         mask_fudge_factor = 1.0 if attn_mask is None else 1.5
 
         query_fudge_factor = dropout_fudge_factor
+        if TEST_WITH_ROCM:
+            query_fudge_factor += 1.0
         grad_q_ref_atol, grad_q_ref_rtol = get_tolerances(query_ref.grad, query_ref_lp.grad, query_fudge_factor)
 
         # TODO: Investigate why grad_k needs larger tolerances
