@@ -55,7 +55,10 @@ void _amp_foreach_non_finite_check_and_unscale_cpu_kernel(
   for (auto index: c10::irange(detail::getCUDAHooks().deviceCount()))
   {
     if (detail::getCUDAHooks().isGPUArch(index, archs))
+    {
       is_navi_arch = true;
+      break;
+    }
   }
 
   // Ensures client code (GradScaler) filtered scaled_grads by dtype.
