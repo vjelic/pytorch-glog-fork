@@ -126,7 +126,7 @@ void _amp_foreach_non_finite_check_and_unscale_cpu_kernel(
               [found_inf_ptr, inv_scale_ptr, is_navi_arch](Vectorized<scalar_t> val_vec) -> Vectorized<scalar_t>{
                 if (val_vec.has_inf_nan()) {
                   *found_inf_ptr = 1.f;
-		  // For Navi arch, the vectorized operation was running unreliably, perhaps taking longer                                               // to execute and resulting in failure.
+		  // For Navi arch, the vectorized operation was running unreliably, perhaps taking longer                                             // to execute and resulting in failure.
                   if (is_navi_arch)
                     sleep(0.5);
                 }
