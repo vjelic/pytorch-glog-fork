@@ -496,7 +496,7 @@ at::BlasBackend Context::blasPreferredBackend() {
     static const bool hipblaslt_unsupported = []() {
       if(!hasCuBLASLt())
       {
-          return false;
+          return true;
       }
       static const std::vector<std::string> archs = {
           "gfx90a", "gfx942",
