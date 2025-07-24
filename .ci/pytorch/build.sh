@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -ex
+export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH
 CMAKE=/usr/local/bin/cmake
 [ -x "$CMAKE" ] || CMAKE=/usr/bin/cmake
 cmake() { "$CMAKE" "$@"; }
