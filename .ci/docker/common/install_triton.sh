@@ -65,21 +65,6 @@ else
   pip_install -e .
 fi
 
-<<<<<<< HEAD
-if [ -n "${CONDA_CMAKE}" ]; then
-  # TODO: This is to make sure that the same cmake and numpy version from install conda
-  # script is used. Without this step, the newer cmake version (3.25.2) downloaded by
-  # triton build step via pip will fail to detect conda MKL. Once that issue is fixed,
-  # this can be removed.
-  #
-  # The correct numpy version also needs to be set here because conda claims that it
-  # causes inconsistent environment.  Without this, conda will attempt to install the
-  # latest numpy version, which fails ASAN tests with the following import error: Numba
-  # needs NumPy 1.20 or less.
-  conda_reinstall cmake="${CMAKE_VERSION}"
-  # Note that we install numpy with pip as conda might not have the version we want
-  pip_install --force-reinstall numpy=="${NUMPY_VERSION}"
-=======
 # Copy the wheel to /opt for multi stage docker builds
 cp dist/*.whl /opt/triton
 # Install the wheel for docker builds that don't use multi stage
@@ -100,5 +85,4 @@ if [ -n "${CMAKE_VERSION}" ]; then
 fi
 if [ -n "${NUMPY_VERSION}" ]; then
   pip_install "numpy==${NUMPY_VERSION}"
->>>>>>> 4b8b7c7fb95 ([CI] Use cmake from pip instead of conda in CI docker images (#152537))
 fi
