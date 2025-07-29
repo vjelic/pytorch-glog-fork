@@ -180,10 +180,8 @@ case "$image" in
     CUDNN_VERSION=9
     ANACONDA_PYTHON_VERSION=3.13
     GCC_VERSION=9
-<<<<<<< HEAD
     PROTOBUF=yes
     DB=yes
-=======
     VISION=yes
     KATEX=yes
     UCX_COMMIT=${_UCX_COMMIT}
@@ -231,7 +229,6 @@ case "$image" in
     CUDNN_VERSION=9
     ANACONDA_PYTHON_VERSION=3.13
     GCC_VERSION=9
->>>>>>> 4b8b7c7fb95 ([CI] Use cmake from pip instead of conda in CI docker images (#152537))
     VISION=yes
     KATEX=yes
     UCX_COMMIT=${_UCX_COMMIT}
