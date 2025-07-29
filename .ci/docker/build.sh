@@ -308,12 +308,6 @@ case "$image" in
     PROTOBUF=yes
     DB=yes
     VISION=yes
-<<<<<<< HEAD
-    VULKAN_SDK_VERSION=1.2.162.1
-    SWIFTSHADER=yes
-    CONDA_CMAKE=yes
-=======
->>>>>>> 4b8b7c7fb95 ([CI] Use cmake from pip instead of conda in CI docker images (#152537))
     TRITON=yes
     ;;
   pytorch-linux-focal-py3.11-clang10)
@@ -322,12 +316,6 @@ case "$image" in
     PROTOBUF=yes
     DB=yes
     VISION=yes
-<<<<<<< HEAD
-    VULKAN_SDK_VERSION=1.2.162.1
-    SWIFTSHADER=yes
-    CONDA_CMAKE=yes
-=======
->>>>>>> 4b8b7c7fb95 ([CI] Use cmake from pip instead of conda in CI docker images (#152537))
     TRITON=yes
     ;;
   pytorch-linux-focal-py3.9-gcc9)
@@ -450,20 +438,11 @@ case "$image" in
     # TODO: Use 3.9 here because of this issue https://github.com/python/mypy/issues/13627.
     # We will need to update mypy version eventually, but that's for another day. The task
     # would be to upgrade mypy to 1.0.0 with Python 3.11
-<<<<<<< HEAD
-    ANACONDA_PYTHON_VERSION=3.9
-    CONDA_CMAKE=yes
-=======
     PYTHON_VERSION=3.9
->>>>>>> 4b8b7c7fb95 ([CI] Use cmake from pip instead of conda in CI docker images (#152537))
     ;;
   pytorch-linux-jammy-cuda11.8-cudnn9-py3.9-linter)
     ANACONDA_PYTHON_VERSION=3.9
     CUDA_VERSION=11.8
-<<<<<<< HEAD
-    CONDA_CMAKE=yes
-=======
->>>>>>> 4b8b7c7fb95 ([CI] Use cmake from pip instead of conda in CI docker images (#152537))
     ;;
   pytorch-linux-jammy-aarch64-py3.10-gcc11)
     ANACONDA_PYTHON_VERSION=3.10
@@ -567,12 +546,6 @@ docker build \
        --build-arg "CUDNN_VERSION=${CUDNN_VERSION}" \
        --build-arg "TENSORRT_VERSION=${TENSORRT_VERSION}" \
        --build-arg "GRADLE_VERSION=${GRADLE_VERSION}" \
-<<<<<<< HEAD
-       --build-arg "VULKAN_SDK_VERSION=${VULKAN_SDK_VERSION}" \
-       --build-arg "SWIFTSHADER=${SWIFTSHADER}" \
-       --build-arg "CMAKE_VERSION=${CMAKE_VERSION:-}" \
-=======
->>>>>>> 4b8b7c7fb95 ([CI] Use cmake from pip instead of conda in CI docker images (#152537))
        --build-arg "NINJA_VERSION=${NINJA_VERSION:-}" \
        --build-arg "KATEX=${KATEX:-}" \
        --build-arg "ROCM_VERSION=${ROCM_VERSION:-}" \
@@ -580,10 +553,6 @@ docker build \
        --build-arg "IMAGE_NAME=${IMAGE_NAME}" \
        --build-arg "UCX_COMMIT=${UCX_COMMIT}" \
        --build-arg "UCC_COMMIT=${UCC_COMMIT}" \
-<<<<<<< HEAD
-       --build-arg "CONDA_CMAKE=${CONDA_CMAKE}" \
-=======
->>>>>>> 4b8b7c7fb95 ([CI] Use cmake from pip instead of conda in CI docker images (#152537))
        --build-arg "TRITON=${TRITON}" \
        --build-arg "TRITON_CPU=${TRITON_CPU}" \
        --build-arg "ONNX=${ONNX}" \
@@ -657,8 +626,6 @@ if [ -n "$KATEX" ]; then
     exit 1
   fi
 fi
-<<<<<<< HEAD
-=======
 
 HAS_TRITON=$(drun python -c "import triton" > /dev/null 2>&1 && echo "yes" || echo "no")
 if [[ -n "$TRITON" || -n "$TRITON_CPU" ]]; then
@@ -679,4 +646,3 @@ if [[ "$EXECUTORCH" != *yes* && "$CMAKE_VERSION" != *4.* ]]; then
   drun cmake --version
   exit 1
 fi
->>>>>>> 4b8b7c7fb95 ([CI] Use cmake from pip instead of conda in CI docker images (#152537))
