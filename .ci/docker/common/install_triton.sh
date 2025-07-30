@@ -67,7 +67,7 @@ fi
 
 # Copy the wheel to /opt for multi stage docker builds
 # Install the wheel for docker builds that don't use multi stage
-
+pip_install dist/*.whl
 # TODO: This is to make sure that the same cmake and numpy version from install conda
 # script is used. Without this step, the newer cmake version (3.25.2) downloaded by
 # triton build step via pip will fail to detect conda MKL. Once that issue is fixed,
