@@ -65,19 +65,28 @@ else
   pip_install -e .
 fi
 
+# TODO: remove patch setup.py once we have a proper fix for https://github.com/triton-lang/triton/issues/4527
+as_jenkins sed -i -e 's/https:\/\/tritonlang.blob.core.windows.net\/llvm-builds/https:\/\/oaitriton.blob.core.windows.net\/public\/llvm-builds/g' setup.py
+
+if [ -n "${UBUNTU_VERSION}" ] && [ -n "${GCC_VERSION}" ] && [[ "${GCC_VERSION}" == "7" ]]; then
+  # Triton needs at least gcc-9 to build
+  apt-get install -y g++-9
+
+  CXX=g++-9 conda_run python setup.py bdist_wheel
+elif [ -n "${UBUNTU_VERSION}" ] && [ -n "${CLANG_VERSION}" ]; then
+  # Triton needs <filesystem> which surprisingly is not available with clang-9 toolchain
+  add-apt-repository -y ppa:ubuntu-toolchain-r/test
+  apt-get install -y g++-9
+
+  CXX=g++-9 conda_run python setup.py bdist_wheel
+else
+  conda_run python setup.py bdist_wheel
+fi
+
 # Copy the wheel to /opt for multi stage docker builds
+cp dist/*.whl /opt/triton
 # Install the wheel for docker builds that don't use multi stage
 pip_install dist/*.whl
-# TODO: This is to make sure that the same cmake and numpy version from install conda
-# script is used. Without this step, the newer cmake version (3.25.2) downloaded by
-# triton build step via pip will fail to detect conda MKL. Once that issue is fixed,
-# this can be removed.
-#
-# The correct numpy version also needs to be set here because conda claims that it
-# causes inconsistent environment.  Without this, conda will attempt to install the
-# latest numpy version, which fails ASAN tests with the following import error: Numba
-# needs NumPy 1.20 or less.
-# Note that we install numpy with pip as conda might not have the version we want
 if [ -n "${CMAKE_VERSION}" ]; then
   pip_install "cmake==${CMAKE_VERSION}"
 fi
