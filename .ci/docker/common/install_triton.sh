@@ -1,6 +1,13 @@
+
 #!/bin/bash
 
 set -ex
+
+mkdir -p /opt/triton
+if [ -z "${TRITON}" ] && [ -z "${TRITON_CPU}" ]; then
+  echo "TRITON and TRITON_CPU are not set. Exiting..."
+  exit 0
+fi
 
 source "$(dirname "${BASH_SOURCE[0]}")/common_utils.sh"
 
@@ -15,7 +22,7 @@ elif [ -n "${TRITON_CPU}" ]; then
   TRITON_REPO="https://github.com/triton-lang/triton-cpu"
   TRITON_TEXT_FILE="triton-cpu"
 else
-  TRITON_REPO="https://github.com/ROCm/triton"
+  TRITON_REPO="https://github.com/triton-lang/triton"
   TRITON_TEXT_FILE="triton"
 fi
 
@@ -46,24 +53,7 @@ cd triton
 as_jenkins git checkout ${TRITON_PINNED_COMMIT}
 as_jenkins git submodule update --init --recursive
 cd python
-
-# TODO: remove patch setup.py once we have a proper fix for https://github.com/triton-lang/triton/issues/4527
-as_jenkins sed -i -e 's/https:\/\/tritonlang.blob.core.windows.net\/llvm-builds/https:\/\/oaitriton.blob.core.windows.net\/public\/llvm-builds/g' setup.py
-
-if [ -n "${UBUNTU_VERSION}" ] && [ -n "${GCC_VERSION}" ] && [[ "${GCC_VERSION}" == "7" ]]; then
-  # Triton needs at least gcc-9 to build
-  apt-get install -y g++-9
-
-  CXX=g++-9 pip_install -e .
-elif [ -n "${UBUNTU_VERSION}" ] && [ -n "${CLANG_VERSION}" ]; then
-  # Triton needs <filesystem> which surprisingly is not available with clang-9 toolchain
-  add-apt-repository -y ppa:ubuntu-toolchain-r/test
-  apt-get install -y g++-9
-
-  CXX=g++-9 pip_install -e .
-else
-  pip_install -e .
-fi
+pip_install pybind11==2.13.6
 
 # TODO: remove patch setup.py once we have a proper fix for https://github.com/triton-lang/triton/issues/4527
 as_jenkins sed -i -e 's/https:\/\/tritonlang.blob.core.windows.net\/llvm-builds/https:\/\/oaitriton.blob.core.windows.net\/public\/llvm-builds/g' setup.py
@@ -87,6 +77,17 @@ fi
 cp dist/*.whl /opt/triton
 # Install the wheel for docker builds that don't use multi stage
 pip_install dist/*.whl
+
+# TODO: This is to make sure that the same cmake and numpy version from install conda
+# script is used. Without this step, the newer cmake version (3.25.2) downloaded by
+# triton build step via pip will fail to detect conda MKL. Once that issue is fixed,
+# this can be removed.
+#
+# The correct numpy version also needs to be set here because conda claims that it
+# causes inconsistent environment.  Without this, conda will attempt to install the
+# latest numpy version, which fails ASAN tests with the following import error: Numba
+# needs NumPy 1.20 or less.
+# Note that we install numpy with pip as conda might not have the version we want
 if [ -n "${CMAKE_VERSION}" ]; then
   pip_install "cmake==${CMAKE_VERSION}"
 fi
