@@ -422,6 +422,106 @@ class ProcessGroupNCCLGroupTest(MultiProcessTestCase):
         # reset env
         os.environ["TORCH_NCCL_NAN_CHECK"] = "0"
 
+<<<<<<< HEAD
+=======
+    def _helper_test_extra_cuda_context_by_nvml(self):
+        """
+        A helper for `test_extra_cuda_context`, if pynvml is avaiable.
+        pynvml provides python bindings for NVIDIA NVML functionalities.
+        Here we are interested in: nvmlDeviceGetComputeRunningProcesses
+        """
+        import pynvml
+
+        pynvml.nvmlInit()
+
+        device = torch.device("cuda:%d" % self.rank)
+        x = torch.empty((1,), device=device)
+        work = c10d.all_reduce(x, async_op=True)
+
+        # Wait for non-0 ranks to garbage collect Work -- this is the latest
+        # point where extra CUDA context can be created
+        if self.rank == 0:
+            time.sleep(5)
+        del work
+        handle = pynvml.nvmlDeviceGetHandleByIndex(self.rank)
+        processes = pynvml.nvmlDeviceGetComputeRunningProcesses(handle)
+        nprocs = len(processes)
+
+        # A barrier for non-0 ranks
+        c10d.all_reduce(x)
+        torch.cuda.synchronize(device)
+        c10d.destroy_process_group()
+        self.assertLessEqual(
+            nprocs,
+            1,
+            f"Found {nprocs} processes creating contexts on {device}, expecting 1 at most",
+        )
+
+    def _helper_test_extra_cuda_context_by_memory(self):
+        """
+        A helper for `test_extra_cuda_context`, if pynvml is NOT avaiable.
+        If extra context is created, it would manifest into device 0's memory usage.
+        """
+        device = torch.device("cuda:%d" % self.rank)
+        x = torch.empty((1,), device=device)
+
+        # We need this barrier to ensure that all nodes have completed init_process_group
+        # If rank=0 gets a mem snapshot before other nodes have finished init_process_group,
+        # then we artificially see a bump in memory usage. As per the following comment,
+        # we are going to be moving away from this function:
+        # https://github.com/pytorch/pytorch/pull/154174#discussion_r2105065931
+        c10d.barrier()
+
+        # Rank 0 takes a snapshot before collective -- this snapshot should have
+        # included rank 0's own context.
+        if self.rank == 0:
+            free, total = torch.cuda.mem_get_info(device)
+            used_before = float(total - free)
+
+        work = c10d.all_reduce(x, async_op=True)
+
+        # Wait for non-0 ranks to garbage collect Work -- this is the latest
+        # point where extra CUDA context can be created
+        if self.rank == 0:
+            time.sleep(5)
+            free, total = torch.cuda.mem_get_info(device)
+            used_after = float(total - free)
+        del work
+
+        # A barrier for non-0 ranks
+        c10d.all_reduce(x)
+        torch.cuda.synchronize(device)
+        c10d.destroy_process_group()
+        if self.rank == 0:
+            # If non-0 rank creates a context on device 0, this assert would
+            # fail because one context takes about 1 GB -- much more than the
+            # tensor size created in this test.
+            self.assertTrue(
+                used_after < used_before * 1.5,
+                f"{device} used {used_after} bytes after collective, "
+                f"50% more than the status before ({used_before} bytes). "
+                f"Extra CUDA context may have been created.",
+            )
+
+    @requires_nccl()
+    @skip_if_lt_x_gpu(2)
+    def test_extra_cuda_context(self):
+        # Check if non-0 ranks would create extra CUDA context on device 0
+        store = c10d.FileStore(self.file_name, self.world_size)
+        device = torch.device("cuda:%d" % self.rank)
+        c10d.init_process_group(
+            backend="nccl",
+            store=store,
+            rank=self.rank,
+            world_size=self.world_size,
+            device_id=device,
+        )
+        try:
+            self._helper_test_extra_cuda_context_by_nvml()
+        except ModuleNotFoundError:
+            self._helper_test_extra_cuda_context_by_memory()
+
+>>>>>>> 960d1d0fd8c ([ROCm6.4_internal_testing] Using c10d.barrier() in test_extra_cuda_context test in test_c10d_nccl.py (#2447))
     @requires_nccl()
     @skip_but_pass_in_sandcastle_if(not TEST_MULTIGPU, "NCCL test requires 2+ GPUs")
     def test_destruct_before_terminate_pg(self):
