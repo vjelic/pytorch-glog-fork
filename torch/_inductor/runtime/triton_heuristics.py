@@ -2555,20 +2555,11 @@ def _persistent_reduction_configs(
     xnumel = size_hints["x"]
     rnumel = get_total_reduction_numel(size_hints)
 
-<<<<<<< HEAD
     MAX_PERSISTENT_BLOCK_NUMEL = 4096
-=======
     max_autotune_enabled = not disable_pointwise_autotuning(inductor_meta) or (
         inductor_meta.get("max_autotune")
         or inductor_meta.get("max_autotune_pointwise")
     )
-
-    configs = [
-        triton_config_reduction(size_hints, xblock, rnumel, register_intensive=True)
-        for xblock in (1, 8, 32, 128)
-        if xblock == 1 or (xblock <= xnumel and (max_autotune_enabled or rnumel * xblock <= 4096))
-    ]
->>>>>>> 6c845c6c991 ([SWDEV-539215] - Autotune support for persistent reduction and no_x_dim removal (#2417))
 
     if "y" not in size_hints:
         configs = [
@@ -2598,14 +2589,6 @@ def _persistent_reduction_configs(
     if "y" in size_hints:
         pass
     # TODO(jansel): we should be able to improve these heuristics
-<<<<<<< HEAD
-    elif reduction_hint == ReductionHint.INNER and rnumel >= 256:
-        configs = configs[:1]
-    elif reduction_hint == ReductionHint.OUTER:
-        configs = configs[-1:]
-    elif reduction_hint == ReductionHint.OUTER_TINY:
-        configs = [
-=======
     if not max_autotune_enabled: # Don't filter if tuning enabled
         if reduction_hint == ReductionHint.INNER and rnumel >= 256:
             configs = configs[:1]
@@ -2614,7 +2597,6 @@ def _persistent_reduction_configs(
 
     if reduction_hint == ReductionHint.OUTER_TINY:
         tiny_configs = [
->>>>>>> 6c845c6c991 ([SWDEV-539215] - Autotune support for persistent reduction and no_x_dim removal (#2417))
             triton_config_reduction(
                 size_hints,
                 2 * (256 // rnumel) if rnumel <= 256 else 1,
