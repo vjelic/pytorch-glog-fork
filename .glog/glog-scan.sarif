@@ -1,0 +1,871 @@
+{
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Glog.AI",
+          "organization": "Glog.AI",
+          "fullName": "Glog, Making software more secure",
+          "version": "1.0.0",
+          "semanticVersion": "1.0.0",
+          "informationUri": "https://www.glog.ai",
+          "rules": [
+            {
+              "id": "glog-29d7b882-6759-4a07-bc6a-119c1b4e1d92",
+              "help": {
+                "text": "",
+                "markdown": "### Description\n\nThe \"Vulnerable/Compromised Hash Algorithm\" vulnerability in C++ refers to the use of cryptographic hash functions that are considered weak or compromised, such as SHA-1. SHA-1 is no longer considered secure due to vulnerabilities that allow for collision attacks, where two different inputs produce the same hash output. This can lead to security breaches, such as data integrity violations and unauthorized data access.\n\n### General Mitigation Advice\n\n- **Use Stronger Hash Functions**: Replace SHA-1 with more secure hash functions like SHA-256 or SHA-3.\n- **Regularly Update Cryptographic Libraries**: Ensure that cryptographic libraries are up-to-date to benefit from the latest security improvements.\n- **Conduct Security Audits**: Regularly audit your codebase for the use of deprecated or weak cryptographic algorithms.\n\n### Source Code Fix Recommendation\n\nBelow is an example of how to replace SHA-1 with SHA-256 using the OpenSSL library in C++.\n\n```cpp\n#include <openssl/sha.h>\n#include <iostream>\n#include <iomanip>\n#include <sstream>\n#include <string>\n\n// Function to compute SHA-256 hash\nstd::string computeSHA256(const std::string& input) {\n    unsigned char hash[SHA256_DIGEST_LENGTH];\n    SHA256_CTX sha256;\n    SHA256_Init(&sha256);\n    SHA256_Update(&sha256, input.c_str(), input.size());\n    SHA256_Final(hash, &sha256);\n\n    std::stringstream ss;\n    for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {\n        ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];\n    }\n    return ss.str();\n}\n\nint main() {\n    std::string data = \"example data\";\n    std::string hash = computeSHA256(data);\n    std::cout << \"SHA-256 hash: \" << hash << std::endl;\n    return 0;\n}\n```\n\n### Library Dependencies\n\nTo execute the above code example, you need the following library:\n\n- OpenSSL\n\nEnsure that OpenSSL is installed and properly linked during compilation. You can compile the code using:\n\n```bash\ng++ -o hash_example hash_example.cpp -lssl -lcrypto\n```\n\n### Relevant OWASP Resources\n\n- [OWASP Cryptographic Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html)\n- [OWASP Top Ten](https://owasp.org/www-project-top-ten/)\n\n### Common Weakness Enumeration (CWE)\n\n- [CWE-327: Use of a Broken or Risky Cryptographic Algorithm](https://cwe.mitre.org/data/definitions/327.html)"
+              },
+              "properties": {
+                "tags": [
+                  "DS126858"
+                ]
+              }
+            },
+            {
+              "id": "glog-111707fd-9a7a-4e29-8aa9-6764b51792de",
+              "help": {
+                "text": "",
+                "markdown": "## Description\n\nThe `memcpy` function in C++ is used to copy a block of memory from one location to another. This function is vulnerable to buffer overflow attacks if the size of the data being copied is larger than the size of the destination buffer. In the provided code snippet, the vulnerability arises if the size of `EltPtr` is larger than the space available at `this->end()`. This can lead to overwriting of adjacent memory, leading to unexpected behavior, crashes, or even code execution.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, always ensure that the destination buffer is large enough to hold the data being copied. This can be done by checking the size of the destination buffer and the size of the source data before the `memcpy` operation. If the source data is larger, either increase the size of the destination buffer or reduce the size of the source data to fit.\n\n## Source Code Fix Recommendation\n\nHere is a recommended fix for the provided code snippet:\n\n```cpp\nsize_t size = sizeof(T);\nif (size <= (this->capacity() - this->size())) {\n    memcpy(reinterpret_cast<void*>(this->end()), EltPtr, size);\n} else {\n    // Handle error: not enough space in the buffer\n}\n```\n\nIn this fix, we first calculate the size of the data being copied. Then we check if this size is less than or equal to the remaining capacity in the destination buffer. If it is, we proceed with the `memcpy` operation. If not, we handle the error appropriately.\n\n## Library Dependencies\n\nThe provided code snippet requires the following library dependencies:\n\n- `<cstring>`: This library provides the `memcpy` function.\n\n## References\n\n- [OWASP Buffer Overflow Attack](https://owasp.org/www-community/attacks/Buffer_overflow_attack)\n- [CWE-120: Buffer Copy without Checking Size of Input ('Classic Buffer Overflow')](https://cwe.mitre.org/data/definitions/120.html)"
+              },
+              "properties": {
+                "tags": [
+                  "DS121708"
+                ]
+              }
+            },
+            {
+              "id": "glog-a6e15d8d-bb13-481b-b117-79f7454e6049",
+              "help": {
+                "text": "",
+                "markdown": "### Description\n\nThe \"Vulnerable/Compromised Hash Algorithm\" vulnerability in C++ refers to the use of cryptographic hash functions that are considered weak or compromised, such as SHA-1. SHA-1 is no longer considered secure due to vulnerabilities that allow for collision attacks, where two different inputs produce the same hash output. This can lead to security breaches, such as data integrity violations and unauthorized data access.\n\n### General Mitigation Advice\n\n- **Use Stronger Hash Functions**: Replace SHA-1 with more secure hash functions like SHA-256 or SHA-3.\n- **Regularly Update Cryptographic Libraries**: Ensure that cryptographic libraries are up-to-date to benefit from the latest security improvements.\n- **Conduct Security Audits**: Regularly audit your codebase for the use of deprecated or weak cryptographic algorithms.\n\n### Source Code Fix Recommendation\n\nBelow is an example of how to replace SHA-1 with SHA-256 using the OpenSSL library in C++.\n\n```cpp\n#include <openssl/sha.h>\n#include <iostream>\n#include <iomanip>\n#include <sstream>\n#include <string>\n\n// Function to compute SHA-256 hash\nstd::string computeSHA256(const std::string& input) {\n    unsigned char hash[SHA256_DIGEST_LENGTH];\n    SHA256_CTX sha256;\n    SHA256_Init(&sha256);\n    SHA256_Update(&sha256, input.c_str(), input.size());\n    SHA256_Final(hash, &sha256);\n\n    std::stringstream ss;\n    for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {\n        ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];\n    }\n    return ss.str();\n}\n\nint main() {\n    std::string data = \"example data\";\n    std::string hash = computeSHA256(data);\n    std::cout << \"SHA-256 hash: \" << hash << std::endl;\n    return 0;\n}\n```\n\n### Library Dependencies\n\nTo execute the above code example, you need the following library:\n\n- OpenSSL\n\nEnsure that OpenSSL is installed and properly linked during compilation. You can compile the code using:\n\n```bash\ng++ -o hash_example hash_example.cpp -lssl -lcrypto\n```\n\n### Relevant OWASP Resources\n\n- [OWASP Cryptographic Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html)\n- [OWASP Top Ten](https://owasp.org/www-project-top-ten/)\n\n### Common Weakness Enumeration (CWE)\n\n- [CWE-327: Use of a Broken or Risky Cryptographic Algorithm](https://cwe.mitre.org/data/definitions/327.html)"
+              },
+              "properties": {
+                "tags": [
+                  "DS126858"
+                ]
+              }
+            },
+            {
+              "id": "glog-8b8181ab-9eac-4fca-a62f-6008e1f468cf",
+              "help": {
+                "text": "",
+                "markdown": "### Description\n\nThe \"Vulnerable/Compromised Hash Algorithm\" vulnerability in C++ refers to the use of cryptographic hash functions that are considered weak or compromised, such as SHA-1. SHA-1 is no longer considered secure due to vulnerabilities that allow for collision attacks, where two different inputs produce the same hash output. This can lead to security breaches, such as data integrity violations and unauthorized data access.\n\n### General Mitigation Advice\n\n- **Use Stronger Hash Functions**: Replace SHA-1 with more secure hash functions like SHA-256 or SHA-3.\n- **Regularly Update Cryptographic Libraries**: Ensure that cryptographic libraries are up-to-date to benefit from the latest security improvements.\n- **Conduct Security Audits**: Regularly audit your codebase for the use of deprecated or weak cryptographic algorithms.\n\n### Source Code Fix Recommendation\n\nBelow is an example of how to replace SHA-1 with SHA-256 using the OpenSSL library in C++.\n\n```cpp\n#include <openssl/sha.h>\n#include <iostream>\n#include <iomanip>\n#include <sstream>\n#include <string>\n\n// Function to compute SHA-256 hash\nstd::string computeSHA256(const std::string& input) {\n    unsigned char hash[SHA256_DIGEST_LENGTH];\n    SHA256_CTX sha256;\n    SHA256_Init(&sha256);\n    SHA256_Update(&sha256, input.c_str(), input.size());\n    SHA256_Final(hash, &sha256);\n\n    std::stringstream ss;\n    for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {\n        ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];\n    }\n    return ss.str();\n}\n\nint main() {\n    std::string data = \"example data\";\n    std::string hash = computeSHA256(data);\n    std::cout << \"SHA-256 hash: \" << hash << std::endl;\n    return 0;\n}\n```\n\n### Library Dependencies\n\nTo execute the above code example, you need the following library:\n\n- OpenSSL\n\nEnsure that OpenSSL is installed and properly linked during compilation. You can compile the code using:\n\n```bash\ng++ -o hash_example hash_example.cpp -lssl -lcrypto\n```\n\n### Relevant OWASP Resources\n\n- [OWASP Cryptographic Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html)\n- [OWASP Top Ten](https://owasp.org/www-project-top-ten/)\n\n### Common Weakness Enumeration (CWE)\n\n- [CWE-327: Use of a Broken or Risky Cryptographic Algorithm](https://cwe.mitre.org/data/definitions/327.html)"
+              },
+              "properties": {
+                "tags": [
+                  "DS126858"
+                ]
+              }
+            },
+            {
+              "id": "glog-c83352f8-c70a-4ca5-baba-db313b50a7ed",
+              "help": {
+                "text": "",
+                "markdown": "## Description\n\nThe vulnerability in question is related to the `memcpy` function in C++. This function is used to copy a block of memory from one location to another. The vulnerability arises when the size of the destination buffer is less than the size of the source buffer. This can lead to buffer overflow, which can cause the program to crash or, in worst-case scenarios, allow an attacker to execute arbitrary code.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, it is recommended to always ensure that the destination buffer is large enough to hold the data being copied from the source buffer. This can be done by checking the size of the destination buffer before calling `memcpy`.\n\n## Source Code Fix Recommendation\n\nHere is a simple fix for the vulnerability:\n\n```cpp\nsize_t size = E - I;\nif (size <= sizeof(Dest)) {\n    memcpy(reinterpret_cast<void*>(Dest), I, size);\n} else {\n    // Handle error\n}\n```\n\nIn this code, we first calculate the size of the data to be copied. Then, we check if the size is less than or equal to the size of the destination buffer. If it is, we proceed with the `memcpy`. If it is not, we handle the error in an appropriate manner.\n\n## Library Dependencies\n\nThe `memcpy` function is part of the C Standard Library, so the only dependency required by the code example is:\n\n- `#include <cstring>`\n\n## OWASP Resources\n\n- [Buffer Overflow](https://owasp.org/www-community/vulnerabilities/Buffer_Overflow)\n\n## Common Weakness Enumeration (CWE)\n\n- [CWE-120: Buffer Copy without Checking Size of Input ('Classic Buffer Overflow')](https://cwe.mitre.org/data/definitions/120.html)"
+              },
+              "properties": {
+                "tags": [
+                  "DS121708"
+                ]
+              }
+            },
+            {
+              "id": "glog-dd3dc24e-ee72-474c-9254-16f07a00267c",
+              "help": {
+                "text": "",
+                "markdown": "## Description\n\nThe `memcpy` function in C++ is used to copy a block of memory from one location to another. This function is vulnerable to buffer overflow attacks if the destination buffer size is not checked before copying data. In the provided code snippet, `memcpy` is copying data from `CLOG_DEBUG_PREFIX` to `stack_buffer` without checking if `stack_buffer` has enough space to hold the data. This can lead to a buffer overflow, which can cause the program to crash or lead to execution of arbitrary code.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, always ensure that the destination buffer is large enough to hold the data being copied. This can be done by checking the size of the destination buffer and the size of the source data before calling `memcpy`.\n\n## Source Code Fix Recommendation\n\nHere is a recommended fix for the provided code snippet:\n\n```cpp\nif (sizeof(stack_buffer) >= CLOG_DEBUG_PREFIX_LENGTH) {\n    memcpy(stack_buffer, CLOG_DEBUG_PREFIX, CLOG_DEBUG_PREFIX_LENGTH);\n} else {\n    // Handle error: destination buffer is not large enough\n}\n```\n\nIn this fixed code, `memcpy` is only called if `stack_buffer` is large enough to hold `CLOG_DEBUG_PREFIX`. If it is not, an error is handled appropriately.\n\n## Library Dependencies\n\nThe provided code snippet requires the following library to execute properly:\n\n- `cstring` (for `memcpy` function)\n\n## OWASP and CWE Links\n\n- [OWASP Buffer Overflow Attack](https://owasp.org/www-community/attacks/Buffer_overflow_attack)\n- [CWE-120: Buffer Copy without Checking Size of Input ('Classic Buffer Overflow')](https://cwe.mitre.org/data/definitions/120.html)"
+              },
+              "properties": {
+                "tags": [
+                  "DS121708"
+                ]
+              }
+            },
+            {
+              "id": "glog-700e1284-4e5c-4008-9078-2e65b87adb6f",
+              "help": {
+                "text": "",
+                "markdown": "## Description\n\nThe `memcpy` function in C++ is used to copy a block of memory from one location to another. This function is vulnerable to buffer overflow attacks if the size of the data being copied is larger than the size of the destination buffer. In the provided code snippet, if `prefix_chars` is larger than the size of `heap_buffer`, it can lead to a buffer overflow, potentially allowing an attacker to execute arbitrary code or cause a denial of service.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, you should always ensure that the size of the data being copied does not exceed the size of the destination buffer. This can be done by checking the size of the data and the size of the buffer before calling `memcpy`.\n\n## Source Code Fix Recommendation\n\nHere is a recommended fix for the provided code snippet:\n\n```cpp\n#include <cstring> // for memcpy\n#include <algorithm> // for min\n\n// ...\n\nsize_t heap_buffer_size = sizeof(heap_buffer) / sizeof(heap_buffer[0]);\nsize_t stack_buffer_size = sizeof(stack_buffer) / sizeof(stack_buffer[0]);\n\nsize_t num_chars_to_copy = std::min(heap_buffer_size, stack_buffer_size);\n\nmemcpy(heap_buffer, stack_buffer, num_chars_to_copy);\n```\n\nIn this fixed code, we first calculate the sizes of `heap_buffer` and `stack_buffer`. Then we use the `std::min` function to ensure that we only copy the smaller of the two sizes. This prevents a buffer overflow from occurring.\n\n## Library Dependencies\n\nThe code example requires the following library dependencies:\n\n- `<cstring>`: This library provides the `memcpy` function.\n- `<algorithm>`: This library provides the `std::min` function.\n\n## OWASP and CWE Links\n\n- [OWASP Buffer Overflow](https://owasp.org/www-community/vulnerabilities/Buffer_Overflow)\n- [CWE-120: Buffer Copy without Checking Size of Input ('Classic Buffer Overflow')](https://cwe.mitre.org/data/definitions/120.html)"
+              },
+              "properties": {
+                "tags": [
+                  "DS121708"
+                ]
+              }
+            },
+            {
+              "id": "glog-8d2b9779-9ad6-428c-ab78-72bdfea46414",
+              "help": {
+                "text": "",
+                "markdown": "## Description\n\nThe `memcpy` function in C++ is used to copy a block of memory from one location to another. This function is vulnerable to buffer overflow attacks if the size of the data being copied is larger than the size of the destination buffer. In the provided code snippet, if `prefix_chars` is larger than the size of `heap_buffer`, it can lead to a buffer overflow, potentially allowing an attacker to execute arbitrary code or cause a denial of service.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, you should always ensure that the size of the data being copied does not exceed the size of the destination buffer. This can be done by checking the size of the data and the size of the buffer before calling `memcpy`.\n\n## Source Code Fix Recommendation\n\nHere is a recommended fix for the provided code snippet:\n\n```cpp\n#include <cstring> // for memcpy\n#include <algorithm> // for min\n\n// ...\n\nsize_t heap_buffer_size = sizeof(heap_buffer) / sizeof(heap_buffer[0]);\nsize_t stack_buffer_size = sizeof(stack_buffer) / sizeof(stack_buffer[0]);\n\nsize_t num_chars_to_copy = std::min(heap_buffer_size, stack_buffer_size);\n\nmemcpy(heap_buffer, stack_buffer, num_chars_to_copy);\n```\n\nIn this fixed code, we first calculate the sizes of `heap_buffer` and `stack_buffer`. Then we use the `std::min` function to ensure that we only copy the smaller of the two sizes. This prevents a buffer overflow from occurring.\n\n## Library Dependencies\n\nThe code example requires the following library dependencies:\n\n- `<cstring>`: This library provides the `memcpy` function.\n- `<algorithm>`: This library provides the `std::min` function.\n\n## OWASP and CWE Links\n\n- [OWASP Buffer Overflow](https://owasp.org/www-community/vulnerabilities/Buffer_Overflow)\n- [CWE-120: Buffer Copy without Checking Size of Input ('Classic Buffer Overflow')](https://cwe.mitre.org/data/definitions/120.html)"
+              },
+              "properties": {
+                "tags": [
+                  "DS121708"
+                ]
+              }
+            },
+            {
+              "id": "glog-9f349f94-345d-42ac-8a7a-c3d8bb647b95",
+              "help": {
+                "text": "",
+                "markdown": "## Description\n\nThe vulnerability in question is related to the `malloc` function in C++. This function is used to allocate a block of memory on the heap. The size of the memory block is specified as a parameter to the function. If the size is not properly validated or calculated, it can lead to various security issues such as buffer overflow, memory corruption, or denial of service.\n\nIn the provided code snippet, the size of the memory block to be allocated is calculated as the sum of `prefix_chars`, `format_chars`, and `CLOG_SUFFIX_LENGTH`. If any of these variables contain a negative value, the result could be a smaller block of memory than expected, leading to buffer overflow when the memory is accessed.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, you should always validate and sanitize inputs to the `malloc` function. Ensure that the size parameter is not negative and does not result in integer overflow when summed with other values. Also, always check the return value of `malloc` to ensure that the memory allocation was successful.\n\n## Source Code Fix Recommendation\n\nHere is a recommended fix for the provided code snippet:\n\n```cpp\n#include <stdlib.h>\n\n// Ensure that all inputs are non-negative and do not cause integer overflow\nif (prefix_chars < 0 || format_chars < 0 || CLOG_SUFFIX_LENGTH < 0 ||\n    prefix_chars + format_chars < prefix_chars ||\n    prefix_chars + format_chars + CLOG_SUFFIX_LENGTH < prefix_chars + format_chars) {\n    // Handle error\n} else {\n    char* buffer = (char*) malloc(prefix_chars + format_chars + CLOG_SUFFIX_LENGTH);\n    if (buffer == NULL) {\n        // Handle error\n    } else {\n        // Use buffer\n        free(buffer);\n    }\n}\n```\n\n## Library Dependencies\n\nThe code snippet requires the `stdlib.h` library for the `malloc` and `free` functions.\n\n## References\n\n- [CWE-131: Incorrect Calculation of Buffer Size](https://cwe.mitre.org/data/definitions/131.html)"
+              },
+              "properties": {
+                "tags": [
+                  "DS161085"
+                ]
+              }
+            },
+            {
+              "id": "glog-6e2452fb-6e50-4ba9-b097-6f01f0fbc450",
+              "help": {
+                "text": "",
+                "markdown": "## Description\n\nThe `memcpy` function in C++ is used to copy a block of memory from one location to another. This function does not check the size of the destination buffer, which can lead to buffer overflow if the source is larger than the destination. In the provided code, `memcpy` is copying `CLOG_INFO_PREFIX` into `stack_buffer` without checking if `stack_buffer` is large enough to hold `CLOG_INFO_PREFIX`. This can lead to a buffer overflow vulnerability, which can be exploited to execute arbitrary code or cause a denial of service.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, always ensure that the destination buffer is large enough to hold the source data before using `memcpy`. This can be done by checking the size of the destination buffer and the size of the source data. If the source is larger than the destination, do not perform the copy operation.\n\n## Source Code Fix Recommendation\n\nHere is a recommended fix for the provided code:\n\n```cpp\nif (sizeof(stack_buffer) >= CLOG_INFO_PREFIX_LENGTH) {\n    memcpy(stack_buffer, CLOG_INFO_PREFIX, CLOG_INFO_PREFIX_LENGTH);\n} else {\n    // Handle error: destination buffer is not large enough\n}\n```\n\nIn this fixed code, `memcpy` is only called if `stack_buffer` is large enough to hold `CLOG_INFO_PREFIX`. If it is not, an error is handled instead.\n\n## Library Dependencies\n\nThe provided code requires the following library to execute properly:\n\n```cpp\n#include <cstring>\n```\n\n## OWASP and CWE Links\n\n- [OWASP Buffer Overflow](https://owasp.org/www-community/vulnerabilities/Buffer_Overflow)\n- [CWE-120: Buffer Copy without Checking Size of Input ('Classic Buffer Overflow')](https://cwe.mitre.org/data/definitions/120.html)"
+              },
+              "properties": {
+                "tags": [
+                  "DS121708"
+                ]
+              }
+            }
+          ],
+          "language": "en-US",
+          "contents": [
+            "localizedData",
+            "nonLocalizedData"
+          ],
+          "isComprehensive": false
+        }
+      },
+      "language": "en-US",
+      "results": [
+        {
+          "ruleId": "glog-29d7b882-6759-4a07-bc6a-119c1b4e1d92",
+          "kind": "fail",
+          "level": "error",
+          "message": {
+            "text": "\"Vulnerable/Compromised Hash Algorithm\""
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "aten/src/ATen/native/cuda/jit_utils.cpp"
+                },
+                "region": {
+                  "startLine": 1546,
+                  "startColumn": 27,
+                  "endLine": 1546,
+                  "endColumn": 31,
+                  "charOffset": 50913,
+                  "charLength": 4,
+                  "snippet": {
+                    "text": "sha1",
+                    "rendered": {
+                      "text": "sha1",
+                      "markdown": "`sha1`"
+                    }
+                  },
+                  "sourceLanguage": "cpp"
+                }
+              }
+            }
+          ],
+          "fixes": [
+            {
+              "description": {
+                "text": "A weak or broken hash algorithm was detected."
+              },
+              "artifactChanges": [
+                {
+                  "artifactLocation": {
+                    "uri": "aten/src/ATen/native/cuda/jit_utils.cpp"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "charOffset": 50913,
+                        "charLength": 4
+                      },
+                      "insertedContent": {
+                        "text": "sha512"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "description": {
+                "text": "A weak or broken hash algorithm was detected."
+              },
+              "artifactChanges": [
+                {
+                  "artifactLocation": {
+                    "uri": "aten/src/ATen/native/cuda/jit_utils.cpp"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "charOffset": 50913,
+                        "charLength": 4
+                      },
+                      "insertedContent": {
+                        "text": "sha256"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "DevSkimSeverity": "Critical",
+            "DevSkimConfidence": "High",
+            "tags": [
+              "Cryptography.BannedHashAlgorithm"
+            ]
+          }
+        },
+        {
+          "ruleId": "glog-111707fd-9a7a-4e29-8aa9-6764b51792de",
+          "kind": "fail",
+          "level": "note",
+          "message": {
+            "text": "Detected Vulnerability in C Function (memcpy)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "c10/util/SmallVector.h"
+                },
+                "region": {
+                  "startLine": 620,
+                  "startColumn": 4,
+                  "endLine": 620,
+                  "endColumn": 66,
+                  "charOffset": 21054,
+                  "charLength": 62,
+                  "snippet": {
+                    "text": "memcpy(reinterpret_cast<void*>(this->end()), EltPtr, sizeof(T)",
+                    "rendered": {
+                      "text": "memcpy(reinterpret_cast<void*>(this->end()), EltPtr, sizeof(T)",
+                      "markdown": "`memcpy(reinterpret_cast<void*>(this->end()), EltPtr, sizeof(T)`"
+                    }
+                  },
+                  "sourceLanguage": "c"
+                }
+              }
+            }
+          ],
+          "fixes": [
+            {
+              "description": {
+                "text": "There are a number of conditions in which memcpy can introduce a vulnerability (mismatched buffer sizes, null pointers, etc.). More secure alternitives perform additional validation of the source and destination buffer"
+              },
+              "artifactChanges": [
+                {
+                  "artifactLocation": {
+                    "uri": "c10/util/SmallVector.h"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "charOffset": 21054,
+                        "charLength": 62
+                      },
+                      "insertedContent": {
+                        "text": "memcpy_s(reinterpret_cast<void*>(this->end()), <size of reinterpret_cast<void*>(this->end())>,  EltPtr,  sizeof(T)"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "DevSkimSeverity": "BestPractice",
+            "DevSkimConfidence": "High",
+            "tags": [
+              "API.DangerousAPI.ProblematicFunction"
+            ]
+          }
+        },
+        {
+          "ruleId": "glog-a6e15d8d-bb13-481b-b117-79f7454e6049",
+          "kind": "fail",
+          "level": "error",
+          "message": {
+            "text": "\"Vulnerable/Compromised Hash Algorithm\""
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "aten/src/ATen/native/cuda/jit_utils.cpp"
+                },
+                "region": {
+                  "startLine": 1545,
+                  "startColumn": 9,
+                  "endLine": 1545,
+                  "endColumn": 13,
+                  "charOffset": 50864,
+                  "charLength": 4,
+                  "snippet": {
+                    "text": "sha1",
+                    "rendered": {
+                      "text": "sha1",
+                      "markdown": "`sha1`"
+                    }
+                  },
+                  "sourceLanguage": "cpp"
+                }
+              }
+            }
+          ],
+          "fixes": [
+            {
+              "description": {
+                "text": "A weak or broken hash algorithm was detected."
+              },
+              "artifactChanges": [
+                {
+                  "artifactLocation": {
+                    "uri": "aten/src/ATen/native/cuda/jit_utils.cpp"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "charOffset": 50864,
+                        "charLength": 4
+                      },
+                      "insertedContent": {
+                        "text": "sha512"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "description": {
+                "text": "A weak or broken hash algorithm was detected."
+              },
+              "artifactChanges": [
+                {
+                  "artifactLocation": {
+                    "uri": "aten/src/ATen/native/cuda/jit_utils.cpp"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "charOffset": 50864,
+                        "charLength": 4
+                      },
+                      "insertedContent": {
+                        "text": "sha256"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "DevSkimSeverity": "Critical",
+            "DevSkimConfidence": "High",
+            "tags": [
+              "Cryptography.BannedHashAlgorithm"
+            ]
+          }
+        },
+        {
+          "ruleId": "glog-8b8181ab-9eac-4fca-a62f-6008e1f468cf",
+          "kind": "fail",
+          "level": "error",
+          "message": {
+            "text": "\"Vulnerable/Compromised Hash Algorithm\""
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "aten/src/ATen/native/cuda/jit_utils.cpp"
+                },
+                "region": {
+                  "startLine": 1545,
+                  "startColumn": 14,
+                  "endLine": 1545,
+                  "endColumn": 18,
+                  "charOffset": 50869,
+                  "charLength": 4,
+                  "snippet": {
+                    "text": "sha1",
+                    "rendered": {
+                      "text": "sha1",
+                      "markdown": "`sha1`"
+                    }
+                  },
+                  "sourceLanguage": "cpp"
+                }
+              }
+            }
+          ],
+          "fixes": [
+            {
+              "description": {
+                "text": "A weak or broken hash algorithm was detected."
+              },
+              "artifactChanges": [
+                {
+                  "artifactLocation": {
+                    "uri": "aten/src/ATen/native/cuda/jit_utils.cpp"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "charOffset": 50869,
+                        "charLength": 4
+                      },
+                      "insertedContent": {
+                        "text": "sha512"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "description": {
+                "text": "A weak or broken hash algorithm was detected."
+              },
+              "artifactChanges": [
+                {
+                  "artifactLocation": {
+                    "uri": "aten/src/ATen/native/cuda/jit_utils.cpp"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "charOffset": 50869,
+                        "charLength": 4
+                      },
+                      "insertedContent": {
+                        "text": "sha256"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "DevSkimSeverity": "Critical",
+            "DevSkimConfidence": "High",
+            "tags": [
+              "Cryptography.BannedHashAlgorithm"
+            ]
+          }
+        },
+        {
+          "ruleId": "glog-c83352f8-c70a-4ca5-baba-db313b50a7ed",
+          "kind": "fail",
+          "level": "note",
+          "message": {
+            "text": "Detected Vulnerability in C Function (memcpy)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "c10/util/SmallVector.h"
+                },
+                "region": {
+                  "startLine": 573,
+                  "startColumn": 6,
+                  "endLine": 573,
+                  "endColumn": 54,
+                  "charOffset": 19295,
+                  "charLength": 48,
+                  "snippet": {
+                    "text": "memcpy(reinterpret_cast<void*>(Dest), I, (E - I)",
+                    "rendered": {
+                      "text": "memcpy(reinterpret_cast<void*>(Dest), I, (E - I)",
+                      "markdown": "`memcpy(reinterpret_cast<void*>(Dest), I, (E - I)`"
+                    }
+                  },
+                  "sourceLanguage": "c"
+                }
+              }
+            }
+          ],
+          "fixes": [
+            {
+              "description": {
+                "text": "There are a number of conditions in which memcpy can introduce a vulnerability (mismatched buffer sizes, null pointers, etc.). More secure alternitives perform additional validation of the source and destination buffer"
+              },
+              "artifactChanges": [
+                {
+                  "artifactLocation": {
+                    "uri": "c10/util/SmallVector.h"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "charOffset": 19295,
+                        "charLength": 48
+                      },
+                      "insertedContent": {
+                        "text": "memcpy_s(reinterpret_cast<void*>(Dest), <size of reinterpret_cast<void*>(Dest)>,  I,  (E - I)"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "DevSkimSeverity": "BestPractice",
+            "DevSkimConfidence": "High",
+            "tags": [
+              "API.DangerousAPI.ProblematicFunction"
+            ]
+          }
+        },
+        {
+          "ruleId": "glog-dd3dc24e-ee72-474c-9254-16f07a00267c",
+          "kind": "fail",
+          "level": "note",
+          "message": {
+            "text": "Detected Vulnerability in C Function (memcpy)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "aten/src/ATen/native/quantized/cpu/qnnpack/deps/clog/src/clog.c"
+                },
+                "region": {
+                  "startLine": 447,
+                  "startColumn": 4,
+                  "endLine": 447,
+                  "endColumn": 69,
+                  "charOffset": 13493,
+                  "charLength": 65,
+                  "snippet": {
+                    "text": "memcpy(stack_buffer, CLOG_DEBUG_PREFIX, CLOG_DEBUG_PREFIX_LENGTH)",
+                    "rendered": {
+                      "text": "memcpy(stack_buffer, CLOG_DEBUG_PREFIX, CLOG_DEBUG_PREFIX_LENGTH)",
+                      "markdown": "`memcpy(stack_buffer, CLOG_DEBUG_PREFIX, CLOG_DEBUG_PREFIX_LENGTH)`"
+                    }
+                  },
+                  "sourceLanguage": "c"
+                }
+              }
+            }
+          ],
+          "fixes": [
+            {
+              "description": {
+                "text": "There are a number of conditions in which memcpy can introduce a vulnerability (mismatched buffer sizes, null pointers, etc.). More secure alternitives perform additional validation of the source and destination buffer"
+              },
+              "artifactChanges": [
+                {
+                  "artifactLocation": {
+                    "uri": "aten/src/ATen/native/quantized/cpu/qnnpack/deps/clog/src/clog.c"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "charOffset": 13493,
+                        "charLength": 65
+                      },
+                      "insertedContent": {
+                        "text": "memcpy_s(stack_buffer, <size of stack_buffer>,  CLOG_DEBUG_PREFIX,  CLOG_DEBUG_PREFIX_LENGTH)"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "DevSkimSeverity": "BestPractice",
+            "DevSkimConfidence": "High",
+            "tags": [
+              "API.DangerousAPI.ProblematicFunction"
+            ]
+          }
+        },
+        {
+          "ruleId": "glog-700e1284-4e5c-4008-9078-2e65b87adb6f",
+          "kind": "fail",
+          "level": "note",
+          "message": {
+            "text": "Detected Vulnerability in C Function (memcpy)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "aten/src/ATen/native/quantized/cpu/qnnpack/deps/clog/src/clog.c"
+                },
+                "region": {
+                  "startLine": 401,
+                  "startColumn": 6,
+                  "endLine": 401,
+                  "endColumn": 53,
+                  "charOffset": 12294,
+                  "charLength": 47,
+                  "snippet": {
+                    "text": "memcpy(heap_buffer, stack_buffer, prefix_chars)",
+                    "rendered": {
+                      "text": "memcpy(heap_buffer, stack_buffer, prefix_chars)",
+                      "markdown": "`memcpy(heap_buffer, stack_buffer, prefix_chars)`"
+                    }
+                  },
+                  "sourceLanguage": "c"
+                }
+              }
+            }
+          ],
+          "fixes": [
+            {
+              "description": {
+                "text": "There are a number of conditions in which memcpy can introduce a vulnerability (mismatched buffer sizes, null pointers, etc.). More secure alternitives perform additional validation of the source and destination buffer"
+              },
+              "artifactChanges": [
+                {
+                  "artifactLocation": {
+                    "uri": "aten/src/ATen/native/quantized/cpu/qnnpack/deps/clog/src/clog.c"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "charOffset": 12294,
+                        "charLength": 47
+                      },
+                      "insertedContent": {
+                        "text": "memcpy_s(heap_buffer, <size of heap_buffer>,  stack_buffer,  prefix_chars)"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "DevSkimSeverity": "BestPractice",
+            "DevSkimConfidence": "High",
+            "tags": [
+              "API.DangerousAPI.ProblematicFunction"
+            ]
+          }
+        },
+        {
+          "ruleId": "glog-8d2b9779-9ad6-428c-ab78-72bdfea46414",
+          "kind": "fail",
+          "level": "note",
+          "message": {
+            "text": "Detected Vulnerability in C Function (memcpy)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "aten/src/ATen/native/quantized/cpu/qnnpack/deps/clog/src/clog.c"
+                },
+                "region": {
+                  "startLine": 495,
+                  "startColumn": 6,
+                  "endLine": 495,
+                  "endColumn": 53,
+                  "charOffset": 15188,
+                  "charLength": 47,
+                  "snippet": {
+                    "text": "memcpy(heap_buffer, stack_buffer, prefix_chars)",
+                    "rendered": {
+                      "text": "memcpy(heap_buffer, stack_buffer, prefix_chars)",
+                      "markdown": "`memcpy(heap_buffer, stack_buffer, prefix_chars)`"
+                    }
+                  },
+                  "sourceLanguage": "c"
+                }
+              }
+            }
+          ],
+          "fixes": [
+            {
+              "description": {
+                "text": "There are a number of conditions in which memcpy can introduce a vulnerability (mismatched buffer sizes, null pointers, etc.). More secure alternitives perform additional validation of the source and destination buffer"
+              },
+              "artifactChanges": [
+                {
+                  "artifactLocation": {
+                    "uri": "aten/src/ATen/native/quantized/cpu/qnnpack/deps/clog/src/clog.c"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "charOffset": 15188,
+                        "charLength": 47
+                      },
+                      "insertedContent": {
+                        "text": "memcpy_s(heap_buffer, <size of heap_buffer>,  stack_buffer,  prefix_chars)"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "DevSkimSeverity": "BestPractice",
+            "DevSkimConfidence": "High",
+            "tags": [
+              "API.DangerousAPI.ProblematicFunction"
+            ]
+          }
+        },
+        {
+          "ruleId": "glog-9f349f94-345d-42ac-8a7a-c3d8bb647b95",
+          "kind": "fail",
+          "level": "note",
+          "message": {
+            "text": "Detected Vulnerability in C Function (malloc)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "aten/src/ATen/native/quantized/cpu/qnnpack/deps/clog/src/clog.c"
+                },
+                "region": {
+                  "startLine": 480,
+                  "startColumn": 18,
+                  "endLine": 480,
+                  "endColumn": 74,
+                  "charOffset": 14681,
+                  "charLength": 56,
+                  "snippet": {
+                    "text": "malloc(prefix_chars + format_chars + CLOG_SUFFIX_LENGTH)",
+                    "rendered": {
+                      "text": "malloc(prefix_chars + format_chars + CLOG_SUFFIX_LENGTH)",
+                      "markdown": "`malloc(prefix_chars + format_chars + CLOG_SUFFIX_LENGTH)`"
+                    }
+                  },
+                  "sourceLanguage": "c"
+                }
+              }
+            }
+          ],
+          "fixes": [
+            {
+              "description": {
+                "text": "If the value provided to malloc is the result of unsafe integer math, it can result in an exploitable condition. "
+              },
+              "artifactChanges": [
+                {
+                  "artifactLocation": {
+                    "uri": "aten/src/ATen/native/quantized/cpu/qnnpack/deps/clog/src/clog.c"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "charOffset": 14681,
+                        "charLength": 56
+                      },
+                      "insertedContent": {
+                        "text": "calloc(<number of elements>, <size of each element>)"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "DevSkimSeverity": "BestPractice",
+            "DevSkimConfidence": "High",
+            "tags": [
+              "API.DangerousAPI.ProblematicFunction"
+            ]
+          }
+        },
+        {
+          "ruleId": "glog-6e2452fb-6e50-4ba9-b097-6f01f0fbc450",
+          "kind": "fail",
+          "level": "note",
+          "message": {
+            "text": "Detected Vulnerability in C Function (memcpy)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "aten/src/ATen/native/quantized/cpu/qnnpack/deps/clog/src/clog.c"
+                },
+                "region": {
+                  "startLine": 353,
+                  "startColumn": 4,
+                  "endLine": 353,
+                  "endColumn": 67,
+                  "charOffset": 10603,
+                  "charLength": 63,
+                  "snippet": {
+                    "text": "memcpy(stack_buffer, CLOG_INFO_PREFIX, CLOG_INFO_PREFIX_LENGTH)",
+                    "rendered": {
+                      "text": "memcpy(stack_buffer, CLOG_INFO_PREFIX, CLOG_INFO_PREFIX_LENGTH)",
+                      "markdown": "`memcpy(stack_buffer, CLOG_INFO_PREFIX, CLOG_INFO_PREFIX_LENGTH)`"
+                    }
+                  },
+                  "sourceLanguage": "c"
+                }
+              }
+            }
+          ],
+          "fixes": [
+            {
+              "description": {
+                "text": "There are a number of conditions in which memcpy can introduce a vulnerability (mismatched buffer sizes, null pointers, etc.). More secure alternitives perform additional validation of the source and destination buffer"
+              },
+              "artifactChanges": [
+                {
+                  "artifactLocation": {
+                    "uri": "aten/src/ATen/native/quantized/cpu/qnnpack/deps/clog/src/clog.c"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "charOffset": 10603,
+                        "charLength": 63
+                      },
+                      "insertedContent": {
+                        "text": "memcpy_s(stack_buffer, <size of stack_buffer>,  CLOG_INFO_PREFIX,  CLOG_INFO_PREFIX_LENGTH)"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "DevSkimSeverity": "BestPractice",
+            "DevSkimConfidence": "High",
+            "tags": [
+              "API.DangerousAPI.ProblematicFunction"
+            ]
+          }
+        }
+      ],
+      "newlineSequences": [
+        "\r\n",
+        "\n"
+      ]
+    }
+  ]
+}
